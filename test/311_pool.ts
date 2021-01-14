@@ -250,6 +250,43 @@ contract('Pool', async (accounts) => {
         almostEqual(fyDaiIn, floor(expectedFYDaiIn).toFixed(), daiIn.div(new BN('10000')))
       })
 
+      it('mints liquidity tokens with dai only', async () => {
+        const oneToken = toWad(1)
+        const daiReserves = await dai.balanceOf(pool.address)
+        const fyDaiReserves = await fyDai1.balanceOf(pool.address)
+        const supply = await pool.totalSupply()
+        const maxDaiIn = toWad(1000)
+
+        await dai.mint(user1, maxDaiIn, { from: owner })
+        const poolTokensBefore = await pool.balanceOf(user2)
+
+        await dai.approve(pool.address, maxDaiIn, { from: user1 })
+        const tx = await pool.mintWithDai(user1, user2, oneToken.divn(1000), { from: user1 })
+
+        /*
+        const [expectedMinted, expectedFYDaiIn] = mint(
+          daiReserves.toString(),
+          fyDaiReserves.toString(),
+          supply.toString(),
+          daiIn.toString()
+        )
+
+        const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
+        const fyDaiIn = fyDaiBefore.sub(await fyDai1.balanceOf(user1))
+
+        expectEvent(tx, 'Liquidity', {
+          from: user1,
+          to: user2,
+          daiTokens: oneToken.neg().toString(),
+          fyDaiTokens: fyDaiIn.neg().toString(),
+          poolTokens: minted.toString()
+        })
+
+        almostEqual(minted, floor(expectedMinted).toFixed(), daiIn.div(new BN('10000')))
+        almostEqual(fyDaiIn, floor(expectedFYDaiIn).toFixed(), daiIn.div(new BN('10000')))
+        */
+      })
+
       it('burns liquidity tokens', async () => {
         // Use this to test: https://www.desmos.com/calculator/ubsalzunpo
 
@@ -281,6 +318,41 @@ contract('Pool', async (accounts) => {
 
         almostEqual(daiOut, floor(expectedDaiOut).toFixed(), lpTokensIn.div(new BN('10000')))
         almostEqual(fyDaiOut, floor(expectedFYDaiOut).toFixed(), lpTokensIn.div(new BN('10000')))
+      })
+
+      it('burns liquidity tokens to Dai', async () => {
+        // Use this to test: https://www.desmos.com/calculator/ubsalzunpo
+
+        const daiReserves = await dai.balanceOf(pool.address)
+        const fyDaiReserves = await fyDai1.balanceOf(pool.address)
+        const supply = await pool.totalSupply()
+        const lpTokensIn = toWad(1)
+
+        await pool.approve(pool.address, lpTokensIn, { from: user1 })
+        const tx = await pool.burnForDai(user1, user2, lpTokensIn, { from: user1 })
+
+        /*
+        const [expectedDaiOut, expectedFYDaiOut] = mint(
+          daiReserves.toString(),
+          fyDaiReserves.toString(),
+          supply.toString(),
+          lpTokensIn.toString()
+        )
+
+        const daiOut = daiReserves.sub(await dai.balanceOf(pool.address))
+        const fyDaiOut = fyDaiReserves.sub(await fyDai1.balanceOf(pool.address))
+
+        expectEvent(tx, 'Liquidity', {
+          from: user1,
+          to: user2,
+          daiTokens: daiOut.toString(),
+          fyDaiTokens: fyDaiOut.toString(),
+          poolTokens: lpTokensIn.neg().toString()
+        })
+
+        almostEqual(daiOut, floor(expectedDaiOut).toFixed(), lpTokensIn.div(new BN('10000')))
+        almostEqual(fyDaiOut, floor(expectedFYDaiOut).toFixed(), lpTokensIn.div(new BN('10000')))
+        */
       })
 
       it('sells dai', async () => {
