@@ -4,6 +4,11 @@
 *.swp
 *.swo
 
+# Secrets
+.etherscanKey
+.infuraKey
+.secret
+
 # Buidler files
 cache
 artifacts
@@ -11,8 +16,6 @@ node_modules/
 output/
 
 # Truffle files
-.infuraKey
-.secret
 build/
 
 # Solidity-coverage
