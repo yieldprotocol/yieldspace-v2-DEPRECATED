@@ -62,12 +62,12 @@ contract('Pool', async (accounts) => {
     snapshot = await helper.takeSnapshot()
     snapshotId = snapshot['result']
 
-    // Setup fyDai
-    maturity1 = (await currentTimestamp()) + 31556952 // One year
-    fyDai1 = await FYDai.new(maturity1)
-
     // Setup dai
     dai = await Dai.new()
+
+    // Setup fyDai
+    maturity1 = (await currentTimestamp()) + 31556952 // One year
+    fyDai1 = await FYDai.new(dai.address, maturity1)
 
     // Setup Pool
     pool = await Pool.new(dai.address, fyDai1.address, 'Name', 'Symbol', {
@@ -326,7 +326,7 @@ contract('Pool', async (accounts) => {
         almostEqual(fyDaiOut, floor(expectedFYDaiOut).toFixed(), fyDaiOut.div(new BN('10000')))
       })
 
-      it.only('burns liquidity tokens to Dai', async () => {
+      it('burns liquidity tokens to Dai', async () => {
         // Use this to test: https://www.desmos.com/calculator/ubsalzunpo
 
         const daiReserves = await dai.balanceOf(pool.address)
