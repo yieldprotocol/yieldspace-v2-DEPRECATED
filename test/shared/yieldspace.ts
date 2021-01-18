@@ -40,6 +40,20 @@ export function burn(daiReserves: any, fyDaiReserves: any, supply: any, lpTokens
   return [z, y]
 }
 
+export function burnForDai(daiReserves: any, fyDaiReservesVirtual: any, fyDaiReservesReal: any, supply: any, lpTokens: any, timeTillMaturity: any): any {
+  const Z = bignumber(daiReserves)
+  const YV = bignumber(fyDaiReservesVirtual)
+  const YR = bignumber(fyDaiReservesReal)
+  const S = bignumber(supply)
+  const x = bignumber(lpTokens)
+  const T = bignumber(timeTillMaturity)
+
+  const [z1, y] = burn(Z, YR, S, x)
+  const z2 = sellFYDai(Z, YV, y, T)
+
+  return add(z1, z2)
+}
+
 // https://www.desmos.com/calculator/5nf2xuy6yb
 export function sellDai(daiReserves: any, fyDaiReserves: any, dai: any, timeTillMaturity: any): any {
   const fee = bignumber(1000000000000)

@@ -8,7 +8,7 @@ const YieldMath = artifacts.require('YieldMath')
 const { floor } = require('mathjs')
 import * as helper from 'ganache-time-traveler'
 import { toWad, toRay, ZERO } from './shared/utils'
-import { mint, mintWithDai, burn, sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
+import { mint, mintWithDai, burn, burnForDai, sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
 // @ts-ignore
 import { BN, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { assert, expect } from 'chai'
@@ -250,7 +250,7 @@ contract('Pool', async (accounts) => {
         almostEqual(fyDaiIn, floor(expectedFYDaiIn).toFixed(), daiIn.div(new BN('10000')))
       })
 
-      it.only('mints liquidity tokens with dai only', async () => {
+      it('mints liquidity tokens with dai only', async () => {
         const oneToken = toWad(1)
         const daiReserves = await dai.balanceOf(pool.address)
         const fyDaiReservesVirtual = await pool.getFYDaiReserves()
@@ -304,7 +304,7 @@ contract('Pool', async (accounts) => {
         await pool.approve(pool.address, lpTokensIn, { from: user1 })
         const tx = await pool.burn(user1, user2, lpTokensIn, { from: user1 })
 
-        const [expectedDaiOut, expectedFYDaiOut] = mint(
+        const [expectedDaiOut, expectedFYDaiOut] = burn(
           daiReserves.toString(),
           fyDaiReserves.toString(),
           supply.toString(),
@@ -322,43 +322,44 @@ contract('Pool', async (accounts) => {
           poolTokens: lpTokensIn.neg().toString()
         })
 
-        almostEqual(daiOut, floor(expectedDaiOut).toFixed(), lpTokensIn.div(new BN('10000')))
-        almostEqual(fyDaiOut, floor(expectedFYDaiOut).toFixed(), lpTokensIn.div(new BN('10000')))
+        almostEqual(daiOut, floor(expectedDaiOut).toFixed(), daiOut.div(new BN('10000')))
+        almostEqual(fyDaiOut, floor(expectedFYDaiOut).toFixed(), fyDaiOut.div(new BN('10000')))
       })
 
-      it('burns liquidity tokens to Dai', async () => {
+      it.only('burns liquidity tokens to Dai', async () => {
         // Use this to test: https://www.desmos.com/calculator/ubsalzunpo
 
         const daiReserves = await dai.balanceOf(pool.address)
-        const fyDaiReserves = await fyDai1.balanceOf(pool.address)
+        const fyDaiReservesVirtual = await pool.getFYDaiReserves()
+        const fyDaiReservesReal = await fyDai1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
+        const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
+        const timeTillMaturity = new BN(maturity1).sub(now)
         const lpTokensIn = toWad(1)
 
         await pool.approve(pool.address, lpTokensIn, { from: user1 })
         const tx = await pool.burnForDai(user1, user2, lpTokensIn, { from: user1 })
 
-        /*
-        const [expectedDaiOut, expectedFYDaiOut] = mint(
+        const expectedDaiOut = burnForDai(
           daiReserves.toString(),
-          fyDaiReserves.toString(),
+          fyDaiReservesVirtual.toString(),
+          fyDaiReservesReal.toString(),
           supply.toString(),
-          lpTokensIn.toString()
+          lpTokensIn.toString(),
+          timeTillMaturity.toString()
         )
 
         const daiOut = daiReserves.sub(await dai.balanceOf(pool.address))
-        const fyDaiOut = fyDaiReserves.sub(await fyDai1.balanceOf(pool.address))
 
         expectEvent(tx, 'Liquidity', {
           from: user1,
           to: user2,
           daiTokens: daiOut.toString(),
-          fyDaiTokens: fyDaiOut.toString(),
+          fyDaiTokens: '0',
           poolTokens: lpTokensIn.neg().toString()
         })
 
-        almostEqual(daiOut, floor(expectedDaiOut).toFixed(), lpTokensIn.div(new BN('10000')))
-        almostEqual(fyDaiOut, floor(expectedFYDaiOut).toFixed(), lpTokensIn.div(new BN('10000')))
-        */
+        almostEqual(daiOut, floor(expectedDaiOut).toFixed(), daiOut.div(new BN('10000')))
       })
 
       it('sells dai', async () => {
