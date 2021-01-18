@@ -8,7 +8,7 @@ const YieldMath = artifacts.require('YieldMath')
 const { floor } = require('mathjs')
 import * as helper from 'ganache-time-traveler'
 import { toWad, toRay, ZERO } from './shared/utils'
-import { mint, burn, sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
+import { mint, mintWithDai, burn, sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
 // @ts-ignore
 import { BN, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { assert, expect } from 'chai'
@@ -250,41 +250,47 @@ contract('Pool', async (accounts) => {
         almostEqual(fyDaiIn, floor(expectedFYDaiIn).toFixed(), daiIn.div(new BN('10000')))
       })
 
-      it('mints liquidity tokens with dai only', async () => {
+      it.only('mints liquidity tokens with dai only', async () => {
         const oneToken = toWad(1)
         const daiReserves = await dai.balanceOf(pool.address)
-        const fyDaiReserves = await fyDai1.balanceOf(pool.address)
+        const fyDaiReservesVirtual = await pool.getFYDaiReserves()
+        const fyDaiReservesReal = await fyDai1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
+        const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
+        const timeTillMaturity = new BN(maturity1).sub(now)
+        const fyDaiToBuy = oneToken.divn(1000)
         const maxDaiIn = toWad(1000)
 
         await dai.mint(user1, maxDaiIn, { from: owner })
+
+        const daiBefore = await dai.balanceOf(user1)
         const poolTokensBefore = await pool.balanceOf(user2)
 
         await dai.approve(pool.address, maxDaiIn, { from: user1 })
-        const tx = await pool.mintWithDai(user1, user2, oneToken.divn(1000), { from: user1 })
+        const tx = await pool.mintWithDai(user1, user2, fyDaiToBuy, { from: user1 })
 
-        /*
-        const [expectedMinted, expectedFYDaiIn] = mint(
+        const [expectedMinted, expectedDaiIn] = mintWithDai(
           daiReserves.toString(),
-          fyDaiReserves.toString(),
+          fyDaiReservesVirtual.toString(),
+          fyDaiReservesReal.toString(),
           supply.toString(),
-          daiIn.toString()
+          fyDaiToBuy.toString(),
+          timeTillMaturity.toString(),
         )
 
         const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
-        const fyDaiIn = fyDaiBefore.sub(await fyDai1.balanceOf(user1))
+        const daiIn = daiBefore.sub(await dai.balanceOf(user1))
 
         expectEvent(tx, 'Liquidity', {
           from: user1,
           to: user2,
-          daiTokens: oneToken.neg().toString(),
-          fyDaiTokens: fyDaiIn.neg().toString(),
+          daiTokens: daiIn.neg().toString(),
+          fyDaiTokens: '0',
           poolTokens: minted.toString()
         })
 
-        almostEqual(minted, floor(expectedMinted).toFixed(), daiIn.div(new BN('10000')))
-        almostEqual(fyDaiIn, floor(expectedFYDaiIn).toFixed(), daiIn.div(new BN('10000')))
-        */
+        almostEqual(minted, floor(expectedMinted).toFixed(), minted.div(new BN('10000')))
+        almostEqual(daiIn, floor(expectedDaiIn).toFixed(), daiIn.div(new BN('10000')))
       })
 
       it('burns liquidity tokens', async () => {

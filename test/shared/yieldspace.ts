@@ -12,6 +12,22 @@ export function mint(daiReserves: any, fyDaiReserves: any, supply: any, dai: any
   return [m, y]
 }
 
+export function mintWithDai(daiReserves: any, fyDaiReservesVirtual: any, fyDaiReservesReal: any, supply: any, fyDai: any, timeTillMaturity: any): [any, any] {
+  const Z = bignumber(daiReserves)
+  const YV = bignumber(fyDaiReservesVirtual)
+  const YR = bignumber(fyDaiReservesReal)
+  const S = bignumber(supply)
+  const y = bignumber(fyDai)
+  const T = bignumber(timeTillMaturity)
+
+  const z1 = buyFYDai(Z, YV, y, T) // Buy fyDai
+  // Mint specifying how much fyDai to take in. Reverse of `mint`.
+  const m = divide(multiply(S, y), subtract(YR, y))
+  const z2 = divide(multiply(add(Z, z1), m), S)
+
+  return [m, add(z1, z2)]
+}
+
 // https://www.desmos.com/calculator/ubsalzunpo
 export function burn(daiReserves: any, fyDaiReserves: any, supply: any, lpTokens: any): [any, any] {
   const Z = bignumber(daiReserves)
