@@ -99,7 +99,7 @@ contract('Pool', async (accounts) => {
       to: user1,
       daiTokens: initialDai.neg().toString(),
       fyDaiTokens: ZERO,
-      poolTokens: initialDai.toString()
+      poolTokens: initialDai.toString(),
     })
 
     assert.equal(
@@ -243,7 +243,7 @@ contract('Pool', async (accounts) => {
           to: user2,
           daiTokens: oneToken.neg().toString(),
           fyDaiTokens: fyDaiIn.neg().toString(),
-          poolTokens: minted.toString()
+          poolTokens: minted.toString(),
         })
 
         almostEqual(minted, floor(expectedMinted).toFixed(), daiIn.div(new BN('10000')))
@@ -275,7 +275,7 @@ contract('Pool', async (accounts) => {
           fyDaiReservesReal.toString(),
           supply.toString(),
           fyDaiToBuy.toString(),
-          timeTillMaturity.toString(),
+          timeTillMaturity.toString()
         )
 
         const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
@@ -286,7 +286,7 @@ contract('Pool', async (accounts) => {
           to: user2,
           daiTokens: daiIn.neg().toString(),
           fyDaiTokens: '0',
-          poolTokens: minted.toString()
+          poolTokens: minted.toString(),
         })
 
         almostEqual(minted, floor(expectedMinted).toFixed(), minted.div(new BN('10000')))
@@ -319,7 +319,7 @@ contract('Pool', async (accounts) => {
           to: user2,
           daiTokens: daiOut.toString(),
           fyDaiTokens: fyDaiOut.toString(),
-          poolTokens: lpTokensIn.neg().toString()
+          poolTokens: lpTokensIn.neg().toString(),
         })
 
         almostEqual(daiOut, floor(expectedDaiOut).toFixed(), daiOut.div(new BN('10000')))
@@ -356,7 +356,7 @@ contract('Pool', async (accounts) => {
           to: user2,
           daiTokens: daiOut.toString(),
           fyDaiTokens: '0',
-          poolTokens: lpTokensIn.neg().toString()
+          poolTokens: lpTokensIn.neg().toString(),
         })
 
         almostEqual(daiOut, floor(expectedDaiOut).toFixed(), daiOut.div(new BN('10000')))

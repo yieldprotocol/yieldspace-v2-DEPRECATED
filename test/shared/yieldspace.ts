@@ -12,7 +12,14 @@ export function mint(daiReserves: any, fyDaiReserves: any, supply: any, dai: any
   return [m, y]
 }
 
-export function mintWithDai(daiReserves: any, fyDaiReservesVirtual: any, fyDaiReservesReal: any, supply: any, fyDai: any, timeTillMaturity: any): [any, any] {
+export function mintWithDai(
+  daiReserves: any,
+  fyDaiReservesVirtual: any,
+  fyDaiReservesReal: any,
+  supply: any,
+  fyDai: any,
+  timeTillMaturity: any
+): [any, any] {
   const Z = bignumber(daiReserves)
   const YV = bignumber(fyDaiReservesVirtual)
   const YR = bignumber(fyDaiReservesReal)
@@ -40,7 +47,14 @@ export function burn(daiReserves: any, fyDaiReserves: any, supply: any, lpTokens
   return [z, y]
 }
 
-export function burnForDai(daiReserves: any, fyDaiReservesVirtual: any, fyDaiReservesReal: any, supply: any, lpTokens: any, timeTillMaturity: any): any {
+export function burnForDai(
+  daiReserves: any,
+  fyDaiReservesVirtual: any,
+  fyDaiReservesReal: any,
+  supply: any,
+  lpTokens: any,
+  timeTillMaturity: any
+): any {
   const Z = bignumber(daiReserves)
   const YV = bignumber(fyDaiReservesVirtual)
   const YR = bignumber(fyDaiReservesReal)
