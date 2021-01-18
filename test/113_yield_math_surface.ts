@@ -119,53 +119,25 @@ contract('YieldMath - Surface', async (accounts) => {
               const fyDaiReserve = new BN(daiReserve).add(new BN(fyDaiReserveDelta)).toString()
               let offChain, onChain
               offChain = sellFYDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.daiOutForFYDaiIn(
-                daiReserve,
-                fyDaiReserve,
-                tradeSize,
-                timeTillMaturity,
-                k,
-                g2
-              )
+              onChain = await yieldMath.daiOutForFYDaiIn(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g2)
               console.log(`offChain sellFYDai: ${floor(offChain).toFixed()}`)
               console.log(`onChain sellFYDai: ${onChain}`)
               almostEqual(onChain, floor(offChain).toFixed(), PRECISION)
 
               offChain = sellDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.fyDaiOutForDaiIn(
-                daiReserve,
-                fyDaiReserve,
-                tradeSize,
-                timeTillMaturity,
-                k,
-                g1
-              )
+              onChain = await yieldMath.fyDaiOutForDaiIn(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g1)
               console.log(`offChain sellDai: ${floor(offChain).toFixed()}`)
               console.log(`onChain sellDai: ${onChain}`)
               almostEqual(onChain, floor(offChain).toFixed(), PRECISION)
 
               offChain = buyDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.fyDaiInForDaiOut(
-                daiReserve,
-                fyDaiReserve,
-                tradeSize,
-                timeTillMaturity,
-                k,
-                g2
-              )
+              onChain = await yieldMath.fyDaiInForDaiOut(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g2)
               console.log(`offChain buyDai: ${floor(offChain).toFixed()}`)
               console.log(`onChain buyDai: ${onChain}`)
               almostEqual(onChain, floor(offChain).toFixed(), PRECISION)
 
               offChain = buyFYDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.daiInForFYDaiOut(
-                daiReserve,
-                fyDaiReserve,
-                tradeSize,
-                timeTillMaturity,
-                k,
-                g1
-              )
+              onChain = await yieldMath.daiInForFYDaiOut(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g1)
               console.log(`offChain buyFYDai: ${floor(offChain).toFixed()}`)
               console.log(`onChain buyFYDai: ${onChain}`)
               almostEqual(onChain, floor(offChain).toFixed(), PRECISION)

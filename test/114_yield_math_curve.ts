@@ -83,14 +83,7 @@ contract('YieldMath - Curve', async (accounts) => {
         var previousResult = new BN('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = new BN(g[j][0]).mul(b).div(new BN(g[j][1]))
-          var result = await yieldMath.fyDaiOutForDaiIn(
-            daiReserves,
-            fyDaiReserves,
-            daiAmount,
-            timeTillMaturity,
-            k,
-            g_
-          )
+          var result = await yieldMath.fyDaiOutForDaiIn(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.bignumber.gt(previousResult.toString())
@@ -151,14 +144,7 @@ contract('YieldMath - Curve', async (accounts) => {
         var previousResult = new BN('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = new BN(g[j][0]).mul(b).div(new BN(g[j][1]))
-          var result = await yieldMath.daiOutForFYDaiIn(
-            daiReserves,
-            fyDaiReserves,
-            daiAmount,
-            timeTillMaturity,
-            k,
-            g_
-          )
+          var result = await yieldMath.daiOutForFYDaiIn(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.bignumber.gt(previousResult.toString())
@@ -218,14 +204,7 @@ contract('YieldMath - Curve', async (accounts) => {
         var previousResult = new BN('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = new BN(g[j][0]).mul(b).div(new BN(g[j][1]))
-          var result = await yieldMath.fyDaiInForDaiOut(
-            daiReserves,
-            fyDaiReserves,
-            daiAmount,
-            timeTillMaturity,
-            k,
-            g_
-          )
+          var result = await yieldMath.fyDaiInForDaiOut(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.bignumber.gt(previousResult.toString())
@@ -285,14 +264,7 @@ contract('YieldMath - Curve', async (accounts) => {
         var previousResult = new BN('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = new BN(g[j][0]).mul(b).div(new BN(g[j][1]))
-          var result = await yieldMath.daiInForFYDaiOut(
-            daiReserves,
-            fyDaiReserves,
-            daiAmount,
-            timeTillMaturity,
-            k,
-            g_
-          )
+          var result = await yieldMath.daiInForFYDaiOut(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.bignumber.gt(previousResult.toString())
