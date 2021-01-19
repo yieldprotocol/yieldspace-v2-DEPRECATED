@@ -73,6 +73,15 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         return uint128(x);
     }
 
+    /// @dev Safe casting from int256 to uint128
+    function toUint128(int256 x) internal pure returns(uint128) {
+        require(
+            x >= 0,
+            "Pool: Cast underflow"
+        );
+        return uint128(x);
+    }
+
     /// @dev Safe casting from uint256 to int256
     function toInt256(uint256 x) internal pure returns(int256) {
         require(
@@ -107,21 +116,31 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     }
 
     /// @dev Taken from vat.sol. x + y where y can be negative. Reverts if result is negative.
-    function add(uint x, int y) internal pure returns (uint z) {
+    function add(uint256 x, int256 y) internal pure returns (uint256 z) {
         z = x + uint(y);
-        require(y >= 0 || z <= x);
-        require(y <= 0 || z >= x);
+        require(y >= 0 || z <= x, "ds-math-add-underflow");
+        require(y <= 0 || z >= x, "ds-math-add-overflow");
     }
-    function add(uint x, uint y) internal pure returns (uint z) {
+    /// @dev x - y where y can be negative. Reverts if result is negative.
+    function sub(uint256 x, int256 y) internal pure returns (uint256 z) {
+        // z = x - uint(y);
+        // require(y >= 0 || z <= x, "ds-math-sub-underflow");
+        // require(y <= 0 || z >= x, "ds-math-sub-overflow");
+        int256 t = int256(x) - y;
+        require(y <= 0 || t <= int256(x), "ds-math-sub-overflow");
+        require(t >= 0, "ds-math-sub-underflow");
+        z = uint256(t);
+    }
+    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x, "ds-math-add-overflow");
     }
-    function sub(uint x, uint y) internal pure returns (uint z) {
+    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x, "ds-math-sub-underflow");
     }
-    function mul(uint x, uint y) internal pure returns (uint z) {
+    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x, "ds-math-mul-overflow");
     }
-    function div(uint x, uint y) internal pure returns (uint z) {
+    function div(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y != 0, "ds-math-div-by-zero");
         z = x / y;
     }
@@ -153,9 +172,9 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             if (daiToSell > 0) fyDaiBought = sellDaiPreview(toUint128(daiToSell)); // This is a virtual buy
             if (daiToSell < 0) fyDaiBought = buyDaiPreview(toUint128(-daiToSell)); // This is a virtual buy
 
-            tokensMinted = supply.mul(daiOffered.sub(daiToSell)).div(daiReserves.add(daiToSell));
-            fyDaiRequired = fyDaiReserves.sub(fyDaiBought).mul(tokensMinted).div(supply);
-            require(daiReserves.add(daiOffered) <= type(uint128).max, "Pool: Too much Dai");
+            tokensMinted = div(mul(supply, sub(daiOffered, daiToSell)), add(daiReserves, daiToSell));
+            fyDaiRequired = div(mul(sub(fyDaiReserves, fyDaiBought), tokensMinted), supply);
+            require(add(daiReserves, daiOffered) <= type(uint128).max, "Pool: Too much Dai");
         }
 
         if (daiOffered > 0 ) require(dai.transferFrom(from, address(this), daiOffered), "Pool: Dai transfer failed");
@@ -221,7 +240,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         daiOut = daiOut.add(
             YieldMath.daiOutForFYDaiIn(                            // This is a virtual sell
                 toUint128(daiReserves.sub(daiOut)),                // Real reserves, minus virtual burn
-                sub(getFYDaiReserves(), toUint128(fyDaiObtained)), // Virtual reserves, minus virtual burn
+                toUint128(sub(getFYDaiReserves(), fyDaiObtained)), // Virtual reserves, minus virtual burn
                 toUint128(fyDaiObtained),                          // Sell the virtual fyDai obtained
                 toUint128(maturity - block.timestamp),             // This can't be called after maturity
                 k,
@@ -261,7 +280,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         fyDaiOut = fyDaiOut.add(
             YieldMath.fyDaiOutForDaiIn(                                     // This is a virtual sell
                 toUint128(daiReserves),                                     // Real reserves, minus virtual burn
-                sub(getFYDaiReserves(), toUint128(fyDaiOut)),               // Virtual reserves, minus virtual burn
+                toUint128(sub(getFYDaiReserves(), fyDaiOut)),               // Virtual reserves, minus virtual burn
                 toUint128(daiObtained),                                     // Sell the virtual fyDai obtained
                 toUint128(maturity - block.timestamp),                      // This can't be called after maturity
                 k,
@@ -317,7 +336,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         );
 
         require(
-            sub(fyDaiReserves, fyDaiOut) >= add(daiReserves, daiIn),
+            sub(fyDaiReserves, uint256(fyDaiOut)) >= add(daiReserves, uint256(daiIn)),
             "Pool: fyDai reserves too low"
         );
 
@@ -442,7 +461,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         );
 
         require(
-            sub(fyDaiReserves, fyDaiOut) >= add(daiReserves, daiIn),
+            sub(fyDaiReserves, uint256(fyDaiOut)) >= add(daiReserves, uint256(daiIn)),
             "Pool: fyDai reserves too low"
         );
 
