@@ -139,7 +139,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     /// @param to Wallet receiving the minted liquidity tokens.
     /// @param fyDaiToBuy Amount of `fyDai` being bought in the Pool, from this we calculate how much Dai it will be taken in.
     /// @return The amount of liquidity tokens minted.
-    function mintWithDai(address from, address to, uint256 fyDaiToBuy)
+    function buyFYDaiAndMint(address from, address to, uint256 fyDaiToBuy)
         external
         onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
         returns (uint256, uint256)
@@ -152,7 +152,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         uint256 daiIn = buyFYDaiPreview(toUint128(fyDaiToBuy)); // This is a virtual buy
 
-        require(fyDaiReserves >= fyDaiToBuy, "Pool: Not enough fyDai");
+        require(fyDaiReserves >= fyDaiToBuy, "Pool: Not enough fyDai"); // TODO: Isn't this checked in YieldMath?
         uint256 tokensMinted = supply.mul(fyDaiToBuy).div(fyDaiReserves.sub(fyDaiToBuy));
         daiIn = daiReserves.add(daiIn).mul(tokensMinted).div(supply);
         require(daiReserves.add(daiIn) <= type(uint128).max, "Pool: Too much Dai");
@@ -162,6 +162,35 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         emit Liquidity(maturity, from, to, -toInt256(daiIn), 0, toInt256(tokensMinted));
 
         return (daiIn, tokensMinted);
+    }
+
+        /// @dev Mint liquidity tokens in exchange for adding only dai
+    /// The liquidity provider needs to have called `dai.approve`.
+    /// @param from Wallet providing the dai and fyDai. Must have approved the operator with `pool.addDelegate(operator)`.
+    /// @param to Wallet receiving the minted liquidity tokens.
+    /// @param daiToBuy Amount of `Dai` being bought in the Pool, from this we calculate how much fyDai it will be taken in.
+    /// @return The amount of liquidity tokens minted.
+    function buyDaiAndMint(address from, address to, uint256 daiToBuy)
+        external
+        onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
+        returns (uint256, uint256)
+    {
+        uint256 supply = totalSupply();
+        require(supply > 0, "Pool: Use mint first");
+
+        uint256 daiReserves = dai.balanceOf(address(this));
+        uint256 fyDaiReserves = fyDai.balanceOf(address(this));
+
+        uint256 fyDaiIn = buyDaiPreview(toUint128(daiToBuy)); // This is a virtual buy
+
+        uint256 tokensMinted = supply.mul(daiToBuy).div(daiReserves.sub(daiToBuy));
+        fyDaiIn = fyDaiReserves.add(fyDaiIn).mul(tokensMinted).div(supply);
+
+        require(fyDai.transferFrom(from, address(this), fyDaiIn), "Pool: FYDai transfer failed");
+        _mint(to, tokensMinted);
+        emit Liquidity(maturity, from, to, 0, -toInt256(fyDaiIn), toInt256(tokensMinted));
+
+        return (fyDaiIn, tokensMinted);
     }
 
     /// @dev Burn liquidity tokens in exchange for dai and fyDai.
@@ -200,7 +229,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     /// @param to Wallet receiving the dai and fyDai.
     /// @param tokensBurned Amount of liquidity tokens being burned.
     /// @return The amount of dai tokens returned.
-    function burnForDai(address from, address to, uint256 tokensBurned)
+    function burnAndSellFYDai(address from, address to, uint256 tokensBurned)
         external
         onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
         returns (uint256)
@@ -232,6 +261,46 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         emit Liquidity(maturity, from, to, toInt256(daiOut), 0, -toInt256(tokensBurned));
 
         return daiOut;
+    }
+
+    /// @dev Burn liquidity tokens in exchange for fyDai.
+    /// The liquidity provider needs to have called `pool.approve`.
+    /// @param from Wallet providing the liquidity tokens. Must have approved the operator with `pool.addDelegate(operator)`.
+    /// @param to Wallet receiving the dai and fyDai.
+    /// @param tokensBurned Amount of liquidity tokens being burned.
+    /// @return The amount of fyDai tokens returned.
+    function burnAndSellDai(address from, address to, uint256 tokensBurned)
+        external
+        onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
+        returns (uint256)
+    {
+        uint256 supply = totalSupply();
+        uint256 daiReserves = dai.balanceOf(address(this));
+        // use the actual reserves rather than the virtual reserves
+        uint256 daiObtained;
+        uint256 fyDaiOut;
+        { // avoiding stack too deep
+            uint256 fyDaiReserves = fyDai.balanceOf(address(this));
+            daiObtained = tokensBurned.mul(daiReserves).div(supply);
+            fyDaiOut = tokensBurned.mul(fyDaiReserves).div(supply);
+        }
+
+        fyDaiOut = fyDaiOut.add(
+            YieldMath.fyDaiOutForDaiIn(                                     // This is a virtual sell
+                toUint128(daiReserves),                                     // Real reserves, minus virtual burn
+                sub(getFYDaiReserves(), toUint128(fyDaiOut)),               // Virtual reserves, minus virtual burn
+                toUint128(daiObtained),                                     // Sell the virtual fyDai obtained
+                toUint128(maturity - block.timestamp),                      // This can't be called after maturity
+                k,
+                g2
+            )
+        );
+
+        _burn(from, tokensBurned); // TODO: Fix to check allowance
+        fyDai.transfer(to, fyDaiOut);
+        emit Liquidity(maturity, from, to, 0, toInt256(fyDaiOut), -toInt256(tokensBurned));
+
+        return fyDaiOut;
     }
 
     /// @dev Sell Dai for fyDai
