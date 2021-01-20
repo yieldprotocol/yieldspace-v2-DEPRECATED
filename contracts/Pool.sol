@@ -122,14 +122,10 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         require(y <= 0 || z >= x, "ds-math-add-overflow");
     }
     /// @dev x - y where y can be negative. Reverts if result is negative.
-    function sub(uint256 x, int256 y) internal pure returns (uint256 z) {
-        // z = x - uint(y);
-        // require(y >= 0 || z <= x, "ds-math-sub-underflow");
-        // require(y <= 0 || z >= x, "ds-math-sub-overflow");
-        int256 t = int256(x) - y;
-        require(y <= 0 || t <= int256(x), "ds-math-sub-overflow");
-        require(t >= 0, "ds-math-sub-underflow");
-        z = uint256(t);
+    function sub(uint x, int y) internal view returns (uint z) {
+        z = x - uint(y);
+        require(y <= 0 || z <= x, "ds-math-sub-overflow");
+        require(y >= 0 || z >= x, "ds-math-sub-underflow");
     }
     function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x, "ds-math-add-overflow");
@@ -169,8 +165,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             uint256 fyDaiReserves = fyDai.balanceOf(address(this));
 
             int256 fyDaiBought;
-            if (daiToSell > 0) fyDaiBought = sellDaiPreview(toUint128(daiToSell)); // This is a virtual buy
-            if (daiToSell < 0) fyDaiBought = buyDaiPreview(toUint128(-daiToSell)); // This is a virtual buy
+            if (daiToSell > 0) fyDaiBought = int256(sellDaiPreview(toUint128(daiToSell))); // This is a virtual buy
+            if (daiToSell < 0) fyDaiBought = -int256(buyDaiPreview(toUint128(-daiToSell))); // fyDai was actually sold
 
             tokensMinted = div(mul(supply, sub(daiOffered, daiToSell)), add(daiReserves, daiToSell));
             fyDaiRequired = div(mul(sub(fyDaiReserves, fyDaiBought), tokensMinted), supply);

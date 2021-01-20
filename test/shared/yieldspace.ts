@@ -1,7 +1,7 @@
 const { bignumber, add, subtract, multiply, divide, pow } = require('mathjs')
 
 // https://www.desmos.com/calculator/mllhtohxfx
-export function mint(daiReserves: any, fyDaiReserves: any, supply: any, dai: any): [any, any] {
+/* export function mint(daiReserves: any, fyDaiReserves: any, supply: any, dai: any): [any, any] {
   const Z = bignumber(daiReserves)
   const Y = bignumber(fyDaiReserves)
   const S = bignumber(supply)
@@ -10,29 +10,37 @@ export function mint(daiReserves: any, fyDaiReserves: any, supply: any, dai: any
   const y = divide(multiply(Y, m), S)
 
   return [m, y]
-}
+} */
 
-export function mintWithDai(
+export function mint(
   daiReserves: any,
   fyDaiReservesVirtual: any,
   fyDaiReservesReal: any,
   supply: any,
-  fyDai: any,
+  daiOffered: any,
+  daiSold: any,
   timeTillMaturity: any
 ): [any, any] {
   const Z = bignumber(daiReserves)
   const YV = bignumber(fyDaiReservesVirtual)
   const YR = bignumber(fyDaiReservesReal)
   const S = bignumber(supply)
-  const y = bignumber(fyDai)
+  const zO = bignumber(daiOffered)
+  const zS = bignumber(daiSold)
   const T = bignumber(timeTillMaturity)
 
-  const z1 = buyFYDai(Z, YV, y, T) // Buy fyDai
-  // Mint specifying how much fyDai to take in. Reverse of `mint`.
-  const m = divide(multiply(S, y), subtract(YR, y))
-  const z2 = divide(multiply(add(Z, z1), m), S)
+  let yB
+  if (zS > 0) {
+    yB = sellDai(Z, YV, zS, T)
+  } else {
+    yB = bignumber(-buyDai(Z, YV, -zS, T)) // A negative yB (fyDai bought) means that fyDai was actually sold to the pool
+  }
+  
+  // Mint specifying how much Dai to take in. Reverse of `mint`.
+  const m = divide(multiply(S, subtract(zO, zS)), add(Z, zS))
+  const y = divide(multiply(subtract(YR, yB), m), S)
 
-  return [m, add(z1, z2)]
+  return [m, y]
 }
 
 // https://www.desmos.com/calculator/ubsalzunpo

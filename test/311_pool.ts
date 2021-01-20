@@ -8,7 +8,7 @@ const YieldMath = artifacts.require('YieldMath')
 const { floor } = require('mathjs')
 import * as helper from 'ganache-time-traveler'
 import { toWad, toRay, ZERO, MAX } from './shared/utils'
-import { mint, mintWithDai, burn, burnForDai, sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
+import { mint, burn, burnForDai, sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
 // @ts-ignore
 import { BN, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { assert, expect } from 'chai'
@@ -230,9 +230,12 @@ contract('Pool', async (accounts) => {
 
         const [expectedMinted, expectedFYDaiIn] = mint(
           daiReserves.toString(),
+          '0',
           fyDaiReserves.toString(),
           supply.toString(),
-          daiIn.toString()
+          daiIn.toString(),
+          '0',
+          '0'
         )
 
         const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
@@ -274,16 +277,15 @@ contract('Pool', async (accounts) => {
         await fyDai1.approve(pool.address, MAX, { from: user1 })
         const tx = await pool.mint(user1, user2, daiOffered, daiToSell, { from: user1 })
 
-        /*
-        const [expectedMinted, expectedDaiIn] = mintWithDai(
+        const [expectedMinted, expectedFYDaiIn] = mint(
           daiReserves.toString(),
           fyDaiReservesVirtual.toString(),
           fyDaiReservesReal.toString(),
           supply.toString(),
-          fyDaiToBuy.toString(),
+          daiOffered.toString(),
+          daiToSell.toString(),
           timeTillMaturity.toString()
         )
-        */
 
         const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
         const daiIn = daiBefore.sub(await dai.balanceOf(user1))
@@ -297,8 +299,8 @@ contract('Pool', async (accounts) => {
           poolTokens: minted.toString(),
         })
 
-        // almostEqual(minted, floor(expectedMinted).toFixed(), minted.div(new BN('10000')))
-        // almostEqual(daiIn, floor(expectedDaiIn).toFixed(), daiIn.div(new BN('10000')))
+        almostEqual(minted, floor(expectedMinted).toFixed(), minted.div(new BN('10000')))
+        almostEqual(fyDaiIn, floor(expectedFYDaiIn).toFixed(), fyDaiIn.div(new BN('10000')))
       })
 
       it('mints liquidity tokens with dai and fyDai, buying Dai', async () => {
@@ -325,16 +327,15 @@ contract('Pool', async (accounts) => {
         await fyDai1.approve(pool.address, MAX, { from: user1 })
         const tx = await pool.mint(user1, user2, daiOffered, daiToBuy.neg(), { from: user1 })
 
-        /*
-        const [expectedMinted, expectedDaiIn] = mintWithDai(
+        const [expectedMinted, expectedFYDaiIn] = mint(
           daiReserves.toString(),
           fyDaiReservesVirtual.toString(),
           fyDaiReservesReal.toString(),
           supply.toString(),
-          fyDaiToBuy.toString(),
+          daiOffered.toString(),
+          daiToBuy.neg().toString(),
           timeTillMaturity.toString()
         )
-        */
 
         const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
         const daiIn = daiBefore.sub(await dai.balanceOf(user1))
@@ -348,8 +349,8 @@ contract('Pool', async (accounts) => {
           poolTokens: minted.toString(),
         })
 
-        // almostEqual(minted, floor(expectedMinted).toFixed(), minted.div(new BN('10000')))
-        // almostEqual(daiIn, floor(expectedDaiIn).toFixed(), daiIn.div(new BN('10000')))
+        almostEqual(minted, floor(expectedMinted).toFixed(), minted.div(new BN('10000')))
+        almostEqual(fyDaiIn, floor(expectedFYDaiIn).toFixed(), fyDaiIn.div(new BN('10000')))
       })
 
 
