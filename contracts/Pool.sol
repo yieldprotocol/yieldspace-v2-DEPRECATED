@@ -55,7 +55,12 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         return c;
     }
-
+    /// @dev Taken from vat.sol. x + y where y can be negative. Reverts if result is negative.
+    function add(uint256 x, int256 y) internal pure returns (uint256 z) {
+        z = x + uint(y);
+        require(y >= 0 || z <= x, "ds-math-add-underflow");
+        require(y <= 0 || z >= x, "ds-math-add-overflow");
+    }
     /// @dev Overflow-protected substraction, from OpenZeppelin
     function sub(uint128 a, uint128 b) internal pure returns (uint128) {
         require(b <= a, "Pool: fyDai reserves too low");
@@ -63,7 +68,25 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         return c;
     }
-
+    /// @dev x - y where y can be negative. Reverts if result is negative.
+    function sub(uint x, int y) internal view returns (uint z) {
+        z = x - uint(y);
+        require(y <= 0 || z <= x, "ds-math-sub-overflow");
+        require(y >= 0 || z >= x, "ds-math-sub-underflow");
+    }
+    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x + y) >= x, "ds-math-add-overflow");
+    }
+    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x - y) <= x, "ds-math-sub-underflow");
+    }
+    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require(y == 0 || (z = x * y) / y == x, "ds-math-mul-overflow");
+    }
+    function div(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require(y != 0, "ds-math-div-by-zero");
+        z = x / y;
+    }
     /// @dev Safe casting from uint256 to uint128
     function toUint128(uint256 x) internal pure returns(uint128) {
         require(
@@ -72,7 +95,6 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         );
         return uint128(x);
     }
-
     /// @dev Safe casting from int256 to uint128
     function toUint128(int256 x) internal pure returns(uint128) {
         require(
@@ -81,7 +103,6 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         );
         return uint128(x);
     }
-
     /// @dev Safe casting from uint256 to int256
     function toInt256(uint256 x) internal pure returns(int256) {
         require(
@@ -113,32 +134,6 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         emit Liquidity(maturity, msg.sender, msg.sender, -toInt256(daiIn), 0, toInt256(daiIn));
 
         return daiIn;
-    }
-
-    /// @dev Taken from vat.sol. x + y where y can be negative. Reverts if result is negative.
-    function add(uint256 x, int256 y) internal pure returns (uint256 z) {
-        z = x + uint(y);
-        require(y >= 0 || z <= x, "ds-math-add-underflow");
-        require(y <= 0 || z >= x, "ds-math-add-overflow");
-    }
-    /// @dev x - y where y can be negative. Reverts if result is negative.
-    function sub(uint x, int y) internal view returns (uint z) {
-        z = x - uint(y);
-        require(y <= 0 || z <= x, "ds-math-sub-overflow");
-        require(y >= 0 || z >= x, "ds-math-sub-underflow");
-    }
-    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x + y) >= x, "ds-math-add-overflow");
-    }
-    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x - y) <= x, "ds-math-sub-underflow");
-    }
-    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require(y == 0 || (z = x * y) / y == x, "ds-math-mul-overflow");
-    }
-    function div(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require(y != 0, "ds-math-div-by-zero");
-        z = x / y;
     }
 
     /// @dev Mint liquidity tokens in exchange for dai and fyDai.
