@@ -78,7 +78,7 @@ export function burnForDai(
 
 // https://www.desmos.com/calculator/5nf2xuy6yb
 export function sellDai(daiReserves: any, fyDaiReserves: any, dai: any, timeTillMaturity: any): any {
-  const fee = bignumber(1000000000000)
+  const precision = bignumber(1000000000000) // Flat fee charged to prevent issues due to low precision
   const Z = bignumber(daiReserves)
   const Y = bignumber(fyDaiReserves)
   const T = bignumber(timeTillMaturity)
@@ -93,14 +93,14 @@ export function sellDai(daiReserves: any, fyDaiReserves: any, dai: any, timeTill
   const Zxa = pow(add(Z, x), a)
   const sum = subtract(add(Za, Ya), Zxa)
   const y = subtract(Y, pow(sum, invA))
-  const yFee = subtract(y, fee)
+  const yFee = subtract(y, precision)
 
   return yFee
 }
 
 // https://www.desmos.com/calculator/6jlrre7ybt
 export function sellFYDai(daiReserves: any, fyDaiReserves: any, fyDai: any, timeTillMaturity: any): any {
-  const fee = bignumber(1000000000000)
+  const precision = bignumber(1000000000000)
   const Z = bignumber(daiReserves)
   const Y = bignumber(fyDaiReserves)
   const T = bignumber(timeTillMaturity)
@@ -115,14 +115,14 @@ export function sellFYDai(daiReserves: any, fyDaiReserves: any, fyDai: any, time
   const Yxa = pow(add(Y, x), a)
   const sum = add(Za, subtract(Ya, Yxa))
   const y = subtract(Z, pow(sum, invA))
-  const yFee = subtract(y, fee)
+  const yFee = subtract(y, precision)
 
   return yFee
 }
 
 // https://www.desmos.com/calculator/0rgnmtckvy
 export function buyDai(daiReserves: any, fyDaiReserves: any, dai: any, timeTillMaturity: any): any {
-  const fee = bignumber(1000000000000)
+  const precision = bignumber(1000000000000)
   const Z = bignumber(daiReserves)
   const Y = bignumber(fyDaiReserves)
   const T = bignumber(timeTillMaturity)
@@ -137,14 +137,14 @@ export function buyDai(daiReserves: any, fyDaiReserves: any, dai: any, timeTillM
   const Zxa = pow(subtract(Z, x), a)
   const sum = subtract(add(Za, Ya), Zxa)
   const y = subtract(pow(sum, invA), Y)
-  const yFee = add(y, fee)
+  const yFee = add(y, precision)
 
   return yFee
 }
 
 // https://www.desmos.com/calculator/ws5oqj8x5i
 export function buyFYDai(daiReserves: any, fyDaiReserves: any, fyDai: any, timeTillMaturity: any): any {
-  const fee = bignumber(1000000000000)
+  const precision = bignumber(1000000000000)
   const Z = bignumber(daiReserves)
   const Y = bignumber(fyDaiReserves)
   const T = bignumber(timeTillMaturity)
@@ -159,7 +159,7 @@ export function buyFYDai(daiReserves: any, fyDaiReserves: any, fyDai: any, timeT
   const Yxa = pow(subtract(Y, x), a)
   const sum = add(Za, subtract(Ya, Yxa))
   const y = subtract(pow(sum, invA), Z)
-  const yFee = add(y, fee)
+  const yFee = add(y, precision)
 
   return yFee
 }
