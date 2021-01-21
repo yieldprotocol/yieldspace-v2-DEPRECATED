@@ -17,30 +17,30 @@ export function mint(
   fyDaiReservesVirtual: any,
   fyDaiReservesReal: any,
   supply: any,
-  daiOffered: any,
-  daiSold: any,
+  fyDaiIn: any,
+  fyDaiToBuy: any,
   timeTillMaturity: any
 ): [any, any] {
   const Z = bignumber(daiReserves)
   const YV = bignumber(fyDaiReservesVirtual)
   const YR = bignumber(fyDaiReservesReal)
   const S = bignumber(supply)
-  const zO = bignumber(daiOffered)
-  const zS = bignumber(daiSold)
+  const yIn = bignumber(fyDaiIn)
+  const yBuy = bignumber(fyDaiToBuy)
   const T = bignumber(timeTillMaturity)
 
-  let yB
-  if (zS > 0) {
-    yB = sellDai(Z, YV, zS, T)
+  let zSold
+  if (yBuy > 0) {
+    zSold = buyFYDai(Z, YV, yBuy, T)
   } else {
-    yB = bignumber(-buyDai(Z, YV, -zS, T)) // A negative yB (fyDai bought) means that fyDai was actually sold to the pool
+    zSold = bignumber(-sellFYDai(Z, YV, -yBuy, T)) // A negative yBuy (fyDai to buy) means that fyDai was actually sold to the pool
   }
   
   // Mint specifying how much Dai to take in. Reverse of `mint`.
-  const m = divide(multiply(S, subtract(zO, zS)), add(Z, zS))
-  const y = divide(multiply(subtract(YR, yB), m), S)
+  const m = divide(multiply(S, add(yIn, yBuy)), subtract(YR, yBuy))
+  const zIn = divide(multiply(add(Z, zSold), m), S)
 
-  return [m, y]
+  return [m, zIn]
 }
 
 // https://www.desmos.com/calculator/ubsalzunpo

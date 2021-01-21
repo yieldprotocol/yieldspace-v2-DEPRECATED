@@ -10,6 +10,7 @@ import "./helpers/SafeCast.sol";
 import "./helpers/ERC20Permit.sol";
 import "./interfaces/IFYDai.sol";
 import "./interfaces/IPool.sol";
+import "hardhat/console.sol";
 
 
 /// @dev The Pool contract exchanges Dai for fyDai at a price defined by a specific formula.
@@ -116,7 +117,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     /// The liquidity provider needs to have called `dai.approve`
     /// @param daiIn The initial Dai liquidity to provide.
     function init(uint256 daiIn)
-        internal
+        public
         beforeMaturity
         returns (uint256)
     {
@@ -140,40 +141,45 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     /// The liquidity provider needs to have called `dai.approve`.
     /// @param from Wallet providing the dai and fyDai. Must have approved the operator with `pool.addDelegate(operator)`.
     /// @param to Wallet receiving the minted liquidity tokens.
-    /// @param daiOffered Amount of `dai` being invested.
-    /// @param daiToSell Amount of `dai` being sold in the Pool so that the tokens added match the pool reserves. If negative, dai is bought.
+    /// @param fyDaiIn Amount of `fyDai` provided for the mint
+    /// @param fyDaiToBuy Amount of `fyDai` being bought in the Pool so that the tokens added match the pool reserves. If negative, fyDai is sold.
+    /// @param maxDaiIn Maximum amount of `Dai` being provided for the mint.
     // @return The fyDai taken and amount of liquidity tokens minted.
-    function mint(address from, address to, uint256 daiOffered, int256 daiToSell) // A maxFYDaiIn parameter can be added
+    function mint(address from, address to, uint256 fyDaiIn, int256 fyDaiToBuy, uint256 maxDaiIn)
         external override
         onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
-        returns (uint256 fyDaiRequired, uint256 tokensMinted)
+        returns (uint256 daiIn, uint256 tokensMinted)
     {
         {
             uint256 supply = totalSupply();
-            if (supply == 0) {
-                require(daiToSell == 0, "Pool: Init without trading");
-                init(daiOffered);
-                return (0, daiOffered);
-            }
+            require(supply >= 0, "Pool: Init first");
 
             uint256 daiReserves = dai.balanceOf(address(this));
             uint256 fyDaiReserves = fyDai.balanceOf(address(this));
+            console.log(daiReserves);
+            console.log(fyDaiReserves);
 
-            int256 fyDaiBought;
-            if (daiToSell > 0) fyDaiBought = int256(sellDaiPreview(toUint128(daiToSell))); // This is a virtual buy
-            if (daiToSell < 0) fyDaiBought = -int256(buyDaiPreview(toUint128(-daiToSell))); // fyDai was actually sold
+            int256 daiSold;
+            if (fyDaiToBuy > 0) daiSold = int256(buyFYDaiPreview(toUint128(fyDaiToBuy))); // This is a virtual buy
+            if (fyDaiToBuy < 0) daiSold = -int256(sellFYDaiPreview(toUint128(-fyDaiToBuy))); // dai was actually bought
+            console.log(fyDaiIn);
+            console.logInt(fyDaiToBuy);
+            console.logInt(daiSold);
 
-            tokensMinted = div(mul(supply, sub(daiOffered, daiToSell)), add(daiReserves, daiToSell));
-            fyDaiRequired = div(mul(sub(fyDaiReserves, fyDaiBought), tokensMinted), supply);
-            require(add(daiReserves, daiOffered) <= type(uint128).max, "Pool: Too much Dai");
+            tokensMinted = div(mul(supply, add(fyDaiIn, fyDaiToBuy)), sub(fyDaiReserves, fyDaiToBuy));
+            console.log(tokensMinted);
+            daiIn = div(mul(add(daiReserves, daiSold), tokensMinted), supply);
+            console.log(daiIn);
+            require(daiIn <= maxDaiIn, "Pool: User Dai limit exceeded");
+            require(add(daiReserves, daiIn) <= type(uint128).max, "Pool: Too much Dai");
         }
 
-        if (daiOffered > 0 ) require(dai.transferFrom(from, address(this), daiOffered), "Pool: Dai transfer failed");
-        if (fyDaiRequired > 0 ) require(fyDai.transferFrom(from, address(this), fyDaiRequired), "Pool: FYDai transfer failed");
+        if (daiIn > 0 ) require(dai.transferFrom(from, address(this), daiIn), "Pool: Dai transfer failed");
+        if (fyDaiIn > 0 ) require(fyDai.transferFrom(from, address(this), fyDaiIn), "Pool: FYDai transfer failed");
         _mint(to, tokensMinted);
-        emit Liquidity(maturity, from, to, -toInt256(daiOffered), -toInt256(fyDaiRequired), toInt256(tokensMinted));
+        emit Liquidity(maturity, from, to, -toInt256(daiIn), -toInt256(fyDaiIn), toInt256(tokensMinted));
 
-        return (fyDaiRequired, tokensMinted);
+        return (daiIn, tokensMinted);
     }
 
     /// @dev Burn liquidity tokens in exchange for dai and fyDai.

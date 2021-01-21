@@ -41,7 +41,7 @@ contract('Pool', async (accounts) => {
   let [owner, user1, user2, operator, from, to] = accounts
 
   // These values impact the pool results
-  const daiTokens = new BN('1000000000000000000000000')
+  const daiTokens = toWad(100)
   const fyDaiTokens = daiTokens
   const initialDai = daiTokens
 
@@ -89,7 +89,7 @@ contract('Pool', async (accounts) => {
   })
 
   it('adds initial liquidity', async () => {
-    await dai.mint(user1, initialDai)
+    await pool.init(user1, initialDai)
 
     await dai.approve(pool.address, initialDai, { from: user1 })
     const tx = await pool.mint(user1, user1, initialDai, 0, { from: user1 })
@@ -113,7 +113,7 @@ contract('Pool', async (accounts) => {
     beforeEach(async () => {
       await dai.mint(user1, initialDai)
       await dai.approve(pool.address, initialDai, { from: user1 })
-      await pool.mint(user1, user1, initialDai, 0, { from: user1 })
+      await pool.init(initialDai, { from: user1 })
     })
 
     it('sells fyDai', async () => {
@@ -205,52 +205,53 @@ contract('Pool', async (accounts) => {
 
     describe('with extra fyDai reserves', () => {
       beforeEach(async () => {
-        const additionalFYDaiReserves = toWad(34.4)
+        const additionalFYDaiReserves = toWad(10)
         await fyDai1.mint(operator, additionalFYDaiReserves, { from: owner })
         await fyDai1.approve(pool.address, additionalFYDaiReserves, { from: operator })
         await pool.sellFYDai(operator, operator, additionalFYDaiReserves, { from: operator })
       })
 
-      it('mints liquidity tokens', async () => {
+      it.only('mints liquidity tokens', async () => {
         const oneToken = toWad(1)
         const daiReserves = await dai.balanceOf(pool.address)
         const fyDaiReserves = await fyDai1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
-        const daiIn = toWad(1)
 
-        await dai.mint(user1, daiIn, { from: owner })
+        await dai.mint(user1, fyDaiTokens.muln(100), { from: owner })
         await fyDai1.mint(user1, fyDaiTokens, { from: owner })
 
+        const daiBefore = await dai.balanceOf(user1)
         const fyDaiBefore = await fyDai1.balanceOf(user1)
         const poolTokensBefore = await pool.balanceOf(user2)
 
-        await dai.approve(pool.address, oneToken, { from: user1 })
-        await fyDai1.approve(pool.address, fyDaiTokens, { from: user1 })
-        const tx = await pool.mint(user1, user2, oneToken, 0, { from: user1 })
+        await dai.approve(pool.address, MAX, { from: user1 })
+        await fyDai1.approve(pool.address, MAX, { from: user1 })
+        const tx = await pool.mint(user1, user2, fyDaiTokens, 0, MAX, { from: user1 })
 
-        const [expectedMinted, expectedFYDaiIn] = mint(
+        const [expectedMinted, expectedDaiIn] = mint(
           daiReserves.toString(),
-          '0',
+          '0', // FYDai virtual reserves, they don't matter because we are not trading.
           fyDaiReserves.toString(),
           supply.toString(),
-          daiIn.toString(),
-          '0',
-          '0'
+          fyDaiTokens.toString(),
+          '0', // FYDai to buy, none at this time
+          '0'  // TimeToMaturity, it doesn't matter because we are not trading.
         )
 
         const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
+        const daiIn = daiBefore.sub(await dai.balanceOf(user1))
         const fyDaiIn = fyDaiBefore.sub(await fyDai1.balanceOf(user1))
 
         expectEvent(tx, 'Liquidity', {
           from: user1,
           to: user2,
-          daiTokens: oneToken.neg().toString(),
+          // daiTokens: oneToken.neg().toString(),
           fyDaiTokens: fyDaiIn.neg().toString(),
           poolTokens: minted.toString(),
         })
 
-        almostEqual(minted, floor(expectedMinted).toFixed(), daiIn.div(new BN('10000')))
-        almostEqual(fyDaiIn, floor(expectedFYDaiIn).toFixed(), daiIn.div(new BN('10000')))
+        almostEqual(minted, floor(expectedMinted).toFixed(), minted.div(new BN('10000')))
+        almostEqual(daiIn, floor(expectedDaiIn).toFixed(), daiIn.div(new BN('10000')))
       })
 
       it('mints liquidity tokens with dai and fyDai, selling Dai', async () => {
