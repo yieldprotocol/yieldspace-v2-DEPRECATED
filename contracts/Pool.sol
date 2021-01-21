@@ -10,7 +10,6 @@ import "./helpers/SafeCast.sol";
 import "./helpers/ERC20Permit.sol";
 import "./interfaces/IFYDai.sol";
 import "./interfaces/IPool.sol";
-import "hardhat/console.sol";
 
 
 /// @dev The Pool contract exchanges Dai for fyDai at a price defined by a specific formula.
@@ -156,20 +155,13 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
             uint256 daiReserves = dai.balanceOf(address(this));
             uint256 fyDaiReserves = fyDai.balanceOf(address(this));
-            console.log(daiReserves);
-            console.log(fyDaiReserves);
 
             int256 daiSold;
             if (fyDaiToBuy > 0) daiSold = int256(buyFYDaiPreview(toUint128(fyDaiToBuy))); // This is a virtual buy
             if (fyDaiToBuy < 0) daiSold = -int256(sellFYDaiPreview(toUint128(-fyDaiToBuy))); // dai was actually bought
-            console.log(fyDaiIn);
-            console.logInt(fyDaiToBuy);
-            console.logInt(daiSold);
 
             tokensMinted = div(mul(supply, add(fyDaiIn, fyDaiToBuy)), sub(fyDaiReserves, fyDaiToBuy));
-            console.log(tokensMinted);
             daiIn = div(mul(add(daiReserves, daiSold), tokensMinted), supply);
-            console.log(daiIn);
             require(daiIn <= maxDaiIn, "Pool: User Dai limit exceeded");
             require(add(daiReserves, daiIn) <= type(uint128).max, "Pool: Too much Dai");
         }
