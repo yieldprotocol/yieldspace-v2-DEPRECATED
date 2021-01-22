@@ -8,7 +8,7 @@ const YieldMath = artifacts.require('YieldMath')
 const { floor } = require('mathjs')
 import * as helper from 'ganache-time-traveler'
 import { toWad, toRay, ZERO, MAX } from './shared/utils'
-import { mint, burn, burnForDai, sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
+import { mint, tradeAndMint, burn, burnForDai, sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
 // @ts-ignore
 import { BN, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { assert, expect } from 'chai'
@@ -223,16 +223,13 @@ contract('Pool', async (accounts) => {
 
         await dai.approve(pool.address, MAX, { from: user1 })
         await fyDai1.approve(pool.address, MAX, { from: user1 })
-        const tx = await pool.mint(user1, user2, fyDaiTokens, 0, MAX, { from: user1 })
+        const tx = await pool.mint(user1, user2, fyDaiTokens, { from: user1 })
 
         const [expectedMinted, expectedDaiIn] = mint(
           daiReserves.toString(),
-          '0', // FYDai virtual reserves, they don't matter because we are not trading.
           fyDaiReserves.toString(),
           supply.toString(),
           fyDaiTokens.toString(),
-          '0', // FYDai to buy, none at this time
-          '0'  // TimeToMaturity, it doesn't matter because we are not trading.
         )
 
         const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
@@ -272,9 +269,9 @@ contract('Pool', async (accounts) => {
 
         await dai.approve(pool.address, MAX, { from: user1 })
         await fyDai1.approve(pool.address, MAX, { from: user1 })
-        const tx = await pool.mint(user1, user2, fyDaiIn, fyDaiToBuy, MAX, { from: user1 })
+        const tx = await pool.tradeAndMint(user1, user2, fyDaiIn, fyDaiToBuy, MAX, { from: user1 })
 
-        const [expectedMinted, expectedDaiIn] = mint(
+        const [expectedMinted, expectedDaiIn] = tradeAndMint(
           daiReserves.toString(),
           fyDaiReservesVirtual.toString(),
           fyDaiReservesReal.toString(),
@@ -321,9 +318,9 @@ contract('Pool', async (accounts) => {
 
         await dai.approve(pool.address, MAX, { from: user1 })
         await fyDai1.approve(pool.address, MAX, { from: user1 })
-        const tx = await pool.mint(user1, user2, fyDaiIn, fyDaiToBuy.neg(), MAX, { from: user1 })
+        const tx = await pool.tradeAndMint(user1, user2, fyDaiIn, fyDaiToBuy.neg(), MAX, { from: user1 })
 
-        const [expectedMinted, expectedDaiIn] = mint(
+        const [expectedMinted, expectedDaiIn] = tradeAndMint(
           daiReserves.toString(),
           fyDaiReservesVirtual.toString(),
           fyDaiReservesReal.toString(),
@@ -370,9 +367,9 @@ contract('Pool', async (accounts) => {
 
         await dai.approve(pool.address, MAX, { from: user1 })
         // await fyDai1.approve(pool.address, MAX, { from: user1 })
-        const tx = await pool.mint(user1, user2, 0, fyDaiToBuy, MAX, { from: user1 })
+        const tx = await pool.tradeAndMint(user1, user2, 0, fyDaiToBuy, MAX, { from: user1 })
 
-        const [expectedMinted, expectedDaiIn] = mint(
+        const [expectedMinted, expectedDaiIn] = tradeAndMint(
           daiReserves.toString(),
           fyDaiReservesVirtual.toString(),
           fyDaiReservesReal.toString(),
@@ -443,7 +440,7 @@ contract('Pool', async (accounts) => {
         const lpTokensIn = toWad(1)
 
         await pool.approve(pool.address, lpTokensIn, { from: user1 })
-        const tx = await pool.burnAndSellFYDai(user1, user2, lpTokensIn, { from: user1 })
+        const tx = await pool.burn(user1, user2, lpTokensIn, { from: user1 })
 
         /*
         const expectedDaiOut = burnForDai(
