@@ -8,7 +8,7 @@ const YieldMath = artifacts.require('YieldMath')
 const { floor } = require('mathjs')
 import * as helper from 'ganache-time-traveler'
 import { toWad, toRay, ZERO, MAX } from './shared/utils'
-import { mint, tradeAndMint, burn, burnForDai, sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
+import { mint, tradeAndMint, burn, burnAndTrade, sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
 // @ts-ignore
 import { BN, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { assert, expect } from 'chai'
@@ -21,6 +21,10 @@ function toBigNumber(x: any) {
     if (x.startsWith('0x') || x.startsWith('0X')) return new BN(x.substring(2), 16)
     else return new BN(x)
   }
+}
+
+function bignumberToBN(x: any) {
+  return new BN(floor(x).toString())
 }
 
 function almostEqual(x: any, y: any, p: any) {
@@ -254,7 +258,6 @@ contract('Pool', async (accounts) => {
         const fyDaiReservesVirtual = await pool.getFYDaiReserves()
         const fyDaiReservesReal = await fyDai1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
-        const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
         const timeTillMaturity = maturity1.sub(await currentTimestamp())
 
         const fyDaiToBuy = toWad(1)
@@ -303,7 +306,6 @@ contract('Pool', async (accounts) => {
         const fyDaiReservesVirtual = await pool.getFYDaiReserves()
         const fyDaiReservesReal = await fyDai1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
-        const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
         const timeTillMaturity = maturity1.sub(await currentTimestamp())
         
         const fyDaiToBuy = toWad(1).neg()
@@ -352,7 +354,6 @@ contract('Pool', async (accounts) => {
         const fyDaiReservesVirtual = await pool.getFYDaiReserves()
         const fyDaiReservesReal = await fyDai1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
-        const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
         const timeTillMaturity = maturity1.sub(await currentTimestamp())
 
         const fyDaiToBuy = toWad(1)
@@ -435,23 +436,29 @@ contract('Pool', async (accounts) => {
         const fyDaiReservesVirtual = await pool.getFYDaiReserves()
         const fyDaiReservesReal = await fyDai1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
-        const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
         const timeTillMaturity = maturity1.sub(await currentTimestamp())
         const lpTokensIn = toWad(1)
 
         await pool.approve(pool.address, lpTokensIn, { from: user1 })
-        const tx = await pool.burn(user1, user2, lpTokensIn, { from: user1 })
+        const tx = await pool.burnAndTrade(user1, user2, lpTokensIn, MAX, 0, { from: user1 })
 
-        /*
-        const expectedDaiOut = burnForDai(
+
+        const [daiFromBurn, fyDaiFromBurn] = burn(
+          daiReserves.toString(),
+          fyDaiReservesReal.toString(),
+          supply.toString(),
+          lpTokensIn.toString()
+        )
+
+        const [expectedDaiOut, expectedFYDaiOut] = burnAndTrade(
           daiReserves.toString(),
           fyDaiReservesVirtual.toString(),
           fyDaiReservesReal.toString(),
           supply.toString(),
           lpTokensIn.toString(),
+          fyDaiFromBurn,
           timeTillMaturity.toString()
         )
-        */
 
         const daiOut = daiReserves.sub(await dai.balanceOf(pool.address))
 
@@ -463,7 +470,9 @@ contract('Pool', async (accounts) => {
           poolTokens: lpTokensIn.neg().toString(),
         })
 
-        // almostEqual(daiOut, floor(expectedDaiOut).toFixed(), daiOut.div(new BN('10000')))
+        console.log(daiOut.toString())
+        console.log(floor(expectedDaiOut).toFixed().toString())
+        almostEqual(daiOut, floor(expectedDaiOut).toFixed(), daiOut.div(new BN('10000')))
       })
 
       it('sells dai', async () => {
@@ -471,7 +480,6 @@ contract('Pool', async (accounts) => {
         const fyDaiReserves = await pool.getFYDaiReserves()
         const daiIn = toWad(1)
 
-        const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
         const timeTillMaturity = maturity1.sub(await currentTimestamp())
 
         assert.equal(
@@ -515,7 +523,6 @@ contract('Pool', async (accounts) => {
         const daiReserves = await pool.getDaiReserves()
         const fyDaiReserves = await pool.getFYDaiReserves()
         const fyDaiOut = toWad(1)
-        const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
         const timeTillMaturity = maturity1.sub(await currentTimestamp())
 
         assert.equal(
