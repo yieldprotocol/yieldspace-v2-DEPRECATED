@@ -150,6 +150,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         returns (uint256 daiIn, uint256 tokensMinted)
     {
         (daiIn, tokensMinted) = _tradeAndMint(fyDaiIn, fyDaiToBuy);
+        require(add(dai.balanceOf(address(this)), daiIn) <= type(uint128).max, "Pool: Too much Dai");
 
         if (daiIn > 0 ) require(dai.transferFrom(from, address(this), daiIn), "Pool: Dai transfer failed");
         if (fyDaiIn > 0 ) require(fyDai.transferFrom(from, address(this), fyDaiIn), "Pool: FYDai transfer failed");
@@ -176,7 +177,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         (uint256 daiFromBurn, uint256 fyDaiFromBurn) = pool.burn(from, address(this), lpIn);
         (uint256 daiIn, uint256 tokensMinted) = _tradeAndMint(fyDaiIn, fyDaiToBuy);
 
-        // TODO: Check the dai reserves didn't go over type(uint128).max
+        require(add(dai.balanceOf(address(this)), daiIn) <= type(uint128).max, "Pool: Too much Dai");
         require(daiIn <= daiFromBurn, "Pool: Not enough Dai from burn");
         require(fyDaiIn <= fyDaiFromBurn, "Pool: Not enough FYDai from burn");
         require(tokensMinted >= minLpOut, "Pool: Not enough minted");
@@ -195,22 +196,34 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         internal
         returns (uint256 daiIn, uint256 tokensMinted)
     {
-        uint256 supply = totalSupply();
-        require(supply >= 0, "Pool: Init first");
-
-        uint256 daiReserves = dai.balanceOf(address(this));
-        uint256 fyDaiReserves = fyDai.balanceOf(address(this));
-
         int256 daiSold;
         if (fyDaiToBuy > 0) daiSold = int256(buyFYDaiPreview(toUint128(fyDaiToBuy))); // This is a virtual buy
         if (fyDaiToBuy < 0) daiSold = -int256(sellFYDaiPreview(toUint128(-fyDaiToBuy))); // dai was actually bought
 
-        tokensMinted = div(mul(supply, add(fyDaiIn, fyDaiToBuy)), sub(fyDaiReserves, fyDaiToBuy));
-        daiIn = div(mul(add(daiReserves, daiSold), tokensMinted), supply);
-        require(add(daiReserves, daiIn) <= type(uint128).max, "Pool: Too much Dai");
+        uint256 supply = totalSupply();
+        require(supply >= 0, "Pool: Init first");
+        uint256 daiReserves = dai.balanceOf(address(this));
+        uint256 fyDaiReserves = fyDai.balanceOf(address(this));
 
-        return (daiIn, tokensMinted);
+        return _calculateMint(
+            supply,
+            add(dai.balanceOf(address(this)), daiSold),
+            sub(fyDai.balanceOf(address(this)), fyDaiToBuy),
+            add(fyDaiIn, fyDaiToBuy)
+        );
     }
+
+    /// @dev Calculate how many liquidity tokens to mint and how much dai to take in, when minting with a set amount of fyDai.
+    /// @param fyDaiIn Amount of `fyDai` provided for the mint
+    // @return The Dai taken and amount of liquidity tokens minted.
+    function _calculateMint(uint256 supply, uint256 daiReserves, uint256 fyDaiReserves, uint256 fyDaiIn)
+        internal
+        returns (uint256 daiIn, uint256 tokensMinted)
+    {
+        tokensMinted = div(mul(supply, fyDaiIn), fyDaiReserves);
+        daiIn = div(mul(daiReserves, tokensMinted), supply);
+    }
+
 
     /// @dev Burn liquidity tokens in exchange for dai and fyDai.
     /// The liquidity provider needs to have called `pool.approve`.
