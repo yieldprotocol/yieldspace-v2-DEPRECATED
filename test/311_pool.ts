@@ -34,7 +34,7 @@ function almostEqual(x: any, y: any, p: any) {
 
 async function currentTimestamp() {
   const block = await web3.eth.getBlockNumber()
-  return parseInt((await web3.eth.getBlock(block)).timestamp.toString())
+  return new BN((await web3.eth.getBlock(block)).timestamp.toString())
 }
 
 contract('Pool', async (accounts) => {
@@ -52,7 +52,7 @@ contract('Pool', async (accounts) => {
   let pool: Contract
   let dai: Contract
   let fyDai1: Contract
-  let maturity1: number
+  let maturity1: BN
 
   before(async () => {
     const yieldMathLibrary = await YieldMath.new()
@@ -67,7 +67,7 @@ contract('Pool', async (accounts) => {
     dai = await Dai.new()
 
     // Setup fyDai
-    maturity1 = (await currentTimestamp()) + 31556952 // One year
+    maturity1 = (await currentTimestamp()).addn(31556952) // One year
     fyDai1 = await FYDai.new(dai.address, maturity1)
 
     // Setup Pool
@@ -120,8 +120,7 @@ contract('Pool', async (accounts) => {
       const daiReserves = await pool.getDaiReserves()
       const fyDaiReserves = await pool.getFYDaiReserves()
       const fyDaiIn = toWad(1)
-      const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
-      const timeTillMaturity = new BN(maturity1).sub(now)
+      const timeTillMaturity = maturity1.sub(await currentTimestamp())
 
       assert.equal(
         await dai.balanceOf(to),
@@ -163,8 +162,7 @@ contract('Pool', async (accounts) => {
       const daiReserves = await pool.getDaiReserves()
       const fyDaiReserves = await pool.getFYDaiReserves()
       const daiOut = toWad(1)
-      const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
-      const timeTillMaturity = new BN(maturity1).sub(now)
+      const timeTillMaturity = maturity1.sub(await currentTimestamp())
 
       await fyDai1.mint(from, fyDaiTokens, { from: owner })
 
@@ -260,7 +258,7 @@ contract('Pool', async (accounts) => {
         const fyDaiReservesReal = await fyDai1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
         const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
-        const timeTillMaturity = new BN(maturity1).sub(now)
+        const timeTillMaturity = maturity1.sub(await currentTimestamp())
 
         const fyDaiToBuy = toWad(1)
         const fyDaiIn = fyDaiTokens.sub(fyDaiToBuy)
@@ -309,7 +307,7 @@ contract('Pool', async (accounts) => {
         const fyDaiReservesReal = await fyDai1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
         const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
-        const timeTillMaturity = new BN(maturity1).sub(now)
+        const timeTillMaturity = maturity1.sub(await currentTimestamp())
         
         const fyDaiToBuy = toWad(1).neg()
         const fyDaiIn = fyDaiTokens.sub(fyDaiToBuy)
@@ -358,7 +356,7 @@ contract('Pool', async (accounts) => {
         const fyDaiReservesReal = await fyDai1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
         const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
-        const timeTillMaturity = new BN(maturity1).sub(now)
+        const timeTillMaturity = maturity1.sub(await currentTimestamp())
 
         const fyDaiToBuy = toWad(1)
         // const fyDaiIn = fyDaiTokens.sub(fyDaiToBuy)
@@ -441,7 +439,7 @@ contract('Pool', async (accounts) => {
         const fyDaiReservesReal = await fyDai1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
         const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
-        const timeTillMaturity = new BN(maturity1).sub(now)
+        const timeTillMaturity = maturity1.sub(await currentTimestamp())
         const lpTokensIn = toWad(1)
 
         await pool.approve(pool.address, lpTokensIn, { from: user1 })
@@ -477,7 +475,7 @@ contract('Pool', async (accounts) => {
         const daiIn = toWad(1)
 
         const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
-        const timeTillMaturity = new BN(maturity1).sub(now)
+        const timeTillMaturity = maturity1.sub(await currentTimestamp())
 
         assert.equal(
           await fyDai1.balanceOf(to),
@@ -521,7 +519,7 @@ contract('Pool', async (accounts) => {
         const fyDaiReserves = await pool.getFYDaiReserves()
         const fyDaiOut = toWad(1)
         const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
-        const timeTillMaturity = new BN(maturity1).sub(now)
+        const timeTillMaturity = maturity1.sub(await currentTimestamp())
 
         assert.equal(
           await fyDai1.balanceOf(to),
