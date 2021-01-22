@@ -470,8 +470,6 @@ contract('Pool', async (accounts) => {
           poolTokens: lpTokensIn.neg().toString(),
         })
 
-        console.log(daiOut.toString())
-        console.log(floor(expectedDaiOut).toFixed().toString())
         almostEqual(daiOut, floor(expectedDaiOut).toFixed(), daiOut.div(new BN('10000')))
       })
 
