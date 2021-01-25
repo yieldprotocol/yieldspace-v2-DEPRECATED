@@ -15,6 +15,9 @@ import "./interfaces/IPool.sol";
 /// @dev The Pool contract exchanges Dai for fyDai at a price defined by a specific formula.
 contract Pool is IPool, Delegable(), ERC20Permit {
     using SafeMath for uint256;
+    using SafeCast for uint256;
+    using SafeCast for uint128;
+    using SafeCast for int256;
 
     event Trade(uint256 maturity, address indexed from, address indexed to, int256 daiTokens, int256 fyDaiTokens);
     event Liquidity(uint256 maturity, address indexed from, address indexed to, int256 daiTokens, int256 fyDaiTokens, int256 poolTokens);
@@ -34,7 +37,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         dai = IERC20(dai_);
         fyDai = IFYDai(fyDai_);
 
-        maturity = toUint128(fyDai.maturity());
+        maturity = fyDai.maturity().uint256ToUint128();
     }
 
     /// @dev Trading can only be done before maturity
@@ -87,30 +90,6 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         require(y != 0, "ds-math-div-by-zero");
         z = x / y;
     }
-    /// @dev Safe casting from uint256 to uint128
-    function toUint128(uint256 x) internal pure returns(uint128) {
-        require(
-            x <= type(uint128).max,
-            "Pool: Cast overflow"
-        );
-        return uint128(x);
-    }
-    /// @dev Safe casting from int256 to uint128
-    function toUint128(int256 x) internal pure returns(uint128) {
-        require(
-            x >= 0,
-            "Pool: Cast underflow"
-        );
-        return uint128(x);
-    }
-    /// @dev Safe casting from uint256 to int256
-    function toInt256(uint256 x) internal pure returns(int256) {
-        require(
-            x <= uint256(type(int256).max),
-            "Pool: Cast overflow"
-        );
-        return int256(x);
-    }
 
     /// @dev Mint initial liquidity tokens.
     /// The liquidity provider needs to have called `dai.approve`
@@ -130,7 +109,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         // no fyDai transferred, because initial fyDai deposit is entirely virtual
         require(dai.transferFrom(msg.sender, address(this), daiIn), "Pool: Dai transfer failed");
         _mint(msg.sender, daiIn);
-        emit Liquidity(maturity, msg.sender, msg.sender, -toInt256(daiIn), 0, toInt256(daiIn));
+        emit Liquidity(maturity, msg.sender, msg.sender, -(daiIn.uint256ToInt256()), 0, daiIn.uint256ToInt256());
     }
 
     /// @dev Compatibility with v1
@@ -160,7 +139,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         if (daiIn > 0 ) require(dai.transferFrom(from, address(this), daiIn), "Pool: Dai transfer failed");
         if (fyDaiIn > 0 ) require(fyDai.transferFrom(from, address(this), fyDaiIn), "Pool: FYDai transfer failed");
         _mint(to, tokensMinted);
-        emit Liquidity(maturity, from, to, -toInt256(daiIn), -toInt256(fyDaiIn), toInt256(tokensMinted));
+        emit Liquidity(maturity, from, to, -(daiIn.uint256ToInt256()), -(fyDaiIn.uint256ToInt256()), tokensMinted.uint256ToInt256());
     }
 
     /// @dev Mint liquidity tokens in exchange for LP tokens from a different Pool.
@@ -187,7 +166,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         require(tokensMinted >= minLpOut, "Pool: Not enough minted");
 
         _mint(to, tokensMinted);
-        emit Liquidity(maturity, from, to, -toInt256(daiIn), -toInt256(fyDaiIn), toInt256(tokensMinted));
+        emit Liquidity(maturity, from, to, -(daiIn.uint256ToInt256()), -(fyDaiIn.uint256ToInt256()), tokensMinted.uint256ToInt256());
     }
 
     /// @dev Calculate how many liquidity tokens to mint in exchange for dai and fyDai.
@@ -199,8 +178,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         returns (uint256 daiIn, uint256 tokensMinted)
     {
         int256 daiSold;
-        if (fyDaiToBuy > 0) daiSold = int256(buyFYDaiPreview(toUint128(fyDaiToBuy))); // This is a virtual buy
-        if (fyDaiToBuy < 0) daiSold = -int256(sellFYDaiPreview(toUint128(-fyDaiToBuy))); // dai was actually bought
+        if (fyDaiToBuy > 0) daiSold = int256(buyFYDaiPreview(fyDaiToBuy.int256ToUint128())); // This is a virtual buy
+        if (fyDaiToBuy < 0) daiSold = -int256(sellFYDaiPreview((-fyDaiToBuy).int256ToUint128())); // dai was actually bought
 
         uint256 supply = totalSupply();
         require(supply >= 0, "Pool: Init first");
@@ -262,10 +241,10 @@ contract Pool is IPool, Delegable(), ERC20Permit {
                 fyDaiSold = fyDaiObtained > fyDaiToSell ? fyDaiToSell : fyDaiObtained;
                 daiOut = daiOut.add(
                     YieldMath.daiOutForFYDaiIn(                            // This is a virtual sell
-                        toUint128(daiReserves.sub(daiOut)),                // Real reserves, minus virtual burn
-                        toUint128(sub(getFYDaiReserves(), fyDaiSold)),     // Virtual reserves, minus virtual burn
-                        toUint128(fyDaiSold),                              // Sell the virtual fyDai obtained
-                        toUint128(maturity - block.timestamp),             // This can't be called after maturity
+                        daiReserves.sub(daiOut).uint256ToUint128(),               // Real reserves, minus virtual burn
+                        sub(getFYDaiReserves(), fyDaiSold).uint256ToUint128(),    // Virtual reserves, minus virtual burn
+                        fyDaiSold.uint256ToUint128(),                             // Sell the virtual fyDai obtained
+                        (maturity - block.timestamp).uint256ToUint128(),          // This can't be called after maturity
                         k,
                         g2
                     )
@@ -278,7 +257,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         _burn(from, tokensBurned); // TODO: Fix to check allowance
         dai.transfer(to, daiOut);
         if (fyDaiOut > 0) fyDai.transfer(to, fyDaiOut);
-        emit Liquidity(maturity, from, to, toInt256(daiOut), toInt256(fyDaiOut), -toInt256(tokensBurned));
+        emit Liquidity(maturity, from, to, daiOut.uint256ToInt256(), fyDaiOut.uint256ToInt256(), -(tokensBurned.uint256ToInt256()));
     }
 
     /// @dev Calculate how many dai and fyDai is obtained by burning liquidity tokens.
@@ -307,7 +286,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         dai.transferFrom(from, address(this), daiIn);
         fyDai.transfer(to, fyDaiOut);
-        emit Trade(maturity, from, to, -toInt256(daiIn), toInt256(fyDaiOut));
+        emit Trade(maturity, from, to, -(daiIn.uint128ToInt256()), fyDaiOut.uint128ToInt256());
     }
 
     /// @dev Returns how much fyDai would be obtained by selling `daiIn` dai
@@ -325,7 +304,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             daiReserves,
             fyDaiReserves,
             daiIn,
-            toUint128(maturity - block.timestamp), // This can't be called after maturity
+            (maturity - block.timestamp).uint256ToUint128(), // This can't be called after maturity
             k,
             g1
         );
@@ -351,7 +330,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         fyDai.transferFrom(from, address(this), fyDaiIn);
         dai.transfer(to, daiOut);
-        emit Trade(maturity, from, to, toInt256(daiOut), -toInt256(fyDaiIn));
+        emit Trade(maturity, from, to, daiOut.uint128ToInt256(), -(fyDaiIn.uint128ToInt256()));
     }
 
     /// @dev Returns how much fyDai would be required to buy `daiOut` dai.
@@ -366,7 +345,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             getDaiReserves(),
             getFYDaiReserves(),
             daiOut,
-            toUint128(maturity - block.timestamp), // This can't be called after maturity
+            (maturity - block.timestamp).uint256ToUint128(), // This can't be called after maturity
             k,
             g2
         );
@@ -387,7 +366,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         fyDai.transferFrom(from, address(this), fyDaiIn);
         dai.transfer(to, daiOut);
-        emit Trade(maturity, from, to, toInt256(daiOut), -toInt256(fyDaiIn));
+        emit Trade(maturity, from, to, daiOut.uint128ToInt256(), -(fyDaiIn.uint128ToInt256()));
     }
 
     /// @dev Returns how much dai would be obtained by selling `fyDaiIn` fyDai.
@@ -402,7 +381,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             getDaiReserves(),
             getFYDaiReserves(),
             fyDaiIn,
-            toUint128(maturity - block.timestamp), // This can't be called after maturity
+            (maturity - block.timestamp).uint256ToUint128(), // This can't be called after maturity
             k,
             g2
         );
@@ -423,7 +402,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         dai.transferFrom(from, address(this), daiIn);
         fyDai.transfer(to, fyDaiOut);
-        emit Trade(maturity, from, to, -toInt256(daiIn), toInt256(fyDaiOut));
+        emit Trade(maturity, from, to, -(daiIn.uint128ToInt256()), fyDaiOut.uint128ToInt256());
     }
 
     /// @dev Mint liquidity tokens in exchange for LP tokens from a different Pool.
@@ -446,7 +425,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             daiReserves,
             fyDaiReserves,
             daiIn,
-            toUint128(maturity - block.timestamp), // This can't be called after maturity
+            (maturity - block.timestamp).uint256ToUint128(), // This can't be called after maturity
             k,
             g1
         );
@@ -457,7 +436,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         );
 
         fyDai.transfer(to, fyDaiOut);
-        emit Trade(maturity, from, to, -toInt256(daiIn), toInt256(fyDaiOut));
+        emit Trade(maturity, from, to, -(daiIn.uint256ToInt256()), fyDaiOut.uint256ToInt256());
     }
 
     /// @dev Returns how much dai would be required to buy `fyDaiOut` fyDai.
@@ -475,7 +454,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             daiReserves,
             fyDaiReserves,
             fyDaiOut,
-            toUint128(maturity - block.timestamp), // This can't be called after maturity
+            (maturity - block.timestamp).uint256ToUint128(), // This can't be called after maturity
             k,
             g1
         );
@@ -491,7 +470,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         public view override
         returns(uint128)
     {
-        return toUint128(fyDai.balanceOf(address(this)).add(totalSupply()));
+        return fyDai.balanceOf(address(this)).add(totalSupply()).uint256ToUint128();
     }
 
     /// @dev Returns the Dai reserves
@@ -499,6 +478,6 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         public view override
         returns(uint128)
     {
-        return toUint128(dai.balanceOf(address(this)));
+        return dai.balanceOf(address(this)).uint256ToUint128();
     }
 }
