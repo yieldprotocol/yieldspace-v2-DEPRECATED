@@ -166,12 +166,13 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     /// @dev Mint liquidity tokens in exchange for LP tokens from a different Pool.
     /// @param from Wallet providing the LP tokens. Must have approved the operator with `pool.addDelegate(operator)`.
     /// @param to Wallet receiving the minted liquidity tokens.
+    /// @param pool Pool for the tokens being burnt.
     /// @param lpIn Amount of `LP` tokens provided for the mint
     /// @param fyDaiIn Amount of `fyDai` from burning the LP tokens that will be supplied for minting new ones.
     /// @param fyDaiToBuy Amount of `fyDai` being bought in the Pool so that the tokens added match the pool reserves. If negative, fyDai is sold.
     /// @param minLpOut Minimum amount of `LP` tokens accepted for the roll.
     // @return The amount of `LP` tokens minted.
-    function roll(address from, address to, IPool pool, uint256 lpIn, uint256 fyDaiIn, int256 fyDaiToBuy, uint256 minLpOut)
+    function rollLiquidity(address from, address to, IPool pool, uint256 lpIn, uint256 fyDaiIn, int256 fyDaiToBuy, uint256 minLpOut)
         external
         onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
         returns (uint256 tokensMinted)
@@ -425,6 +426,39 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         emit Trade(maturity, from, to, -toInt256(daiIn), toInt256(fyDaiOut));
     }
 
+    /// @dev Mint liquidity tokens in exchange for LP tokens from a different Pool.
+    /// @param from Wallet providing the LP tokens. Must have approved the operator with `pool.addDelegate(operator)`.
+    /// @param to Wallet receiving the minted liquidity tokens.
+    /// @param pool Origin pool for the fyDai being rolled.
+    /// @param fyDaiIn Amount of `fyDai` that will be rolled.
+    // @return The amount of `fyDai` obtained.
+    function rollFYDai(address from, address to, IPool pool, uint128 fyDaiIn)
+        external
+        onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
+        returns (uint256 fyDaiOut)
+    {
+        // TODO: Either whitelist the pools, or check balances before and after
+        uint128 daiIn = pool.sellFYDai(from, address(this), fyDaiIn);
+        uint128 daiReserves = getDaiReserves() - daiIn; // TODO: Underflow-protected
+        uint128 fyDaiReserves = getFYDaiReserves();
+
+        fyDaiOut = YieldMath.fyDaiOutForDaiIn(
+            daiReserves,
+            fyDaiReserves,
+            daiIn,
+            toUint128(maturity - block.timestamp), // This can't be called after maturity
+            k,
+            g1
+        );
+
+        require(
+            sub(fyDaiReserves, uint256(fyDaiOut)) >= add(daiReserves, uint256(daiIn)),
+            "Pool: fyDai reserves too low"
+        );
+
+        fyDai.transfer(to, fyDaiOut);
+        emit Trade(maturity, from, to, -toInt256(daiIn), toInt256(fyDaiOut));
+    }
 
     /// @dev Returns how much dai would be required to buy `fyDaiOut` fyDai.
     /// @param fyDaiOut Amount of fyDai hypothetically desired.

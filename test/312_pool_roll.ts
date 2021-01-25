@@ -8,7 +8,7 @@ const YieldMath = artifacts.require('YieldMath')
 const { floor } = require('mathjs')
 import * as helper from 'ganache-time-traveler'
 import { toWad, toRay, ZERO, MAX } from './shared/utils'
-import { burn, mint, tradeAndMint } from './shared/yieldspace'
+import { burn, mint, tradeAndMint, sellFYDai, sellDai } from './shared/yieldspace'
 // @ts-ignore
 import { BN, expectEvent, expectRevert } from '@openzeppelin/test-helpers'
 import { assert, expect } from 'chai'
@@ -49,10 +49,10 @@ contract('Pool', async (accounts) => {
   let snapshot: any
   let snapshotId: string
 
-  let pool1: Contract, pool2: Contract
+  let pool1: Contract, pool2: Contract, pool3: Contract
   let dai: Contract
-  let fyDai1: Contract
-  let maturity1: BN
+  let fyDai1: Contract, fyDai2: Contract
+  let maturity1: BN, maturity2: BN
 
   before(async () => {
     const yieldMathLibrary = await YieldMath.new()
@@ -69,27 +69,40 @@ contract('Pool', async (accounts) => {
     // Setup fyDai
     maturity1 = (await currentTimestamp()).addn(31556952) // One year
     fyDai1 = await FYDai.new(dai.address, maturity1)
+    maturity2 = (await currentTimestamp()).addn(31556952 * 2) // Two years
+    fyDai2 = await FYDai.new(dai.address, maturity2)
 
     // Setup Pools
     pool1 = await Pool.new(dai.address, fyDai1.address, 'Name', 'Symbol', {
       from: owner,
     })
-    pool2 = await Pool.new(dai.address, fyDai1.address, 'Name', 'Symbol', {
+    // Setup Pools
+    pool2 = await Pool.new(dai.address, fyDai2.address, 'Name', 'Symbol', {
+      from: owner,
+    })
+    pool3 = await Pool.new(dai.address, fyDai1.address, 'Name', 'Symbol', {
       from: owner,
     })
 
-    await dai.mint(owner, initialDai.muln(2))
+    await dai.mint(owner, initialDai.muln(3))
     await dai.approve(pool1.address, MAX, { from: owner })
     await dai.approve(pool2.address, MAX, { from: owner })
+    await dai.approve(pool3.address, MAX, { from: owner })
     await pool1.init(initialDai, { from: owner })
     await pool2.init(initialDai, { from: owner })
+    await pool3.init(initialDai, { from: owner })
 
     await fyDai1.mint(owner, initialFYDai.muln(2), { from: owner })
     await fyDai1.approve(pool1.address, MAX, { from: owner })
-    await fyDai1.approve(pool2.address, MAX, { from: owner })
+    await fyDai1.approve(pool3.address, MAX, { from: owner })
     await pool1.sellFYDai(owner, owner, initialFYDai, { from: owner })
+    await pool3.sellFYDai(owner, owner, initialFYDai, { from: owner })
+
+    await fyDai2.mint(owner, initialFYDai, { from: owner })
+    await fyDai2.approve(pool2.address, MAX, { from: owner })
     await pool2.sellFYDai(owner, owner, initialFYDai, { from: owner })
 
+    await pool1.addDelegate(pool3.address, { from: owner })
     await pool1.addDelegate(pool2.address, { from: owner })
   })
 
@@ -99,29 +112,29 @@ contract('Pool', async (accounts) => {
 
   it('Reverts if not enough Dai is available to mint in pool 2', async () => {
     await expectRevert(
-      pool2.roll(owner, owner, pool1.address, toWad(1), toWad(1), 0, 0),
+      pool3.rollLiquidity(owner, owner, pool1.address, toWad(1), toWad(1), 0, 0),
       'Pool: Not enough Dai from burn'
     )
   })
 
   it('Reverts if not enough fyDai is available to mint in pool 2', async () => {
     await fyDai1.mint(owner, initialFYDai, { from: owner })
-    await pool2.sellFYDai(owner, owner, initialFYDai, { from: owner }) // pool2 now requires more fyDai to mint than pool1
+    await pool3.sellFYDai(owner, owner, initialFYDai, { from: owner }) // pool3 now requires more fyDai to mint than pool1
 
     await expectRevert(
-      pool2.roll(owner, owner, pool1.address, toWad(10), toWad(2), 0, 0),
+      pool3.rollLiquidity(owner, owner, pool1.address, toWad(10), toWad(2), 0, 0),
       'Pool: Not enough FYDai from burn'
     )
   })
 
-  it('Reverts if not enough pool2 lp tokens are minted', async () => {
+  it('Reverts if not enough pool3 lp tokens are minted', async () => {
     await expectRevert(
-      pool2.roll(owner, owner, pool1.address, toWad(10), toWad(1), 0, MAX),
+      pool3.rollLiquidity(owner, owner, pool1.address, toWad(10), toWad(1), 0, MAX),
       'Pool: Not enough minted'
     )
   })
 
-  it('Rolls', async () => {
+  it('Rolls liquidity', async () => {
     const [daiFromBurn, fyDaiFromBurn] = burn(
       (await dai.balanceOf(pool1.address)).toString(),
       (await fyDai1.balanceOf(pool1.address)).toString(),
@@ -129,21 +142,21 @@ contract('Pool', async (accounts) => {
       toWad(20).toString()
     )
     const [expectedMinted, expectedDaiIn] = mint(
-      (await dai.balanceOf(pool2.address)).add(new BN(daiFromBurn.toString())).toString(),
-      (await fyDai1.balanceOf(pool2.address)).add(new BN(fyDaiFromBurn.toString())).toString(),
-      (await pool2.totalSupply()).toString(),
+      (await dai.balanceOf(pool3.address)).add(new BN(daiFromBurn.toString())).toString(),
+      (await fyDai1.balanceOf(pool3.address)).add(new BN(fyDaiFromBurn.toString())).toString(),
+      (await pool3.totalSupply()).toString(),
       toWad(1).toString()
     )
 
-    const lpTokensBefore = await pool2.balanceOf(owner)
-    await pool2.roll(owner, owner, pool1.address, toWad(20), toWad(1), 0, 0)
-    const lpTokensOut = (await pool2.balanceOf(owner)).sub(lpTokensBefore)
+    const lpTokensBefore = await pool3.balanceOf(owner)
+    await pool3.rollLiquidity(owner, owner, pool1.address, toWad(20), toWad(1), 0, 0)
+    const lpTokensOut = (await pool3.balanceOf(owner)).sub(lpTokensBefore)
 
     almostEqual(lpTokensOut, floor(expectedMinted).toFixed(), lpTokensOut.divn(1000000))
     // This test only verifies that the number of tokens minted matches the expectation
   })
 
-  it('Rolls with trading', async () => {
+  it('Rolls liquidity with trading', async () => {
     const [daiFromBurn, fyDaiFromBurn] = burn(
       (await dai.balanceOf(pool1.address)).toString(),
       (await fyDai1.balanceOf(pool1.address)).toString(),
@@ -151,20 +164,43 @@ contract('Pool', async (accounts) => {
       toWad(20).toString()
     )
     const [expectedMinted, expectedDaiIn] = tradeAndMint(
-      (await dai.balanceOf(pool2.address)).add(new BN(daiFromBurn.toString())).toString(),
-      (await pool2.getFYDaiReserves()).add(new BN(fyDaiFromBurn.toString())).toString(),
-      (await fyDai1.balanceOf(pool2.address)).add(new BN(fyDaiFromBurn.toString())).toString(),
-      (await pool2.totalSupply()).toString(),
+      (await dai.balanceOf(pool3.address)).add(new BN(daiFromBurn.toString())).toString(),
+      (await pool3.getFYDaiReserves()).add(new BN(fyDaiFromBurn.toString())).toString(),
+      (await fyDai1.balanceOf(pool3.address)).add(new BN(fyDaiFromBurn.toString())).toString(),
+      (await pool3.totalSupply()).toString(),
       toWad(1).toString(),
       toWad(0.5).toString(),
       maturity1.sub(await currentTimestamp()).toString()
     )
 
-    const lpTokensBefore = await pool2.balanceOf(owner)
-    await pool2.roll(owner, owner, pool1.address, toWad(20), toWad(1), toWad(0.5), 0)
-    const lpTokensOut = (await pool2.balanceOf(owner)).sub(lpTokensBefore)
+    const lpTokensBefore = await pool3.balanceOf(owner)
+    await pool3.rollLiquidity(owner, owner, pool1.address, toWad(20), toWad(1), toWad(0.5), 0)
+    const lpTokensOut = (await pool3.balanceOf(owner)).sub(lpTokensBefore)
 
     almostEqual(lpTokensOut, floor(expectedMinted).toFixed(), lpTokensOut.divn(1000000))
     // This test only verifies that the number of tokens minted matches the expectation
+  })
+
+  it('Rolls fyDai', async () => {
+    const fyDaiIn = toWad(10)
+    await fyDai1.mint(owner, fyDaiIn, { from: owner })
+
+    const daiIn = sellFYDai(
+      (await pool1.getDaiReserves()).toString(),
+      (await pool1.getFYDaiReserves()).toString(),
+      fyDaiIn.toString(),
+      maturity1.sub(await currentTimestamp()).toString()
+    )
+    const fyDaiOut = sellDai(
+      (await pool2.getDaiReserves()).toString(),
+      (await pool2.getFYDaiReserves()).toString(),
+      daiIn.toString(),
+      maturity2.sub(await currentTimestamp()).toString()
+    )
+
+    const fyDai2Before = await fyDai2.balanceOf(owner)
+    await pool2.rollFYDai(owner, owner, pool1.address, fyDaiIn)
+
+    almostEqual((await fyDai2.balanceOf(owner)).sub(fyDai2Before), floor(fyDaiOut).toFixed(), fyDaiIn.divn(1000000))
   })
 })
