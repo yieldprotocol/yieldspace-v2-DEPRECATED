@@ -36,25 +36,15 @@ export function tradeAndMint(
     zSold = bignumber(-sellFYDai(Z, YV, -yBuy, T)) // A negative yBuy (fyDai to buy) means that fyDai was actually sold to the pool
   }
 
-  return mint(
-    add(Z, zSold),
-    subtract(YR, yBuy),
-    S,
-    add(yIn, yBuy)
-  )
+  return mint(add(Z, zSold), subtract(YR, yBuy), S, add(yIn, yBuy))
 }
 
-export function mint(
-  daiReserves: any,
-  fyDaiReservesReal: any,
-  supply: any,
-  fyDaiIn: any,
-): [any, any] {
+export function mint(daiReserves: any, fyDaiReservesReal: any, supply: any, fyDaiIn: any): [any, any] {
   const Z = bignumber(daiReserves)
   const Y = bignumber(fyDaiReservesReal)
   const S = bignumber(supply)
   const yIn = bignumber(fyDaiIn)
-  
+
   // Mint specifying how much Dai to take in. Reverse of `mint`.
   const m = divide(multiply(S, yIn), Y)
   const zIn = divide(multiply(Z, m), S)

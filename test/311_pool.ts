@@ -233,7 +233,7 @@ contract('Pool', async (accounts) => {
           daiReserves.toString(),
           fyDaiReserves.toString(),
           supply.toString(),
-          fyDaiTokens.toString(),
+          fyDaiTokens.toString()
         )
 
         const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
@@ -307,7 +307,7 @@ contract('Pool', async (accounts) => {
         const fyDaiReservesReal = await fyDai1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
         const timeTillMaturity = maturity1.sub(await currentTimestamp())
-        
+
         const fyDaiToBuy = toWad(1).neg()
         const fyDaiIn = fyDaiTokens.sub(fyDaiToBuy)
 
@@ -441,7 +441,6 @@ contract('Pool', async (accounts) => {
 
         await pool.approve(pool.address, lpTokensIn, { from: user1 })
         const tx = await pool.burnAndTrade(user1, user2, lpTokensIn, MAX, 0, { from: user1 })
-
 
         const [daiFromBurn, fyDaiFromBurn] = burn(
           daiReserves.toString(),
