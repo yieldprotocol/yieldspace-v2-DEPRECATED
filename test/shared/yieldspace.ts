@@ -63,9 +63,9 @@ export function mint(
 }
 
 // https://www.desmos.com/calculator/ubsalzunpo
-export function burn(daiReserves: any, fyDaiReserves: any, supply: any, lpTokens: any): [any, any] {
+export function burn(daiReserves: any, fyDaiReservesReal: any, supply: any, lpTokens: any): [any, any] {
   const Z = bignumber(daiReserves)
-  const Y = bignumber(fyDaiReserves)
+  const Y = bignumber(fyDaiReservesReal)
   const S = bignumber(supply)
   const x = bignumber(lpTokens)
   const z = divide(multiply(x, Z), S)
@@ -96,29 +96,6 @@ export function burnAndTrade(
 
   return [add(z1, z2), subtract(y1, y2)]
 }
-
-/*
-export function burnForDai(
-  daiReserves: any,
-  fyDaiReservesVirtual: any,
-  fyDaiReservesReal: any,
-  supply: any,
-  lpTokens: any,
-  timeTillMaturity: any
-): any {
-  const Z = bignumber(daiReserves)
-  const YV = bignumber(fyDaiReservesVirtual)
-  const YR = bignumber(fyDaiReservesReal)
-  const S = bignumber(supply)
-  const x = bignumber(lpTokens)
-  const T = bignumber(timeTillMaturity)
-
-  const [z1, y] = burn(Z, YR, S, x)
-  const z2 = sellFYDai(Z, YV, y, T)
-
-  return add(z1, z2)
-}
-*/
 
 // https://www.desmos.com/calculator/5nf2xuy6yb
 export function sellDai(daiReserves: any, fyDaiReserves: any, dai: any, timeTillMaturity: any): any {

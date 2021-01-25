@@ -207,9 +207,9 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         uint256 fyDaiReserves = fyDai.balanceOf(address(this));
 
         return _calculateMint(
-            supply,
             add(dai.balanceOf(address(this)), daiSold),
             sub(fyDai.balanceOf(address(this)), fyDaiToBuy),
+            supply,
             add(fyDaiIn, fyDaiToBuy)
         );
     }
@@ -217,7 +217,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     /// @dev Calculate how many liquidity tokens to mint and how much dai to take in, when minting with a set amount of fyDai.
     /// @param fyDaiIn Amount of `fyDai` provided for the mint
     // @return The Dai taken and amount of liquidity tokens minted.
-    function _calculateMint(uint256 supply, uint256 daiReserves, uint256 fyDaiReserves, uint256 fyDaiIn)
+    function _calculateMint(uint256 daiReserves, uint256 fyDaiReserves, uint256 supply, uint256 fyDaiIn)
         internal
         returns (uint256 daiIn, uint256 tokensMinted)
     {
