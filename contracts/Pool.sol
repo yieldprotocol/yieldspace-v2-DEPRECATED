@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.7.5;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./YieldMath.sol";
 import "./helpers/Delegable.sol";
-import "./helpers/SafeCast.sol";
 import "./helpers/ERC20Permit.sol";
+import "./helpers/SafeCast.sol";
+import "./helpers/SafeMath.sol";
+import "./interfaces/IERC20.sol";
 import "./interfaces/IFYDai.sol";
 import "./interfaces/IPool.sol";
 
@@ -15,6 +14,8 @@ import "./interfaces/IPool.sol";
 /// @dev The Pool contract exchanges Dai for fyDai at a price defined by a specific formula.
 contract Pool is IPool, Delegable(), ERC20Permit {
     using SafeMath for uint256;
+    using SafeMath for uint128;
+    using SafeMath for int256;
     using SafeCast for uint256;
     using SafeCast for uint128;
     using SafeCast for int256;
@@ -47,48 +48,6 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             "Pool: Too late"
         );
         _;
-    }
-
-    /// @dev Overflow-protected addition, from OpenZeppelin
-    function add(uint128 a, uint128 b)
-        internal pure returns (uint128)
-    {
-        uint128 c = a + b;
-        require(c >= a, "Pool: Dai reserves too high");
-
-        return c;
-    }
-    /// @dev Taken from vat.sol. x + y where y can be negative. Reverts if result is negative.
-    function add(uint256 x, int256 y) internal pure returns (uint256 z) {
-        z = x + uint(y);
-        require(y >= 0 || z <= x, "ds-math-add-underflow");
-        require(y <= 0 || z >= x, "ds-math-add-overflow");
-    }
-    /// @dev Overflow-protected substraction, from OpenZeppelin
-    function sub(uint128 a, uint128 b) internal pure returns (uint128) {
-        require(b <= a, "Pool: fyDai reserves too low");
-        uint128 c = a - b;
-
-        return c;
-    }
-    /// @dev x - y where y can be negative. Reverts if result is negative.
-    function sub(uint x, int y) internal view returns (uint z) {
-        z = x - uint(y);
-        require(y <= 0 || z <= x, "ds-math-sub-overflow");
-        require(y >= 0 || z >= x, "ds-math-sub-underflow");
-    }
-    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x + y) >= x, "ds-math-add-overflow");
-    }
-    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x - y) <= x, "ds-math-sub-underflow");
-    }
-    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require(y == 0 || (z = x * y) / y == x, "ds-math-mul-overflow");
-    }
-    function div(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require(y != 0, "ds-math-div-by-zero");
-        z = x / y;
     }
 
     /// @dev Mint initial liquidity tokens.
@@ -134,7 +93,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         returns (uint256 daiIn, uint256 tokensMinted)
     {
         (daiIn, tokensMinted) = _tradeAndMint(fyDaiIn, fyDaiToBuy);
-        require(add(dai.balanceOf(address(this)), daiIn) <= type(uint128).max, "Pool: Too much Dai");
+        require(dai.balanceOf(address(this)).add(daiIn) <= type(uint128).max, "Pool: Too much Dai");
 
         if (daiIn > 0 ) require(dai.transferFrom(from, address(this), daiIn), "Pool: Dai transfer failed");
         if (fyDaiIn > 0 ) require(fyDai.transferFrom(from, address(this), fyDaiIn), "Pool: FYDai transfer failed");
@@ -160,7 +119,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         (uint256 daiFromBurn, uint256 fyDaiFromBurn) = pool.burn(from, address(this), lpIn);
         (uint256 daiIn, uint256 tokensMinted) = _tradeAndMint(fyDaiIn, fyDaiToBuy);
 
-        require(add(dai.balanceOf(address(this)), daiIn) <= type(uint128).max, "Pool: Too much Dai");
+        require(dai.balanceOf(address(this)).add(daiIn) <= type(uint128).max, "Pool: Too much Dai");
         require(daiIn <= daiFromBurn, "Pool: Not enough Dai from burn");
         require(fyDaiIn <= fyDaiFromBurn, "Pool: Not enough FYDai from burn");
         require(tokensMinted >= minLpOut, "Pool: Not enough minted");
@@ -187,10 +146,10 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         uint256 fyDaiReserves = fyDai.balanceOf(address(this));
 
         return _calculateMint(
-            add(dai.balanceOf(address(this)), daiSold),
-            sub(fyDai.balanceOf(address(this)), fyDaiToBuy),
+            dai.balanceOf(address(this)).add3(daiSold),
+            fyDai.balanceOf(address(this)).sub3(fyDaiToBuy),
             supply,
-            add(fyDaiIn, fyDaiToBuy)
+            fyDaiIn.add3(fyDaiToBuy)
         );
     }
 
@@ -201,8 +160,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         internal
         returns (uint256 daiIn, uint256 tokensMinted)
     {
-        tokensMinted = div(mul(supply, fyDaiIn), fyDaiReserves);
-        daiIn = div(mul(daiReserves, tokensMinted), supply);
+        tokensMinted = supply.mul(fyDaiIn).div(fyDaiReserves);
+        daiIn = daiReserves.mul(tokensMinted).div(supply);
     }
 
     /// @dev Compatibility with v1
@@ -240,18 +199,18 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             if (fyDaiToSell > 0) {
                 fyDaiSold = fyDaiObtained > fyDaiToSell ? fyDaiToSell : fyDaiObtained;
                 daiOut = daiOut.add(
-                    YieldMath.daiOutForFYDaiIn(                            // This is a virtual sell
-                        daiReserves.sub(daiOut).uint256ToUint128(),               // Real reserves, minus virtual burn
-                        sub(getFYDaiReserves(), fyDaiSold).uint256ToUint128(),    // Virtual reserves, minus virtual burn
-                        fyDaiSold.uint256ToUint128(),                             // Sell the virtual fyDai obtained
-                        (maturity - block.timestamp).uint256ToUint128(),          // This can't be called after maturity
+                    YieldMath.daiOutForFYDaiIn(                                        // This is a virtual sell
+                        daiReserves.sub(daiOut).uint256ToUint128(),                    // Real reserves, minus virtual burn
+                        uint256(getFYDaiReserves()).sub(fyDaiSold).uint256ToUint128(), // Virtual reserves, minus virtual burn
+                        fyDaiSold.uint256ToUint128(),                                  // Sell the virtual fyDai obtained
+                        (maturity - block.timestamp).uint256ToUint128(),               // This can't be called after maturity
                         k,
                         g2
                     )
                 );
             }
             require(daiOut >= minDaiOut, "Pool: Not enough Dai obtained in burn");
-            fyDaiOut = sub(fyDaiObtained, fyDaiSold);
+            fyDaiOut = fyDaiObtained.sub(fyDaiSold);
         }
 
         _burn(from, tokensBurned); // TODO: Fix to check allowance
@@ -310,7 +269,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         );
 
         require(
-            sub(fyDaiReserves, uint256(fyDaiOut)) >= add(daiReserves, uint256(daiIn)),
+            fyDaiReserves.sub(fyDaiOut) >= daiReserves.add(daiIn),
             "Pool: fyDai reserves too low"
         );
     }
@@ -418,7 +377,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     {
         // TODO: Either whitelist the pools, or check balances before and after
         uint128 daiIn = pool.sellFYDai(from, address(this), fyDaiIn);
-        uint128 daiReserves = getDaiReserves() - daiIn; // TODO: Underflow-protected
+        uint128 daiReserves = getDaiReserves().sub2(daiIn); // TODO: Underflow-protected
         uint128 fyDaiReserves = getFYDaiReserves();
 
         fyDaiOut = YieldMath.fyDaiOutForDaiIn(
@@ -431,7 +390,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         );
 
         require(
-            sub(fyDaiReserves, uint256(fyDaiOut)) >= add(daiReserves, uint256(daiIn)),
+            fyDaiReserves.sub(fyDaiOut) >= daiReserves.add(daiIn),
             "Pool: fyDai reserves too low"
         );
 
@@ -460,7 +419,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         );
 
         require(
-            sub(fyDaiReserves, uint256(fyDaiOut)) >= add(daiReserves, uint256(daiIn)),
+            fyDaiReserves.sub(fyDaiOut) >= daiReserves.add(daiIn),
             "Pool: fyDai reserves too low"
         );
     }
