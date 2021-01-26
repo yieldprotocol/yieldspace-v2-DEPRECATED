@@ -32,7 +32,6 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     IFYDai public override fyDai;
 
     constructor(address dai_, address fyDai_, string memory name_, string memory symbol_)
-        public
         ERC20Permit(name_, symbol_)
     {
         dai = IERC20(dai_);
@@ -93,7 +92,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         returns (uint256 daiIn, uint256 tokensMinted)
     {
         (daiIn, tokensMinted) = _tradeAndMint(fyDaiIn, fyDaiToBuy);
-        require(dai.balanceOf(address(this)).add(daiIn) <= type(uint128).max, "Pool: Too much Dai");
+        require(daiIn <= maxDaiIn, "Pool: Too much Dai required");
+        require(dai.balanceOf(address(this)).add(daiIn) <= type(uint128).max, "Pool: Too much Dai for the Pool");
 
         if (daiIn > 0 ) require(dai.transferFrom(from, address(this), daiIn), "Pool: Dai transfer failed");
         if (fyDaiIn > 0 ) require(fyDai.transferFrom(from, address(this), fyDaiIn), "Pool: FYDai transfer failed");
@@ -113,7 +113,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     function rollLiquidity(address from, address to, IPool pool, uint256 lpIn, uint256 fyDaiIn, int256 fyDaiToBuy, uint256 minLpOut)
         external
         onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
-        returns (uint256 tokensMinted)
+        returns (uint256)
     {
         // TODO: Either whitelist the pools, or check balances before and after
         (uint256 daiFromBurn, uint256 fyDaiFromBurn) = pool.burn(from, address(this), lpIn);
@@ -126,6 +126,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         _mint(to, tokensMinted);
         emit Liquidity(maturity, from, to, -(daiIn.uint256ToInt256()), -(fyDaiIn.uint256ToInt256()), tokensMinted.uint256ToInt256());
+        return tokensMinted;
     }
 
     /// @dev Calculate how many liquidity tokens to mint in exchange for dai and fyDai.
@@ -133,7 +134,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     /// @param fyDaiToBuy Amount of `fyDai` being bought in the Pool so that the tokens added match the pool reserves. If negative, fyDai is sold.
     // @return The Dai taken and amount of liquidity tokens minted.
     function _tradeAndMint(uint256 fyDaiIn, int256 fyDaiToBuy)
-        internal
+        internal view
         returns (uint256 daiIn, uint256 tokensMinted)
     {
         int256 daiSold;
@@ -142,8 +143,6 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         uint256 supply = totalSupply();
         require(supply >= 0, "Pool: Init first");
-        uint256 daiReserves = dai.balanceOf(address(this));
-        uint256 fyDaiReserves = fyDai.balanceOf(address(this));
 
         return _calculateMint(
             dai.balanceOf(address(this)).add3(daiSold),
@@ -157,7 +156,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     /// @param fyDaiIn Amount of `fyDai` provided for the mint
     // @return The Dai taken and amount of liquidity tokens minted.
     function _calculateMint(uint256 daiReserves, uint256 fyDaiReserves, uint256 supply, uint256 fyDaiIn)
-        internal
+        internal pure
         returns (uint256 daiIn, uint256 tokensMinted)
     {
         tokensMinted = supply.mul(fyDaiIn).div(fyDaiReserves);
@@ -223,7 +222,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     /// @param tokensBurned Amount of liquidity tokens being burned.
     // @return The amount of reserve tokens returned (dai, fyDai).
     function _calculateBurn(uint256 supply, uint256 daiReserves, uint256 fyDaiReserves, uint256 tokensBurned)
-        internal
+        internal pure
         returns (uint256 daiOut, uint256 fyDaiOut)
     {
         daiOut = tokensBurned.mul(daiReserves).div(supply);
@@ -377,7 +376,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     {
         // TODO: Either whitelist the pools, or check balances before and after
         uint128 daiIn = pool.sellFYDai(from, address(this), fyDaiIn);
-        uint128 daiReserves = getDaiReserves().sub2(daiIn); // TODO: Underflow-protected
+        uint128 daiReserves = getDaiReserves().sub2(daiIn);
         uint128 fyDaiReserves = getFYDaiReserves();
 
         fyDaiOut = YieldMath.fyDaiOutForDaiIn(

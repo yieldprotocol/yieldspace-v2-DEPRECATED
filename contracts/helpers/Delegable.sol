@@ -16,7 +16,7 @@ contract Delegable is IDelegable {
 
     mapping(address => mapping(address => bool)) public delegated;
 
-    constructor () public {
+    constructor () {
         uint256 chainId;
         assembly {
             chainId := chainid()
