@@ -4,13 +4,15 @@ const func = async function ({ deployments, getNamedAccounts, getChainId }) {
   const { deployer } = await getNamedAccounts();
   const chainId = await getChainId()
 
-  const daiMock = await deploy('DaiMock', {
-    from: deployer,
-    deterministicDeployment: true,
-    args: []
-  })
+  if (chainId === '31337') {
+    const daiMock = await deploy('DaiMock', {
+      from: deployer,
+      deterministicDeployment: true,
+      args: []
+    })
 
-  console.log(`Deployed DaiMock to ${daiMock.address}`);
+    console.log(`Deployed DaiMock to ${daiMock.address}`);
+  }
 }
 
 module.exports = func;
