@@ -127,7 +127,7 @@ contract('Pool', async (accounts) => {
     )
   })
 
-  it('Reverts if not enough pool3 lp tokens are minted', async () => {
+  it('Reverts if not enough lp tokens are minted', async () => {
     await expectRevert(
       pool3.rollLiquidity(owner, owner, pool1.address, toWad(10), toWad(1), 0, MAX),
       'Pool: Not enough minted'
