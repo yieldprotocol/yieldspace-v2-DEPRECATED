@@ -49,6 +49,10 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         _;
     }
 
+    // -----------------------------------------------------------
+    // Liquidity management
+    // -----------------------------------------------------------
+
     /// @dev Mint initial liquidity tokens.
     /// The liquidity provider needs to have called `dai.approve`
     /// @param daiIn The initial Dai liquidity to provide.
@@ -78,6 +82,14 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         return tradeAndMint(from, to, fyDaiIn, 0, type(uint256).max);
     }
 
+    /// @dev Compatibility with v1
+    function burn(address from, address to, uint256 tokensBurned)
+        external override
+        returns (uint256, uint256)
+    {
+        return burnAndTrade(from, to, tokensBurned, 0, 0);
+    }
+
     /// @dev Mint liquidity tokens in exchange for dai and fyDai.
     /// The liquidity provider needs to have called `dai.approve`.
     /// @param from Wallet providing the dai and fyDai. Must have approved the operator with `pool.addDelegate(operator)`.
@@ -91,7 +103,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
         returns (uint256 daiIn, uint256 tokensMinted)
     {
-        (daiIn, tokensMinted) = _tradeAndMint(fyDaiIn, fyDaiToBuy);
+        (daiIn, tokensMinted) = _calculateTradeAndMint(fyDaiIn, fyDaiToBuy);
         require(daiIn <= maxDaiIn, "Pool: Too much Dai required");
         require(dai.balanceOf(address(this)).add(daiIn) <= type(uint128).max, "Pool: Too much Dai for the Pool");
 
@@ -99,76 +111,6 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         if (fyDaiIn > 0 ) require(fyDai.transferFrom(from, address(this), fyDaiIn), "Pool: FYDai transfer failed");
         _mint(to, tokensMinted);
         emit Liquidity(maturity, from, to, -(daiIn.uint256ToInt256()), -(fyDaiIn.uint256ToInt256()), tokensMinted.uint256ToInt256());
-    }
-
-    /// @dev Mint liquidity tokens in exchange for LP tokens from a different Pool.
-    /// @param from Wallet providing the LP tokens. Must have approved the operator with `pool.addDelegate(operator)`.
-    /// @param to Wallet receiving the minted liquidity tokens.
-    /// @param pool Pool for the tokens being burnt.
-    /// @param lpIn Amount of `LP` tokens provided for the mint
-    /// @param fyDaiIn Amount of `fyDai` from burning the LP tokens that will be supplied for minting new ones.
-    /// @param fyDaiToBuy Amount of `fyDai` being bought in the Pool so that the tokens added match the pool reserves. If negative, fyDai is sold.
-    /// @param minLpOut Minimum amount of `LP` tokens accepted for the roll.
-    // @return The amount of `LP` tokens minted.
-    function rollLiquidity(address from, address to, IPool pool, uint256 lpIn, uint256 fyDaiIn, int256 fyDaiToBuy, uint256 minLpOut)
-        external
-        onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
-        returns (uint256)
-    {
-        // TODO: Either whitelist the pools, or check balances before and after
-        (uint256 daiFromBurn, uint256 fyDaiFromBurn) = pool.burn(from, address(this), lpIn);
-        (uint256 daiIn, uint256 tokensMinted) = _tradeAndMint(fyDaiIn, fyDaiToBuy);
-
-        require(dai.balanceOf(address(this)).add(daiIn) <= type(uint128).max, "Pool: Too much Dai");
-        require(daiIn <= daiFromBurn, "Pool: Not enough Dai from burn");
-        require(fyDaiIn <= fyDaiFromBurn, "Pool: Not enough FYDai from burn");
-        require(tokensMinted >= minLpOut, "Pool: Not enough minted");
-
-        _mint(to, tokensMinted);
-        emit Liquidity(maturity, from, to, -(daiIn.uint256ToInt256()), -(fyDaiIn.uint256ToInt256()), tokensMinted.uint256ToInt256());
-        return tokensMinted;
-    }
-
-    /// @dev Calculate how many liquidity tokens to mint in exchange for dai and fyDai.
-    /// @param fyDaiIn Amount of `fyDai` provided for the mint
-    /// @param fyDaiToBuy Amount of `fyDai` being bought in the Pool so that the tokens added match the pool reserves. If negative, fyDai is sold.
-    // @return The Dai taken and amount of liquidity tokens minted.
-    function _tradeAndMint(uint256 fyDaiIn, int256 fyDaiToBuy)
-        internal view
-        returns (uint256 daiIn, uint256 tokensMinted)
-    {
-        int256 daiSold;
-        if (fyDaiToBuy > 0) daiSold = int256(buyFYDaiPreview(fyDaiToBuy.int256ToUint128())); // This is a virtual buy
-        if (fyDaiToBuy < 0) daiSold = -int256(sellFYDaiPreview((-fyDaiToBuy).int256ToUint128())); // dai was actually bought
-
-        uint256 supply = totalSupply();
-        require(supply >= 0, "Pool: Init first");
-
-        return _calculateMint(
-            dai.balanceOf(address(this)).add3(daiSold),
-            fyDai.balanceOf(address(this)).sub3(fyDaiToBuy),
-            supply,
-            fyDaiIn.add3(fyDaiToBuy)
-        );
-    }
-
-    /// @dev Calculate how many liquidity tokens to mint and how much dai to take in, when minting with a set amount of fyDai.
-    /// @param fyDaiIn Amount of `fyDai` provided for the mint
-    // @return The Dai taken and amount of liquidity tokens minted.
-    function _calculateMint(uint256 daiReserves, uint256 fyDaiReserves, uint256 supply, uint256 fyDaiIn)
-        internal pure
-        returns (uint256 daiIn, uint256 tokensMinted)
-    {
-        tokensMinted = supply.mul(fyDaiIn).div(fyDaiReserves);
-        daiIn = daiReserves.mul(tokensMinted).div(supply);
-    }
-
-    /// @dev Compatibility with v1
-    function burn(address from, address to, uint256 tokensBurned)
-        external override
-        returns (uint256, uint256)
-    {
-        return burnAndTrade(from, to, tokensBurned, 0, 0);
     }
 
     /// @dev Burn liquidity tokens in exchange for Dai, or Dai and fyDai.
@@ -218,6 +160,45 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         emit Liquidity(maturity, from, to, daiOut.uint256ToInt256(), fyDaiOut.uint256ToInt256(), -(tokensBurned.uint256ToInt256()));
     }
 
+    /// @dev Mint liquidity tokens in exchange for LP tokens from a different Pool.
+    /// @param from Wallet providing the LP tokens. Must have approved the operator with `pool.addDelegate(operator)`.
+    /// @param to Wallet receiving the minted liquidity tokens.
+    /// @param pool Pool for the tokens being burnt.
+    /// @param lpIn Amount of `LP` tokens provided for the mint
+    /// @param fyDaiIn Amount of `fyDai` from burning the LP tokens that will be supplied for minting new ones.
+    /// @param fyDaiToBuy Amount of `fyDai` being bought in the Pool so that the tokens added match the pool reserves. If negative, fyDai is sold.
+    /// @param minLpOut Minimum amount of `LP` tokens accepted for the roll.
+    // @return The amount of `LP` tokens minted.
+    function rollLiquidity(address from, address to, IPool pool, uint256 lpIn, uint256 fyDaiIn, int256 fyDaiToBuy, uint256 minLpOut)
+        external
+        onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
+        returns (uint256)
+    {
+        // TODO: Either whitelist the pools, or check balances before and after
+        (uint256 daiFromBurn, uint256 fyDaiFromBurn) = pool.burn(from, address(this), lpIn);
+        (uint256 daiIn, uint256 tokensMinted) = _calculateTradeAndMint(fyDaiIn, fyDaiToBuy);
+
+        require(dai.balanceOf(address(this)).add(daiIn) <= type(uint128).max, "Pool: Too much Dai");
+        require(daiIn <= daiFromBurn, "Pool: Not enough Dai from burn");
+        require(fyDaiIn <= fyDaiFromBurn, "Pool: Not enough FYDai from burn");
+        require(tokensMinted >= minLpOut, "Pool: Not enough minted");
+
+        _mint(to, tokensMinted);
+        emit Liquidity(maturity, from, to, -(daiIn.uint256ToInt256()), -(fyDaiIn.uint256ToInt256()), tokensMinted.uint256ToInt256());
+        return tokensMinted;
+    }
+
+    /// @dev Calculate how many liquidity tokens to mint and how much dai to take in, when minting with a set amount of fyDai.
+    /// @param fyDaiIn Amount of `fyDai` provided for the mint
+    // @return The Dai taken and amount of liquidity tokens minted.
+    function _calculateMint(uint256 daiReserves, uint256 fyDaiReserves, uint256 supply, uint256 fyDaiIn)
+        internal pure
+        returns (uint256 daiIn, uint256 tokensMinted)
+    {
+        tokensMinted = supply.mul(fyDaiIn).div(fyDaiReserves);
+        daiIn = daiReserves.mul(tokensMinted).div(supply);
+    }
+
     /// @dev Calculate how many dai and fyDai is obtained by burning liquidity tokens.
     /// @param tokensBurned Amount of liquidity tokens being burned.
     // @return The amount of reserve tokens returned (dai, fyDai).
@@ -227,6 +208,49 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     {
         daiOut = tokensBurned.mul(daiReserves).div(supply);
         fyDaiOut = tokensBurned.mul(fyDaiReserves).div(supply);
+    }
+
+    /// @dev Calculate how many liquidity tokens to mint in exchange for dai and fyDai.
+    /// @param fyDaiIn Amount of `fyDai` provided for the mint
+    /// @param fyDaiToBuy Amount of `fyDai` being bought in the Pool so that the tokens added match the pool reserves. If negative, fyDai is sold.
+    // @return The Dai taken and amount of liquidity tokens minted.
+    function _calculateTradeAndMint(uint256 fyDaiIn, int256 fyDaiToBuy)
+        internal view
+        returns (uint256 daiIn, uint256 tokensMinted)
+    {
+        int256 daiSold;
+        if (fyDaiToBuy > 0) daiSold = int256(buyFYDaiPreview(fyDaiToBuy.int256ToUint128())); // This is a virtual buy
+        if (fyDaiToBuy < 0) daiSold = -int256(sellFYDaiPreview((-fyDaiToBuy).int256ToUint128())); // dai was actually bought
+
+        uint256 supply = totalSupply();
+        require(supply >= 0, "Pool: Init first");
+
+        return _calculateMint(
+            dai.balanceOf(address(this)).add3(daiSold),
+            fyDai.balanceOf(address(this)).sub3(fyDaiToBuy),
+            supply,
+            fyDaiIn.add3(fyDaiToBuy)
+        );
+    }
+
+    // -----------------------------------------------------------
+    // Trading
+    // -----------------------------------------------------------
+
+    /// @dev Returns the "virtual" fyDai reserves
+    function getFYDaiReserves()
+        public view override
+        returns(uint128)
+    {
+        return fyDai.balanceOf(address(this)).add(totalSupply()).uint256ToUint128();
+    }
+
+    /// @dev Returns the Dai reserves
+    function getDaiReserves()
+        public view override
+        returns(uint128)
+    {
+        return dai.balanceOf(address(this)).uint256ToUint128();
     }
 
     /// @dev Sell Dai for fyDai
@@ -363,6 +387,32 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         emit Trade(maturity, from, to, -(daiIn.uint128ToInt256()), fyDaiOut.uint128ToInt256());
     }
 
+    /// @dev Returns how much dai would be required to buy `fyDaiOut` fyDai.
+    /// @param fyDaiOut Amount of fyDai hypothetically desired.
+    // @return Amount of Dai hypothetically required.
+    function buyFYDaiPreview(uint128 fyDaiOut)
+        public view override
+        beforeMaturity
+        returns(uint128 daiIn)
+    {
+        uint128 daiReserves = getDaiReserves();
+        uint128 fyDaiReserves = getFYDaiReserves();
+
+        daiIn = YieldMath.daiInForFYDaiOut(
+            daiReserves,
+            fyDaiReserves,
+            fyDaiOut,
+            (maturity - block.timestamp).uint256ToUint128(), // This can't be called after maturity
+            k,
+            g1
+        );
+
+        require(
+            fyDaiReserves.sub(fyDaiOut) >= daiReserves.add(daiIn),
+            "Pool: fyDai reserves too low"
+        );
+    }
+
     /// @dev Mint liquidity tokens in exchange for LP tokens from a different Pool.
     /// @param from Wallet providing the LP tokens. Must have approved the operator with `pool.addDelegate(operator)`.
     /// @param to Wallet receiving the minted liquidity tokens.
@@ -395,47 +445,5 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         fyDai.transfer(to, fyDaiOut);
         emit Trade(maturity, from, to, -(daiIn.uint256ToInt256()), fyDaiOut.uint256ToInt256());
-    }
-
-    /// @dev Returns how much dai would be required to buy `fyDaiOut` fyDai.
-    /// @param fyDaiOut Amount of fyDai hypothetically desired.
-    // @return Amount of Dai hypothetically required.
-    function buyFYDaiPreview(uint128 fyDaiOut)
-        public view override
-        beforeMaturity
-        returns(uint128 daiIn)
-    {
-        uint128 daiReserves = getDaiReserves();
-        uint128 fyDaiReserves = getFYDaiReserves();
-
-        daiIn = YieldMath.daiInForFYDaiOut(
-            daiReserves,
-            fyDaiReserves,
-            fyDaiOut,
-            (maturity - block.timestamp).uint256ToUint128(), // This can't be called after maturity
-            k,
-            g1
-        );
-
-        require(
-            fyDaiReserves.sub(fyDaiOut) >= daiReserves.add(daiIn),
-            "Pool: fyDai reserves too low"
-        );
-    }
-
-    /// @dev Returns the "virtual" fyDai reserves
-    function getFYDaiReserves()
-        public view override
-        returns(uint128)
-    {
-        return fyDai.balanceOf(address(this)).add(totalSupply()).uint256ToUint128();
-    }
-
-    /// @dev Returns the Dai reserves
-    function getDaiReserves()
-        public view override
-        returns(uint128)
-    {
-        return dai.balanceOf(address(this)).uint256ToUint128();
     }
 }
