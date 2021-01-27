@@ -20,7 +20,7 @@ interface IPool is IDelegable, IERC20, IERC2612 {
     function sellFYDaiPreview(uint128 fyDaiIn) external view returns(uint128);
     function buyFYDaiPreview(uint128 fyDaiOut) external view returns(uint128);
     function mint(address from, address to, uint256 fyDaiIn) external returns (uint256, uint256);
-    function tradeAndMint(address from, address to, uint256 fyDaiIn, int256 daiToSell, uint256 maxDaiIn) external returns (uint256, uint256);
+    function tradeAndMint(address from, address to, uint256 fyDaiIn, int256 daiToSell, uint256 maxDaiIn, uint256 minLpOut) external returns (uint256, uint256);
     function burn(address from, address to, uint256 tokensBurned) external returns (uint256, uint256);
-    function burnAndTrade(address from, address to, uint256 tokensBurned, uint256 fyDaiToSell, uint256 minDaiOut) external returns (uint256, uint256);
+    function burnAndTrade(address from, address to, uint256 tokensBurned, uint256 fyDaiToSell, uint256 minDaiOut, uint256 minFYDaiOut) external returns (uint256, uint256);
 }

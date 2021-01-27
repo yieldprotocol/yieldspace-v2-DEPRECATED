@@ -252,6 +252,36 @@ contract('Pool', async (accounts) => {
         almostEqual(daiIn, floor(expectedDaiIn).toFixed(), daiIn.div(new BN('10000')))
       })
 
+      it('does not mint liquidity tokens if too much Dai is required', async () => {
+        const fyDaiToBuy = toWad(1)
+        const fyDaiIn = fyDaiTokens.sub(fyDaiToBuy)
+
+        await dai.mint(user1, fyDaiTokens.muln(100), { from: owner })
+        await fyDai1.mint(user1, fyDaiIn, { from: owner })
+
+        await dai.approve(pool.address, MAX, { from: user1 })
+        await fyDai1.approve(pool.address, MAX, { from: user1 })
+        await expectRevert(
+          pool.tradeAndMint(user1, user2, fyDaiIn, fyDaiToBuy, 0, 0, { from: user1 }),
+          "Pool: Too much Dai required"
+        )
+      })
+
+      it('does not mint liquidity tokens if too few liquidity tokens are obtained', async () => {
+        const fyDaiToBuy = toWad(1)
+        const fyDaiIn = fyDaiTokens.sub(fyDaiToBuy)
+
+        await dai.mint(user1, fyDaiTokens.muln(100), { from: owner })
+        await fyDai1.mint(user1, fyDaiIn, { from: owner })
+
+        await dai.approve(pool.address, MAX, { from: user1 })
+        await fyDai1.approve(pool.address, MAX, { from: user1 })
+        await expectRevert(
+          pool.tradeAndMint(user1, user2, fyDaiIn, fyDaiToBuy, 0, MAX, { from: user1 }),
+          "Pool: Too much Dai required"
+        )
+      })
+
       it('mints liquidity tokens with dai and fyDai, buying FYDai', async () => {
         const oneToken = toWad(1)
         const daiReserves = await dai.balanceOf(pool.address)
@@ -272,7 +302,7 @@ contract('Pool', async (accounts) => {
 
         await dai.approve(pool.address, MAX, { from: user1 })
         await fyDai1.approve(pool.address, MAX, { from: user1 })
-        const tx = await pool.tradeAndMint(user1, user2, fyDaiIn, fyDaiToBuy, MAX, { from: user1 })
+        const tx = await pool.tradeAndMint(user1, user2, fyDaiIn, fyDaiToBuy, MAX, 0, { from: user1 })
 
         const [expectedMinted, expectedDaiIn] = tradeAndMint(
           daiReserves.toString(),
@@ -320,7 +350,7 @@ contract('Pool', async (accounts) => {
 
         await dai.approve(pool.address, MAX, { from: user1 })
         await fyDai1.approve(pool.address, MAX, { from: user1 })
-        const tx = await pool.tradeAndMint(user1, user2, fyDaiIn, fyDaiToBuy.neg(), MAX, { from: user1 })
+        const tx = await pool.tradeAndMint(user1, user2, fyDaiIn, fyDaiToBuy.neg(), MAX, 0, { from: user1 })
 
         const [expectedMinted, expectedDaiIn] = tradeAndMint(
           daiReserves.toString(),
@@ -368,7 +398,7 @@ contract('Pool', async (accounts) => {
 
         await dai.approve(pool.address, MAX, { from: user1 })
         // await fyDai1.approve(pool.address, MAX, { from: user1 })
-        const tx = await pool.tradeAndMint(user1, user2, 0, fyDaiToBuy, MAX, { from: user1 })
+        const tx = await pool.tradeAndMint(user1, user2, 0, fyDaiToBuy, MAX, 0, { from: user1 })
 
         const [expectedMinted, expectedDaiIn] = tradeAndMint(
           daiReserves.toString(),
@@ -440,7 +470,7 @@ contract('Pool', async (accounts) => {
         const lpTokensIn = toWad(1)
 
         await pool.approve(pool.address, lpTokensIn, { from: user1 })
-        const tx = await pool.burnAndTrade(user1, user2, lpTokensIn, MAX, 0, { from: user1 })
+        const tx = await pool.burnAndTrade(user1, user2, lpTokensIn, MAX, 0, 0, { from: user1 })
 
         const [daiFromBurn, fyDaiFromBurn] = burn(
           daiReserves.toString(),
@@ -470,6 +500,26 @@ contract('Pool', async (accounts) => {
         })
 
         almostEqual(daiOut, floor(expectedDaiOut).toFixed(), daiOut.div(new BN('10000')))
+      })
+
+      it('does not burn liquidity tokens if too little Dai is obtained', async () => {
+        const lpTokensIn = toWad(1)
+
+        await pool.approve(pool.address, lpTokensIn, { from: user1 })
+        await expectRevert(
+          pool.burnAndTrade(user1, user2, lpTokensIn, MAX, MAX, 0, { from: user1 }),
+          "Pool: Not enough Dai obtained in burn"
+        )
+      })
+
+      it('does not burn liquidity tokens if too little fyDai is obtained', async () => {
+        const lpTokensIn = toWad(1)
+
+        await pool.approve(pool.address, lpTokensIn, { from: user1 })
+        await expectRevert(
+          pool.burnAndTrade(user1, user2, lpTokensIn, MAX, 0, MAX, { from: user1 }),
+          "Pool: Not enough FYDai obtained in burn"
+        )
       })
 
       it('sells dai', async () => {

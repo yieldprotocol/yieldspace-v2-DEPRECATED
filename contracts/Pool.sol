@@ -79,7 +79,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         external override
         returns (uint256, uint256)
     {
-        return tradeAndMint(from, to, fyDaiIn, 0, type(uint256).max);
+        return tradeAndMint(from, to, fyDaiIn, 0, type(uint256).max, 0);
     }
 
     /// @dev Compatibility with v1
@@ -87,7 +87,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         external override
         returns (uint256, uint256)
     {
-        return burnAndTrade(from, to, tokensBurned, 0, 0);
+        return burnAndTrade(from, to, tokensBurned, 0, 0, 0);
     }
 
     /// @dev Mint liquidity tokens in exchange for dai and fyDai.
@@ -97,14 +97,16 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     /// @param fyDaiIn Amount of `fyDai` provided for the mint
     /// @param fyDaiToBuy Amount of `fyDai` being bought in the Pool so that the tokens added match the pool reserves. If negative, fyDai is sold.
     /// @param maxDaiIn Maximum amount of `Dai` being provided for the mint.
+    /// @param minLPOut Minimum amount of LP tokens accepted as part of the mint.
     // @return The fyDai taken and amount of liquidity tokens minted.
-    function tradeAndMint(address from, address to, uint256 fyDaiIn, int256 fyDaiToBuy, uint256 maxDaiIn)
+    function tradeAndMint(address from, address to, uint256 fyDaiIn, int256 fyDaiToBuy, uint256 maxDaiIn, uint256 minLPOut)
         public override
         onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
         returns (uint256 daiIn, uint256 tokensMinted)
     {
         (daiIn, tokensMinted) = _calculateTradeAndMint(fyDaiIn, fyDaiToBuy);
         require(daiIn <= maxDaiIn, "Pool: Too much Dai required");
+        require(tokensMinted >= minLPOut, "Pool: Not enough LP minted");
         require(dai.balanceOf(address(this)).add(daiIn) <= type(uint128).max, "Pool: Too much Dai for the Pool");
 
         if (daiIn > 0 ) require(dai.transferFrom(from, address(this), daiIn), "Pool: Dai transfer failed");
@@ -120,22 +122,23 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     /// @param tokensBurned Amount of liquidity tokens being burned.
     /// @param fyDaiToSell Amount of fyDai obtained from the burn being sold. If more than obtained, then all is sold. Doesn't allow to buy fyDai as part of a burn.
     /// @param minDaiOut Minium amount of Dai accepted as part of the burn.
+    /// @param minFYDaiOut Minium amount of FYDai accepted as part of the burn.
     // @return The amount of dai tokens returned.
-    function burnAndTrade(address from, address to, uint256 tokensBurned, uint256 fyDaiToSell, uint256 minDaiOut) // TODO: Make fyDaiSold an int256 and buy fyDai with negatives
+    function burnAndTrade(address from, address to, uint256 tokensBurned, uint256 fyDaiToSell, uint256 minDaiOut, uint256 minFYDaiOut) // TODO: Make fyDaiSold an int256 and buy fyDai with negatives
         public override
         onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
         returns (uint256 daiOut, uint256 fyDaiOut)
     {
-        uint256 daiReserves = dai.balanceOf(address(this));
-        uint256 fyDaiObtained;
-        (daiOut, fyDaiObtained) = _calculateBurn(
-            totalSupply(),
-            daiReserves,
-            fyDai.balanceOf(address(this)),                        // Use the actual reserves rather than the virtual reserves
-            tokensBurned
-        );
+        { // Crazy stack depth
+            uint256 daiReserves = dai.balanceOf(address(this));
+            uint256 fyDaiObtained;
+            (daiOut, fyDaiObtained) = _calculateBurn(
+                totalSupply(),
+                daiReserves,
+                fyDai.balanceOf(address(this)),                        // Use the actual reserves rather than the virtual reserves
+                tokensBurned
+            );
 
-        {
             uint256 fyDaiSold;
             if (fyDaiToSell > 0) {
                 fyDaiSold = fyDaiObtained > fyDaiToSell ? fyDaiToSell : fyDaiObtained;
@@ -150,13 +153,14 @@ contract Pool is IPool, Delegable(), ERC20Permit {
                     )
                 );
             }
-            require(daiOut >= minDaiOut, "Pool: Not enough Dai obtained in burn");
             fyDaiOut = fyDaiObtained.sub(fyDaiSold);
+            require(daiOut >= minDaiOut, "Pool: Not enough Dai obtained in burn");
+            require(fyDaiOut >= minFYDaiOut, "Pool: Not enough FYDai obtained in burn");
+        
+            _burn(from, tokensBurned); // TODO: Fix to check allowance
+            dai.transfer(to, daiOut);
+            if (fyDaiOut > 0) fyDai.transfer(to, fyDaiOut);
         }
-
-        _burn(from, tokensBurned); // TODO: Fix to check allowance
-        dai.transfer(to, daiOut);
-        if (fyDaiOut > 0) fyDai.transfer(to, fyDaiOut);
         emit Liquidity(maturity, from, to, daiOut.uint256ToInt256(), fyDaiOut.uint256ToInt256(), -(tokensBurned.uint256ToInt256()));
     }
 
