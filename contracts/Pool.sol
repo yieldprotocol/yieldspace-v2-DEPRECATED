@@ -8,11 +8,13 @@ import "./YieldMath.sol";
 import "./helpers/Delegable.sol";
 import "./helpers/SafeCast.sol";
 import "./helpers/ERC20Permit.sol";
+import "./helpers/SafeERC20Namer.sol";
 import "./interfaces/IFYDai.sol";
 import "./interfaces/IPool.sol";
+import "./interfaces/IPoolFactory.sol";
 
 
-/// @dev The Pool contract exchanges Dai for fyDai at a price defined by a specific formula.
+/// @dev The Pool contract exchanges baseToken for fyToken at a price defined by a specific formula.
 contract Pool is IPool, Delegable(), ERC20Permit {
     using SafeMath for uint256;
 
@@ -20,21 +22,24 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     event Liquidity(uint256 maturity, address indexed from, address indexed to, int256 daiTokens, int256 fyDaiTokens, int256 poolTokens);
 
     int128 constant public k = int128(uint256((1 << 64)) / 126144000); // 1 / Seconds in 4 years, in 64.64
-    int128 constant public g1 = int128(uint256((950 << 64)) / 1000); // To be used when selling Dai to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
-    int128 constant public g2 = int128(uint256((1000 << 64)) / 950); // To be used when selling fyDai to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
+    int128 constant public g1 = int128(uint256((950 << 64)) / 1000); // To be used when selling baseToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
+    int128 constant public g2 = int128(uint256((1000 << 64)) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
     uint128 immutable public maturity;
 
-    IERC20 public override dai;
-    IFYDai public override fyDai;
+    IERC20 public immutable override baseToken;
+    IFYDai public immutable override fyToken;
 
-    constructor(address dai_, address fyDai_, string memory name_, string memory symbol_)
-        public
-        ERC20Permit(name_, symbol_)
+    constructor()
+        ERC20Permit(
+            string(abi.encodePacked("Yield ", SafeERC20Namer.tokenName(IPoolFactory(msg.sender).nextFYToken()), " LP Token")),
+            string(abi.encodePacked(SafeERC20Namer.tokenSymbol(IPoolFactory(msg.sender).nextFYToken()), "LP"))
+        )
     {
-        dai = IERC20(dai_);
-        fyDai = IFYDai(fyDai_);
+        IFYDai _fyToken = IFYDai(IPoolFactory(msg.sender).nextFYToken());
+        fyToken = _fyToken;
+        baseToken = IERC20(IPoolFactory(msg.sender).nextToken());
 
-        maturity = toUint128(fyDai.maturity());
+        maturity = toUint128(_fyToken.maturity());
     }
 
     /// @dev Trading can only be done before maturity
@@ -51,14 +56,14 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         internal pure returns (uint128)
     {
         uint128 c = a + b;
-        require(c >= a, "Pool: Dai reserves too high");
+        require(c >= a, "Pool: Base reserves too high");
 
         return c;
     }
 
     /// @dev Overflow-protected substraction, from OpenZeppelin
     function sub(uint128 a, uint128 b) internal pure returns (uint128) {
-        require(b <= a, "Pool: fyDai reserves too low");
+        require(b <= a, "Pool: fy reserves too low");
         uint128 c = a - b;
 
         return c;
@@ -83,9 +88,9 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     }
 
     /// @dev Mint initial liquidity tokens.
-    /// The liquidity provider needs to have called `dai.approve`
-    /// @param daiIn The initial Dai liquidity to provide.
-    function init(uint256 daiIn)
+    /// The liquidity provider needs to have called `baseToken.approve`
+    /// @param baseTokenIn The initial baseToken liquidity to provide.
+    function init(uint256 baseTokenIn)
         internal
         beforeMaturity
         returns (uint256)
@@ -94,133 +99,133 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             totalSupply() == 0,
             "Pool: Already initialized"
         );
-        // no fyDai transferred, because initial fyDai deposit is entirely virtual
-        dai.transferFrom(msg.sender, address(this), daiIn);
-        _mint(msg.sender, daiIn);
-        emit Liquidity(maturity, msg.sender, msg.sender, -toInt256(daiIn), 0, toInt256(daiIn));
+        // no fyToken transferred, because initial fyToken deposit is entirely virtual
+        baseToken.transferFrom(msg.sender, address(this), baseTokenIn);
+        _mint(msg.sender, baseTokenIn);
+        emit Liquidity(maturity, msg.sender, msg.sender, -toInt256(baseTokenIn), 0, toInt256(baseTokenIn));
 
-        return daiIn;
+        return baseTokenIn;
     }
 
-    /// @dev Mint liquidity tokens in exchange for adding dai and fyDai
-    /// The liquidity provider needs to have called `dai.approve` and `fyDai.approve`.
-    /// @param from Wallet providing the dai and fyDai. Must have approved the operator with `pool.addDelegate(operator)`.
+    /// @dev Mint liquidity tokens in exchange for adding baseToken and fyToken
+    /// The liquidity provider needs to have called `baseToken.approve` and `fyToken.approve`.
+    /// @param from Wallet providing the baseToken and fyToken. Must have approved the operator with `pool.addDelegate(operator)`.
     /// @param to Wallet receiving the minted liquidity tokens.
-    /// @param daiOffered Amount of `dai` being invested, an appropriate amount of `fyDai` to be invested alongside will be calculated and taken by this function from the caller.
+    /// @param tokenOffered Amount of `baseToken` being invested, an appropriate amount of `fyToken` to be invested alongside will be calculated and taken by this function from the caller.
     /// @return The amount of liquidity tokens minted.
-    function mint(address from, address to, uint256 daiOffered)
+    function mint(address from, address to, uint256 tokenOffered)
         external override
-        onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from)
         returns (uint256)
     {
         uint256 supply = totalSupply();
-        if (supply == 0) return init(daiOffered);
+        if (supply == 0) return init(tokenOffered);
 
-        uint256 daiReserves = dai.balanceOf(address(this));
+        uint256 baseTokenReserves = baseToken.balanceOf(address(this));
         // use the actual reserves rather than the virtual reserves
-        uint256 fyDaiReserves = fyDai.balanceOf(address(this));
-        uint256 tokensMinted = supply.mul(daiOffered).div(daiReserves);
-        uint256 fyDaiRequired = fyDaiReserves.mul(tokensMinted).div(supply);
+        uint256 fyTokenReserves = fyToken.balanceOf(address(this));
+        uint256 tokensMinted = supply.mul(tokenOffered).div(baseTokenReserves);
+        uint256 fyTokenRequired = fyTokenReserves.mul(tokensMinted).div(supply);
 
-        require(daiReserves.add(daiOffered) <= type(uint128).max); // fyDaiReserves can't go over type(uint128).max
-        require(supply.add(fyDaiReserves.add(fyDaiRequired)) <= type(uint128).max); // fyDaiReserves can't go over type(uint128).max
+        require(baseTokenReserves.add(tokenOffered) <= type(uint128).max); // fyTokenReserves can't go over type(uint128).max
+        require(supply.add(fyTokenReserves.add(fyTokenRequired)) <= type(uint128).max); // fyTokenReserves can't go over type(uint128).max
 
-        require(dai.transferFrom(from, address(this), daiOffered));
-        require(fyDai.transferFrom(from, address(this), fyDaiRequired));
+        require(baseToken.transferFrom(from, address(this), tokenOffered));
+        require(fyToken.transferFrom(from, address(this), fyTokenRequired));
         _mint(to, tokensMinted);
-        emit Liquidity(maturity, from, to, -toInt256(daiOffered), -toInt256(fyDaiRequired), toInt256(tokensMinted));
+        emit Liquidity(maturity, from, to, -toInt256(tokenOffered), -toInt256(fyTokenRequired), toInt256(tokensMinted));
 
         return tokensMinted;
     }
 
-    /// @dev Mint liquidity tokens in exchange for adding only dai
-    /// The liquidity provider needs to have called `dai.approve`.
-    /// @param from Wallet providing the dai and fyDai. Must have approved the operator with `pool.addDelegate(operator)`.
+    /// @dev Mint liquidity tokens in exchange for adding only baseToken
+    /// The liquidity provider needs to have called `baseToken.approve`.
+    /// @param from Wallet providing the baseToken and fyToken. Must have approved the operator with `pool.addDelegate(operator)`.
     /// @param to Wallet receiving the minted liquidity tokens.
-    /// @param fyDaiToBuy Amount of `fyDai` being bought in the Pool, from this we calculate how much Dai it will be taken in.
+    /// @param fyTokenToBuy Amount of `fyToken` being bought in the Pool, from this we calculate how much baseToken it will be taken in.
     /// @return The amount of liquidity tokens minted.
-    function mintWithDai(address from, address to, uint256 fyDaiToBuy)
+    function mintWithToken(address from, address to, uint256 fyTokenToBuy)
         external
-        onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from)
         returns (uint256, uint256)
     {
         uint256 supply = totalSupply();
         require(supply > 0, "Pool: Use mint first");
 
-        uint256 daiReserves = dai.balanceOf(address(this));
-        uint256 fyDaiReserves = fyDai.balanceOf(address(this));
+        uint256 baseTokenReserves = baseToken.balanceOf(address(this));
+        uint256 fyTokenReserves = fyToken.balanceOf(address(this));
 
-        uint256 daiIn = buyFYDaiPreview(toUint128(fyDaiToBuy)); // This is a virtual buy
+        uint256 baseTokenIn = buyFYTokenPreview(toUint128(fyTokenToBuy)); // This is a virtual buy
 
-        require(fyDaiReserves >= fyDaiToBuy, "Pool: Not enough fyDai");
-        uint256 tokensMinted = supply.mul(fyDaiToBuy).div(fyDaiReserves.sub(fyDaiToBuy));
-        daiIn = daiReserves.add(daiIn).mul(tokensMinted).div(supply);
-        require(daiReserves.add(daiIn) <= type(uint128).max, "Pool: Too much Dai");
+        require(fyTokenReserves >= fyTokenToBuy, "Pool: Not enough fyDai");
+        uint256 tokensMinted = supply.mul(fyTokenToBuy).div(fyTokenReserves.sub(fyTokenToBuy));
+        baseTokenIn = baseTokenReserves.add(baseTokenIn).mul(tokensMinted).div(supply);
+        require(baseTokenReserves.add(baseTokenIn) <= type(uint128).max/*, "Pool: Too much baseToken"*/);
 
-        require(dai.transferFrom(from, address(this), daiIn), "Pool: Dai transfer failed");
+        require(baseToken.transferFrom(from, address(this), baseTokenIn)/*, "Pool: baseToken transfer failed"*/);
         _mint(to, tokensMinted);
-        emit Liquidity(maturity, from, to, -toInt256(daiIn), 0, toInt256(tokensMinted));
+        emit Liquidity(maturity, from, to, -toInt256(baseTokenIn), 0, toInt256(tokensMinted));
 
-        return (daiIn, tokensMinted);
+        return (baseTokenIn, tokensMinted);
     }
 
-    /// @dev Burn liquidity tokens in exchange for dai and fyDai.
+    /// @dev Burn liquidity tokens in exchange for baseToken and fyToken.
     /// The liquidity provider needs to have called `pool.approve`.
     /// @param from Wallet providing the liquidity tokens. Must have approved the operator with `pool.addDelegate(operator)`.
-    /// @param to Wallet receiving the dai and fyDai.
+    /// @param to Wallet receiving the baseToken and fyToken.
     /// @param tokensBurned Amount of liquidity tokens being burned.
     /// @return The amount of reserve tokens returned (daiTokens, fyDaiTokens).
     function burn(address from, address to, uint256 tokensBurned)
         external override
-        onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from)
         returns (uint256, uint256)
     {
         uint256 supply = totalSupply();
-        uint256 daiReserves = dai.balanceOf(address(this));
+        uint256 baseTokenReserves = baseToken.balanceOf(address(this));
         // use the actual reserves rather than the virtual reserves
-        uint256 daiOut;
-        uint256 fyDaiOut;
+        uint256 tokenOut;
+        uint256 fyTokenOut;
         { // avoiding stack too deep
-            uint256 fyDaiReserves = fyDai.balanceOf(address(this));
-            daiOut = tokensBurned.mul(daiReserves).div(supply);
-            fyDaiOut = tokensBurned.mul(fyDaiReserves).div(supply);
+            uint256 fyTokenReserves = fyToken.balanceOf(address(this));
+            tokenOut = tokensBurned.mul(baseTokenReserves).div(supply);
+            fyTokenOut = tokensBurned.mul(fyTokenReserves).div(supply);
         }
 
         _burn(from, tokensBurned); // TODO: Fix to check allowance
-        dai.transfer(to, daiOut);
-        fyDai.transfer(to, fyDaiOut);
-        emit Liquidity(maturity, from, to, toInt256(daiOut), toInt256(fyDaiOut), -toInt256(tokensBurned));
+        baseToken.transfer(to, tokenOut);
+        fyToken.transfer(to, fyTokenOut);
+        emit Liquidity(maturity, from, to, toInt256(tokenOut), toInt256(fyTokenOut), -toInt256(tokensBurned));
 
-        return (daiOut, fyDaiOut);
+        return (tokenOut, fyTokenOut);
     }
 
-    /// @dev Burn liquidity tokens in exchange for dai.
+    /// @dev Burn liquidity tokens in exchange for baseToken.
     /// The liquidity provider needs to have called `pool.approve`.
     /// @param from Wallet providing the liquidity tokens. Must have approved the operator with `pool.addDelegate(operator)`.
-    /// @param to Wallet receiving the dai and fyDai.
+    /// @param to Wallet receiving the baseToken and fyToken.
     /// @param tokensBurned Amount of liquidity tokens being burned.
-    /// @return The amount of dai tokens returned.
-    function burnForDai(address from, address to, uint256 tokensBurned)
+    /// @return The amount of base tokens returned.
+    function burnForBaseToken(address from, address to, uint256 tokensBurned)
         external
-        onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from)
         returns (uint256)
     {
         uint256 supply = totalSupply();
-        uint256 daiReserves = dai.balanceOf(address(this));
+        uint256 baseTokenReserves = baseToken.balanceOf(address(this));
         // use the actual reserves rather than the virtual reserves
-        uint256 daiOut;
-        uint256 fyDaiObtained;
+        uint256 tokenOut;
+        uint256 fyTokenObtained;
         { // avoiding stack too deep
-            uint256 fyDaiReserves = fyDai.balanceOf(address(this));
-            daiOut = tokensBurned.mul(daiReserves).div(supply);
-            fyDaiObtained = tokensBurned.mul(fyDaiReserves).div(supply);
+            uint256 fyTokenReserves = fyToken.balanceOf(address(this));
+            tokenOut = tokensBurned.mul(baseTokenReserves).div(supply);
+            fyTokenObtained = tokensBurned.mul(fyTokenReserves).div(supply);
         }
 
-        daiOut = daiOut.add(
+        tokenOut = tokenOut.add(
             YieldMath.daiOutForFYDaiIn(                            // This is a virtual sell
-                toUint128(daiReserves.sub(daiOut)),                // Real reserves, minus virtual burn
-                sub(getFYDaiReserves(), toUint128(fyDaiObtained)), // Virtual reserves, minus virtual burn
-                toUint128(fyDaiObtained),                          // Sell the virtual fyDai obtained
+                toUint128(baseTokenReserves.sub(tokenOut)),                // Real reserves, minus virtual burn
+                sub(getFYTokenReserves(), toUint128(fyTokenObtained)), // Virtual reserves, minus virtual burn
+                toUint128(fyTokenObtained),                          // Sell the virtual fyToken obtained
                 toUint128(maturity - block.timestamp),             // This can't be called after maturity
                 k,
                 g2
@@ -228,198 +233,198 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         );
 
         _burn(from, tokensBurned); // TODO: Fix to check allowance
-        dai.transfer(to, daiOut);
-        emit Liquidity(maturity, from, to, toInt256(daiOut), 0, -toInt256(tokensBurned));
+        baseToken.transfer(to, tokenOut);
+        emit Liquidity(maturity, from, to, toInt256(tokenOut), 0, -toInt256(tokensBurned));
 
-        return daiOut;
+        return tokenOut;
     }
 
-    /// @dev Sell Dai for fyDai
-    /// The trader needs to have called `dai.approve`
-    /// @param from Wallet providing the dai being sold. Must have approved the operator with `pool.addDelegate(operator)`.
-    /// @param to Wallet receiving the fyDai being bought
-    /// @param daiIn Amount of dai being sold that will be taken from the user's wallet
-    /// @return Amount of fyDai that will be deposited on `to` wallet
-    function sellDai(address from, address to, uint128 daiIn)
+    /// @dev Sell baseToken for fyToken
+    /// The trader needs to have called `baseToken.approve`
+    /// @param from Wallet providing the baseToken being sold. Must have approved the operator with `pool.addDelegate(operator)`.
+    /// @param to Wallet receiving the fyToken being bought
+    /// @param baseTokenIn Amount of baseToken being sold that will be taken from the user's wallet
+    /// @return Amount of fyToken that will be deposited on `to` wallet
+    function sellBaseToken(address from, address to, uint128 baseTokenIn)
         external override
-        onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from)
         returns(uint128)
     {
-        uint128 fyDaiOut = sellDaiPreview(daiIn);
+        uint128 fyTokenOut = sellBaseTokenPreview(baseTokenIn);
 
-        dai.transferFrom(from, address(this), daiIn);
-        fyDai.transfer(to, fyDaiOut);
-        emit Trade(maturity, from, to, -toInt256(daiIn), toInt256(fyDaiOut));
+        baseToken.transferFrom(from, address(this), baseTokenIn);
+        fyToken.transfer(to, fyTokenOut);
+        emit Trade(maturity, from, to, -toInt256(baseTokenIn), toInt256(fyTokenOut));
 
-        return fyDaiOut;
+        return fyTokenOut;
     }
 
-    /// @dev Returns how much fyDai would be obtained by selling `daiIn` dai
-    /// @param daiIn Amount of dai hypothetically sold.
-    /// @return Amount of fyDai hypothetically bought.
-    function sellDaiPreview(uint128 daiIn)
+    /// @dev Returns how much fyToken would be obtained by selling `baseTokenIn` baseToken
+    /// @param baseTokenIn Amount of baseToken hypothetically sold.
+    /// @return Amount of fyToken hypothetically bought.
+    function sellBaseTokenPreview(uint128 baseTokenIn)
         public view override
         beforeMaturity
         returns(uint128)
     {
-        uint128 daiReserves = getDaiReserves();
-        uint128 fyDaiReserves = getFYDaiReserves();
+        uint128 baseTokenReserves = getBaseTokenReserves();
+        uint128 fyTokenReserves = getFYTokenReserves();
 
-        uint128 fyDaiOut = YieldMath.fyDaiOutForDaiIn(
-            daiReserves,
-            fyDaiReserves,
-            daiIn,
+        uint128 fyTokenOut = YieldMath.fyDaiOutForDaiIn(
+            baseTokenReserves,
+            fyTokenReserves,
+            baseTokenIn,
             toUint128(maturity - block.timestamp), // This can't be called after maturity
             k,
             g1
         );
 
         require(
-            sub(fyDaiReserves, fyDaiOut) >= add(daiReserves, daiIn),
-            "Pool: fyDai reserves too low"
+            sub(fyTokenReserves, fyTokenOut) >= add(baseTokenReserves, baseTokenIn),
+            "Pool: fy reserves too low"
         );
 
-        return fyDaiOut;
+        return fyTokenOut;
     }
 
-    /// @dev Buy Dai for fyDai
-    /// The trader needs to have called `fyDai.approve`
-    /// @param from Wallet providing the fyDai being sold. Must have approved the operator with `pool.addDelegate(operator)`.
-    /// @param to Wallet receiving the dai being bought
-    /// @param daiOut Amount of dai being bought that will be deposited in `to` wallet
-    /// @return Amount of fyDai that will be taken from `from` wallet
-    function buyDai(address from, address to, uint128 daiOut)
+    /// @dev Buy baseToken for fyToken
+    /// The trader needs to have called `fyToken.approve`
+    /// @param from Wallet providing the fyToken being sold. Must have approved the operator with `pool.addDelegate(operator)`.
+    /// @param to Wallet receiving the baseToken being bought
+    /// @param tokenOut Amount of baseToken being bought that will be deposited in `to` wallet
+    /// @return Amount of fyToken that will be taken from `from` wallet
+    function buyBaseToken(address from, address to, uint128 tokenOut)
         external override
-        onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from)
         returns(uint128)
     {
-        uint128 fyDaiIn = buyDaiPreview(daiOut);
+        uint128 fyTokenIn = buyBaseTokenPreview(tokenOut);
 
-        fyDai.transferFrom(from, address(this), fyDaiIn);
-        dai.transfer(to, daiOut);
-        emit Trade(maturity, from, to, toInt256(daiOut), -toInt256(fyDaiIn));
+        fyToken.transferFrom(from, address(this), fyTokenIn);
+        baseToken.transfer(to, tokenOut);
+        emit Trade(maturity, from, to, toInt256(tokenOut), -toInt256(fyTokenIn));
 
-        return fyDaiIn;
+        return fyTokenIn;
     }
 
-    /// @dev Returns how much fyDai would be required to buy `daiOut` dai.
-    /// @param daiOut Amount of dai hypothetically desired.
-    /// @return Amount of fyDai hypothetically required.
-    function buyDaiPreview(uint128 daiOut)
+    /// @dev Returns how much fyToken would be required to buy `tokenOut` baseToken.
+    /// @param tokenOut Amount of baseToken hypothetically desired.
+    /// @return Amount of fyToken hypothetically required.
+    function buyBaseTokenPreview(uint128 tokenOut)
         public view override
         beforeMaturity
         returns(uint128)
     {
         return YieldMath.fyDaiInForDaiOut(
-            getDaiReserves(),
-            getFYDaiReserves(),
-            daiOut,
+            getBaseTokenReserves(),
+            getFYTokenReserves(),
+            tokenOut,
             toUint128(maturity - block.timestamp), // This can't be called after maturity
             k,
             g2
         );
     }
 
-    /// @dev Sell fyDai for Dai
-    /// The trader needs to have called `fyDai.approve`
-    /// @param from Wallet providing the fyDai being sold. Must have approved the operator with `pool.addDelegate(operator)`.
-    /// @param to Wallet receiving the dai being bought
-    /// @param fyDaiIn Amount of fyDai being sold that will be taken from the user's wallet
-    /// @return Amount of dai that will be deposited on `to` wallet
-    function sellFYDai(address from, address to, uint128 fyDaiIn)
+    /// @dev Sell fyToken for baseToken
+    /// The trader needs to have called `fyToken.approve`
+    /// @param from Wallet providing the fyToken being sold. Must have approved the operator with `pool.addDelegate(operator)`.
+    /// @param to Wallet receiving the baseToken being bought
+    /// @param fyTokenIn Amount of fyToken being sold that will be taken from the user's wallet
+    /// @return Amount of baseToken that will be deposited on `to` wallet
+    function sellFYToken(address from, address to, uint128 fyTokenIn)
         external override
-        onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from)
         returns(uint128)
     {
-        uint128 daiOut = sellFYDaiPreview(fyDaiIn);
+        uint128 tokenOut = sellFYTokenPreview(fyTokenIn);
 
-        fyDai.transferFrom(from, address(this), fyDaiIn);
-        dai.transfer(to, daiOut);
-        emit Trade(maturity, from, to, toInt256(daiOut), -toInt256(fyDaiIn));
+        fyToken.transferFrom(from, address(this), fyTokenIn);
+        baseToken.transfer(to, tokenOut);
+        emit Trade(maturity, from, to, toInt256(tokenOut), -toInt256(fyTokenIn));
 
-        return daiOut;
+        return tokenOut;
     }
 
-    /// @dev Returns how much dai would be obtained by selling `fyDaiIn` fyDai.
-    /// @param fyDaiIn Amount of fyDai hypothetically sold.
-    /// @return Amount of Dai hypothetically bought.
-    function sellFYDaiPreview(uint128 fyDaiIn)
+    /// @dev Returns how much baseToken would be obtained by selling `fyTokenIn` fyToken.
+    /// @param fyTokenIn Amount of fyToken hypothetically sold.
+    /// @return Amount of baseToken hypothetically bought.
+    function sellFYTokenPreview(uint128 fyTokenIn)
         public view override
         beforeMaturity
         returns(uint128)
     {
         return YieldMath.daiOutForFYDaiIn(
-            getDaiReserves(),
-            getFYDaiReserves(),
-            fyDaiIn,
+            getBaseTokenReserves(),
+            getFYTokenReserves(),
+            fyTokenIn,
             toUint128(maturity - block.timestamp), // This can't be called after maturity
             k,
             g2
         );
     }
 
-    /// @dev Buy fyDai for dai
-    /// The trader needs to have called `dai.approve`
-    /// @param from Wallet providing the dai being sold. Must have approved the operator with `pool.addDelegate(operator)`.
-    /// @param to Wallet receiving the fyDai being bought
-    /// @param fyDaiOut Amount of fyDai being bought that will be deposited in `to` wallet
-    /// @return Amount of dai that will be taken from `from` wallet
-    function buyFYDai(address from, address to, uint128 fyDaiOut)
+    /// @dev Buy fyToken for baseToken
+    /// The trader needs to have called `baseToken.approve`
+    /// @param from Wallet providing the baseToken being sold. Must have approved the operator with `pool.addDelegate(operator)`.
+    /// @param to Wallet receiving the fyToken being bought
+    /// @param fyTokenOut Amount of fyToken being bought that will be deposited in `to` wallet
+    /// @return Amount of baseToken that will be taken from `from` wallet
+    function buyFYToken(address from, address to, uint128 fyTokenOut)
         external override
-        onlyHolderOrDelegate(from, "Pool: Only Holder Or Delegate")
+        onlyHolderOrDelegate(from)
         returns(uint128)
     {
-        uint128 daiIn = buyFYDaiPreview(fyDaiOut);
+        uint128 baseTokenIn = buyFYTokenPreview(fyTokenOut);
 
-        dai.transferFrom(from, address(this), daiIn);
-        fyDai.transfer(to, fyDaiOut);
-        emit Trade(maturity, from, to, -toInt256(daiIn), toInt256(fyDaiOut));
+        baseToken.transferFrom(from, address(this), baseTokenIn);
+        fyToken.transfer(to, fyTokenOut);
+        emit Trade(maturity, from, to, -toInt256(baseTokenIn), toInt256(fyTokenOut));
 
-        return daiIn;
+        return baseTokenIn;
     }
 
 
-    /// @dev Returns how much dai would be required to buy `fyDaiOut` fyDai.
-    /// @param fyDaiOut Amount of fyDai hypothetically desired.
-    /// @return Amount of Dai hypothetically required.
-    function buyFYDaiPreview(uint128 fyDaiOut)
+    /// @dev Returns how much baseToken would be required to buy `fyTokenOut` fyToken.
+    /// @param fyTokenOut Amount of fyToken hypothetically desired.
+    /// @return Amount of baseToken hypothetically required.
+    function buyFYTokenPreview(uint128 fyTokenOut)
         public view override
         beforeMaturity
         returns(uint128)
     {
-        uint128 daiReserves = getDaiReserves();
-        uint128 fyDaiReserves = getFYDaiReserves();
+        uint128 baseTokenReserves = getBaseTokenReserves();
+        uint128 fyTokenReserves = getFYTokenReserves();
 
-        uint128 daiIn = YieldMath.daiInForFYDaiOut(
-            daiReserves,
-            fyDaiReserves,
-            fyDaiOut,
+        uint128 baseTokenIn = YieldMath.daiInForFYDaiOut(
+            baseTokenReserves,
+            fyTokenReserves,
+            fyTokenOut,
             toUint128(maturity - block.timestamp), // This can't be called after maturity
             k,
             g1
         );
 
         require(
-            sub(fyDaiReserves, fyDaiOut) >= add(daiReserves, daiIn),
-            "Pool: fyDai reserves too low"
+            sub(fyTokenReserves, fyTokenOut) >= add(baseTokenReserves, baseTokenIn),
+            "Pool: fy reserves too low"
         );
 
-        return daiIn;
+        return baseTokenIn;
     }
 
-    /// @dev Returns the "virtual" fyDai reserves
-    function getFYDaiReserves()
+    /// @dev Returns the "virtual" fyToken reserves
+    function getFYTokenReserves()
         public view override
         returns(uint128)
     {
-        return toUint128(fyDai.balanceOf(address(this)).add(totalSupply()));
+        return toUint128(fyToken.balanceOf(address(this)).add(totalSupply()));
     }
 
-    /// @dev Returns the Dai reserves
-    function getDaiReserves()
+    /// @dev Returns the baseToken reserves
+    function getBaseTokenReserves()
         public view override
         returns(uint128)
     {
-        return toUint128(dai.balanceOf(address(this)));
+        return toUint128(baseToken.balanceOf(address(this)));
     }
 }

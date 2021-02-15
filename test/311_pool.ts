@@ -1,8 +1,10 @@
 import { artifacts, contract, web3 } from 'hardhat'
 
 const Pool = artifacts.require('Pool')
+const PoolFactory = artifacts.require('PoolFactory')
 const Dai = artifacts.require('DaiMock')
 const FYDai = artifacts.require('FYDaiMock')
+const SafeERC20Namer = artifacts.require('SafeERC20Namer')
 const YieldMath = artifacts.require('YieldMath')
 
 const { floor } = require('mathjs')
@@ -55,7 +57,9 @@ contract('Pool', async (accounts) => {
 
   before(async () => {
     const yieldMathLibrary = await YieldMath.new()
-    await Pool.link(yieldMathLibrary)
+    const safeERC20NamerLibrary = await SafeERC20Namer.new()
+    await PoolFactory.link(yieldMathLibrary)
+    await PoolFactory.link(safeERC20NamerLibrary)
   })
 
   beforeEach(async () => {
@@ -70,9 +74,12 @@ contract('Pool', async (accounts) => {
     fyDai1 = await FYDai.new(dai.address, maturity1)
 
     // Setup Pool
-    pool = await Pool.new(dai.address, fyDai1.address, 'Name', 'Symbol', {
+    const factory = await PoolFactory.new();
+    pool = await factory.createPool(dai.address, fyDai1.address, {
       from: owner,
     })
+    const poolAddress = await factory.calculatePoolAddress(dai.address, fyDai1.address)
+    pool = await Pool.at(poolAddress)
   })
 
   afterEach(async () => {
@@ -117,8 +124,8 @@ contract('Pool', async (accounts) => {
     })
 
     it('sells fyDai', async () => {
-      const daiReserves = await pool.getDaiReserves()
-      const fyDaiReserves = await pool.getFYDaiReserves()
+      const daiReserves = await pool.getBaseTokenReserves()
+      const fyDaiReserves = await pool.getFYTokenReserves()
       const fyDaiIn = toWad(1)
       const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
       const timeTillMaturity = new BN(maturity1).sub(now)
@@ -130,7 +137,7 @@ contract('Pool', async (accounts) => {
       )
 
       // Test preview since we are here
-      const daiOutPreview = await pool.sellFYDaiPreview(fyDaiIn, { from: operator })
+      const daiOutPreview = await pool.sellFYTokenPreview(fyDaiIn, { from: operator })
 
       const expectedDaiOut = sellFYDai(
         daiReserves.toString(),
@@ -142,7 +149,7 @@ contract('Pool', async (accounts) => {
       await pool.addDelegate(operator, { from: from })
       await fyDai1.mint(from, fyDaiIn, { from: owner })
       await fyDai1.approve(pool.address, fyDaiIn, { from: from })
-      const tx = await pool.sellFYDai(from, to, fyDaiIn, { from: operator })
+      const tx = await pool.sellFYToken(from, to, fyDaiIn, { from: operator })
 
       expectEvent(tx, 'Trade', {
         from: from,
@@ -160,8 +167,8 @@ contract('Pool', async (accounts) => {
     })
 
     it('buys dai', async () => {
-      const daiReserves = await pool.getDaiReserves()
-      const fyDaiReserves = await pool.getFYDaiReserves()
+      const daiReserves = await pool.getBaseTokenReserves()
+      const fyDaiReserves = await pool.getFYTokenReserves()
       const daiOut = toWad(1)
       const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
       const timeTillMaturity = new BN(maturity1).sub(now)
@@ -175,7 +182,7 @@ contract('Pool', async (accounts) => {
       )
 
       // Test preview since we are here
-      const fyDaiInPreview = await pool.buyDaiPreview(daiOut, { from: operator })
+      const fyDaiInPreview = await pool.buyBaseTokenPreview(daiOut, { from: operator })
 
       const expectedFYDaiIn = buyDai(
         daiReserves.toString(),
@@ -186,7 +193,7 @@ contract('Pool', async (accounts) => {
 
       await pool.addDelegate(operator, { from: from })
       await fyDai1.approve(pool.address, fyDaiTokens, { from: from })
-      const tx = await pool.buyDai(from, to, daiOut, { from: operator })
+      const tx = await pool.buyBaseToken(from, to, daiOut, { from: operator })
 
       const fyDaiIn = fyDaiTokens.sub(await fyDai1.balanceOf(from))
 
@@ -208,7 +215,7 @@ contract('Pool', async (accounts) => {
         const additionalFYDaiReserves = toWad(34.4)
         await fyDai1.mint(operator, additionalFYDaiReserves, { from: owner })
         await fyDai1.approve(pool.address, additionalFYDaiReserves, { from: operator })
-        await pool.sellFYDai(operator, operator, additionalFYDaiReserves, { from: operator })
+        await pool.sellFYToken(operator, operator, additionalFYDaiReserves, { from: operator })
       })
 
       it('mints liquidity tokens', async () => {
@@ -253,7 +260,7 @@ contract('Pool', async (accounts) => {
       it('mints liquidity tokens with dai only', async () => {
         const oneToken = toWad(1)
         const daiReserves = await dai.balanceOf(pool.address)
-        const fyDaiReservesVirtual = await pool.getFYDaiReserves()
+        const fyDaiReservesVirtual = await pool.getFYTokenReserves()
         const fyDaiReservesReal = await fyDai1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
         const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
@@ -267,7 +274,7 @@ contract('Pool', async (accounts) => {
         const poolTokensBefore = await pool.balanceOf(user2)
 
         await dai.approve(pool.address, maxDaiIn, { from: user1 })
-        const tx = await pool.mintWithDai(user1, user2, fyDaiToBuy, { from: user1 })
+        const tx = await pool.mintWithToken(user1, user2, fyDaiToBuy, { from: user1 })
 
         const [expectedMinted, expectedDaiIn] = mintWithDai(
           daiReserves.toString(),
@@ -330,7 +337,7 @@ contract('Pool', async (accounts) => {
         // Use this to test: https://www.desmos.com/calculator/ubsalzunpo
 
         const daiReserves = await dai.balanceOf(pool.address)
-        const fyDaiReservesVirtual = await pool.getFYDaiReserves()
+        const fyDaiReservesVirtual = await pool.getFYTokenReserves()
         const fyDaiReservesReal = await fyDai1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
         const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
@@ -338,7 +345,7 @@ contract('Pool', async (accounts) => {
         const lpTokensIn = toWad(1)
 
         await pool.approve(pool.address, lpTokensIn, { from: user1 })
-        const tx = await pool.burnForDai(user1, user2, lpTokensIn, { from: user1 })
+        const tx = await pool.burnForBaseToken(user1, user2, lpTokensIn, { from: user1 })
 
         const expectedDaiOut = burnForDai(
           daiReserves.toString(),
@@ -363,8 +370,8 @@ contract('Pool', async (accounts) => {
       })
 
       it('sells dai', async () => {
-        const daiReserves = await pool.getDaiReserves()
-        const fyDaiReserves = await pool.getFYDaiReserves()
+        const daiReserves = await pool.getBaseTokenReserves()
+        const fyDaiReserves = await pool.getFYTokenReserves()
         const daiIn = toWad(1)
 
         const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
@@ -377,7 +384,7 @@ contract('Pool', async (accounts) => {
         )
 
         // Test preview since we are here
-        const fyDaiOutPreview = await pool.sellDaiPreview(daiIn, { from: operator })
+        const fyDaiOutPreview = await pool.sellBaseTokenPreview(daiIn, { from: operator })
 
         const expectedFYDaiOut = sellDai(
           daiReserves.toString(),
@@ -390,7 +397,7 @@ contract('Pool', async (accounts) => {
         await dai.mint(from, daiIn)
         await dai.approve(pool.address, daiIn, { from: from })
 
-        const tx = await pool.sellDai(from, to, daiIn, { from: operator })
+        const tx = await pool.sellBaseToken(from, to, daiIn, { from: operator })
 
         const fyDaiOut = await fyDai1.balanceOf(to)
 
@@ -408,8 +415,8 @@ contract('Pool', async (accounts) => {
       })
 
       it('buys fyDai', async () => {
-        const daiReserves = await pool.getDaiReserves()
-        const fyDaiReserves = await pool.getFYDaiReserves()
+        const daiReserves = await pool.getBaseTokenReserves()
+        const fyDaiReserves = await pool.getFYTokenReserves()
         const fyDaiOut = toWad(1)
         const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
         const timeTillMaturity = new BN(maturity1).sub(now)
@@ -421,7 +428,7 @@ contract('Pool', async (accounts) => {
         )
 
         // Test preview since we are here
-        const daiInPreview = await pool.buyFYDaiPreview(fyDaiOut, { from: operator })
+        const daiInPreview = await pool.buyFYTokenPreview(fyDaiOut, { from: operator })
 
         const expectedDaiIn = buyFYDai(
           daiReserves.toString(),
@@ -435,7 +442,7 @@ contract('Pool', async (accounts) => {
         const daiBalanceBefore = await dai.balanceOf(from)
 
         await dai.approve(pool.address, daiTokens, { from: from })
-        const tx = await pool.buyFYDai(from, to, fyDaiOut, { from: operator })
+        const tx = await pool.buyFYToken(from, to, fyDaiOut, { from: operator })
 
         const daiIn = daiBalanceBefore.sub(await dai.balanceOf(from))
 
@@ -457,14 +464,14 @@ contract('Pool', async (accounts) => {
         await helper.advanceBlock()
         const oneToken = toWad(1)
 
-        await expectRevert(pool.sellDaiPreview(oneToken, { from: operator }), 'Pool: Too late')
-        await expectRevert(pool.sellDai(from, to, oneToken, { from: from }), 'Pool: Too late')
-        await expectRevert(pool.buyDaiPreview(oneToken, { from: operator }), 'Pool: Too late')
-        await expectRevert(pool.buyDai(from, to, oneToken, { from: from }), 'Pool: Too late')
-        await expectRevert(pool.sellFYDaiPreview(oneToken, { from: operator }), 'Pool: Too late')
-        await expectRevert(pool.sellFYDai(from, to, oneToken, { from: from }), 'Pool: Too late')
-        await expectRevert(pool.buyFYDaiPreview(oneToken, { from: operator }), 'Pool: Too late')
-        await expectRevert(pool.buyFYDai(from, to, oneToken, { from: from }), 'Pool: Too late')
+        await expectRevert(pool.sellBaseTokenPreview(oneToken, { from: operator }), 'Pool: Too late')
+        await expectRevert(pool.sellBaseToken(from, to, oneToken, { from: from }), 'Pool: Too late')
+        await expectRevert(pool.buyBaseTokenPreview(oneToken, { from: operator }), 'Pool: Too late')
+        await expectRevert(pool.buyBaseToken(from, to, oneToken, { from: from }), 'Pool: Too late')
+        await expectRevert(pool.sellFYTokenPreview(oneToken, { from: operator }), 'Pool: Too late')
+        await expectRevert(pool.sellFYToken(from, to, oneToken, { from: from }), 'Pool: Too late')
+        await expectRevert(pool.buyFYTokenPreview(oneToken, { from: operator }), 'Pool: Too late')
+        await expectRevert(pool.buyFYToken(from, to, oneToken, { from: from }), 'Pool: Too late')
       })
     })
   })
