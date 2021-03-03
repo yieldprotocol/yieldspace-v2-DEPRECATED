@@ -412,6 +412,42 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         return baseTokenIn;
     }
 
+    /// @dev Mint liquidity tokens in exchange for LP tokens from a different Pool.
+    /// @param from Wallet providing the LP tokens. Must have approved the operator with `pool.addDelegate(operator)`.
+    /// @param to Wallet receiving the minted liquidity tokens.
+    /// @param pool Origin pool for the fyToken being rolled.
+    /// @param fyTokenIn Amount of `fyToken` that will be rolled.
+    // @return The amount of `fyToken` obtained.
+    function rollFYToken(address from, address to, IPool pool, uint128 fyTokenIn)
+        external
+        onlyHolderOrDelegate(from)
+        returns (uint256)
+    {
+        // TODO: Either whitelist the pools, or check balances before and after
+        uint128 baseTokenIn = pool.sellFYToken(from, address(this), fyTokenIn);
+        uint128 baseTokenReserves = sub(getBaseTokenReserves(), baseTokenIn);
+        uint128 fyTokenReserves = getFYTokenReserves();
+
+        uint128 fyTokenOut = YieldMath.fyDaiOutForDaiIn(
+            baseTokenReserves,
+            fyTokenReserves,
+            baseTokenIn,
+            uint128(maturity - block.timestamp), // This can't be called after maturity
+            k,
+            g1
+        );
+
+        require(
+            sub(fyTokenReserves, fyTokenOut) >= add(baseTokenReserves, baseTokenIn),
+            "Pool: fyToken reserves too low"
+        );
+
+        fyToken.transfer(to, fyTokenOut);
+        emit Trade(maturity, from, to, -toInt256(baseTokenIn), -toInt256(fyTokenOut));
+
+        return fyTokenOut;
+    }
+
     /// @dev Returns the "virtual" fyToken reserves
     function getFYTokenReserves()
         public view override
