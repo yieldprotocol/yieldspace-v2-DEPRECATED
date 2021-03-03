@@ -694,6 +694,7 @@ library Math64x64 {
         else if (r == rr + 1) return uint128 (rr);
         r = r + rr + 1 >> 1;
       }
+      return 0; // Unreachable, silences a warning
     }
   }
 }

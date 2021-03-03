@@ -3,7 +3,7 @@ pragma solidity ^0.7.5;
 
 import "./IERC20.sol";
 
-interface IDai is IERC20 {
+interface IDai is IERC20 { // Doesn't conform to IERC2612
     function nonces(address user) external view returns (uint256);
     function permit(address holder, address spender, uint256 nonce, uint256 expiry,
                     bool allowed, uint8 v, bytes32 r, bytes32 s) external;
