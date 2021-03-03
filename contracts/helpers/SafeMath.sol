@@ -22,7 +22,7 @@ library SafeMath {
     }
     /// @dev Overflow-protected substraction, from OpenZeppelin
     function sub2(uint128 a, uint128 b) internal pure returns (uint128) {
-        require(b <= a, "Pool: fyDai reserves too low");
+        require(b <= a, "Pool: fyToken reserves too low");
         uint128 c = a - b;
 
         return c;

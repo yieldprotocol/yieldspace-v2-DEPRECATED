@@ -34,10 +34,10 @@ contract Delegable is IDelegable {
     }
 
     /// @dev Require that msg.sender is the account holder or a delegate
-    modifier onlyHolderOrDelegate(address holder, string memory errorMessage) {
+    modifier onlyHolderOrDelegate(address holder) {
         require(
             msg.sender == holder || delegated[holder][msg.sender],
-            errorMessage
+            "Only Holder Or Delegate"
         );
         _;
     }

@@ -38,8 +38,8 @@ contract('YieldMath - Base', async (accounts) => {
   const k = ONE64.div(secondsInFourYears)
 
   const g0 = ONE64 // No fees
-  const g1 = new BN('950').mul(ONE64).div(new BN('1000')) // Sell dai to the pool
-  const g2 = new BN('1000').mul(ONE64).div(new BN('950')) // Sell fyDai to the pool
+  const g1 = new BN('950').mul(ONE64).div(new BN('1000')) // Sell base to the pool
+  const g2 = new BN('1000').mul(ONE64).div(new BN('950')) // Sell fyToken to the pool
 
   before(async () => {
     const yieldMathLibrary = await YieldMath.new()
@@ -58,13 +58,13 @@ contract('YieldMath - Base', async (accounts) => {
     await helper.revertToSnapshot(snapshotId)
   })
 
-  describe('fyDaiOutForDaiIn reverts', () => {
+  describe('fyTokenOutForBaseIn reverts', () => {
     beforeEach(async () => {})
 
     // If time to maturity is higher than 1/k, multiplied or divided by g, we are too far from maturity.
     it('Too far from maturity', async () => {
       await expectRevert(
-        yieldMath.fyDaiOutForDaiIn(
+        yieldMath.fyTokenOutForBaseIn(
           OneToken.mul(TEN),
           OneToken.mul(TEN),
           OneToken,
@@ -76,37 +76,37 @@ contract('YieldMath - Base', async (accounts) => {
       )
     })
 
-    // If the dai in, added to the dai reserves, exceed 2**128, we will have too much dai to operate
-    it('Too much dai in', async () => {
+    // If the base in, added to the base reserves, exceed 2**128, we will have too much base to operate
+    it('Too much base in', async () => {
       await expectRevert(
-        yieldMath.fyDaiOutForDaiIn(MAX, OneToken.mul(TEN), OneToken, secondsInOneYear, k, g0),
-        'YieldMath: Too much dai in'
+        yieldMath.fyTokenOutForBaseIn(MAX, OneToken.mul(TEN), OneToken, secondsInOneYear, k, g0),
+        'YieldMath: Too much base in'
       )
     })
 
-    // If the fyDai to be obtained exceeds the fyDai reserves, the trade reverts
-    it('Insufficient fyDai reserves', async () => {
+    // If the fyToken to be obtained exceeds the fyToken reserves, the trade reverts
+    it('Insufficient fyToken reserves', async () => {
       await expectRevert(
-        yieldMath.fyDaiOutForDaiIn(OneToken, OneToken.mul(TEN), OneToken.mul(TWENTY), secondsInOneYear, k, g0),
-        'YieldMath: Insufficient fyDai reserves'
+        yieldMath.fyTokenOutForBaseIn(OneToken, OneToken.mul(TEN), OneToken.mul(TWENTY), secondsInOneYear, k, g0),
+        'YieldMath: Insufficient fyToken reserves'
       )
     })
 
     /* it("Rounding induced error", async () => {
       await expectRevert(
-        yieldMath.fyDaiOutForDaiIn(OneToken, OneToken, 0, secondsInOneYear, k, g0),
+        yieldMath.fyTokenOutForBaseIn(OneToken, OneToken, 0, secondsInOneYear, k, g0),
         'YieldMath: Rounding induced error'
       )
     }) */
   })
 
-  describe('daiOutForFYDaiIn reverts', () => {
+  describe('baseOutForFYTokenIn reverts', () => {
     beforeEach(async () => {})
 
     // If time to maturity is higher than 1/k, multiplied or divided by g, we are too far from maturity.
     it('Too far from maturity', async () => {
       await expectRevert(
-        yieldMath.daiOutForFYDaiIn(
+        yieldMath.baseOutForFYTokenIn(
           OneToken.mul(TEN),
           OneToken.mul(TEN),
           OneToken,
@@ -118,37 +118,37 @@ contract('YieldMath - Base', async (accounts) => {
       )
     })
 
-    // If the fyDai in, added to the fyDai reserves, exceed 2**128, we will have too much fyDai to operate
-    it('Too much fyDai in', async () => {
+    // If the fyToken in, added to the fyToken reserves, exceed 2**128, we will have too much fyToken to operate
+    it('Too much fyToken in', async () => {
       await expectRevert(
-        yieldMath.daiOutForFYDaiIn(OneToken.mul(TEN), MAX, OneToken, secondsInOneYear, k, g0),
-        'YieldMath: Too much fyDai in'
+        yieldMath.baseOutForFYTokenIn(OneToken.mul(TEN), MAX, OneToken, secondsInOneYear, k, g0),
+        'YieldMath: Too much fyToken in'
       )
     })
 
-    // If the dai to be obtained exceeds the dai reserves, the trade reverts
-    it('Insufficient dai reserves', async () => {
+    // If the base to be obtained exceeds the base reserves, the trade reverts
+    it('Insufficient base reserves', async () => {
       await expectRevert(
-        yieldMath.daiOutForFYDaiIn(OneToken.mul(TEN), OneToken, OneToken.mul(TWENTY), secondsInOneYear, k, g0),
-        'YieldMath: Insufficient dai reserves'
+        yieldMath.baseOutForFYTokenIn(OneToken.mul(TEN), OneToken, OneToken.mul(TWENTY), secondsInOneYear, k, g0),
+        'YieldMath: Insufficient base reserves'
       )
     })
 
     /* it("Rounding induced error", async () => {
       await expectRevert(
-        yieldMath.daiOutForFYDaiIn(OneToken, OneToken, 0, secondsInOneYear, k, g0),
+        yieldMath.baseOutForFYTokenIn(OneToken, OneToken, 0, secondsInOneYear, k, g0),
         'YieldMath: Rounding induced error'
       )
     }) */
   })
 
-  describe('fyDaiInForDaiOut reverts', () => {
+  describe('fyTokenInForBaseOut reverts', () => {
     beforeEach(async () => {})
 
     // If time to maturity is higher than 1/k, multiplied or divided by g, we are too far from maturity.
     it('Too far from maturity', async () => {
       await expectRevert(
-        yieldMath.fyDaiInForDaiOut(
+        yieldMath.fyTokenInForBaseOut(
           OneToken.mul(TEN),
           OneToken.mul(TEN),
           OneToken,
@@ -160,36 +160,36 @@ contract('YieldMath - Base', async (accounts) => {
       )
     })
 
-    it('Too much dai out', async () => {
+    it('Too much base out', async () => {
       await expectRevert(
-        yieldMath.fyDaiInForDaiOut(OneToken.mul(TWO), OneToken, OneToken.mul(THREE), secondsInOneYear, k, g0),
-        'YieldMath: Too much dai out'
+        yieldMath.fyTokenInForBaseOut(OneToken.mul(TWO), OneToken, OneToken.mul(THREE), secondsInOneYear, k, g0),
+        'YieldMath: Too much base out'
       )
     })
 
-    // If the dai to be obtained exceeds the dai reserves, the trade reverts
-    it('Resulting fyDai reserves too high', async () => {
+    // If the base to be obtained exceeds the base reserves, the trade reverts
+    it('Resulting fyToken reserves too high', async () => {
       await expectRevert(
-        yieldMath.fyDaiInForDaiOut(OneToken.mul(TEN), MAX, OneToken, secondsInOneYear, k, g0),
-        'YieldMath: Resulting fyDai reserves too high'
+        yieldMath.fyTokenInForBaseOut(OneToken.mul(TEN), MAX, OneToken, secondsInOneYear, k, g0),
+        'YieldMath: Resulting fyToken reserves too high'
       )
     })
 
     /* it("Rounding induced error", async () => {
       await expectRevert(
-        yieldMath.fyDaiInForDaiOut(OneToken, OneToken, 0, secondsInOneYear, k, g0),
+        yieldMath.fyTokenInForBaseOut(OneToken, OneToken, 0, secondsInOneYear, k, g0),
         'YieldMath: Rounding induced error'
       )
     }) */
   })
 
-  describe('daiInForFYDaiOut reverts', () => {
+  describe('baseInForFYTokenOut reverts', () => {
     beforeEach(async () => {})
 
     // If time to maturity is higher than 1/k, multiplied or divided by g, we are too far from maturity.
     it('Too far from maturity', async () => {
       await expectRevert(
-        yieldMath.daiInForFYDaiOut(
+        yieldMath.baseInForFYTokenOut(
           OneToken.mul(TEN),
           OneToken.mul(TEN),
           OneToken,
@@ -201,24 +201,24 @@ contract('YieldMath - Base', async (accounts) => {
       )
     })
 
-    it('Too much fyDai out', async () => {
+    it('Too much fyToken out', async () => {
       await expectRevert(
-        yieldMath.daiInForFYDaiOut(OneToken, OneToken, OneToken.mul(TWO), secondsInOneYear, k, g0),
-        'YieldMath: Too much fyDai out'
+        yieldMath.baseInForFYTokenOut(OneToken, OneToken, OneToken.mul(TWO), secondsInOneYear, k, g0),
+        'YieldMath: Too much fyToken out'
       )
     })
 
-    // If the dai to be traded in makes the dai reserves to go over 2**128, the trade reverts
-    it('Resulting dai reserves too high', async () => {
+    // If the base to be traded in makes the base reserves to go over 2**128, the trade reverts
+    it('Resulting base reserves too high', async () => {
       await expectRevert(
-        yieldMath.daiInForFYDaiOut(MAX.sub(OneToken), OneToken.mul(TEN), OneToken, secondsInOneYear, k, g0),
-        'YieldMath: Resulting dai reserves too high'
+        yieldMath.baseInForFYTokenOut(MAX.sub(OneToken), OneToken.mul(TEN), OneToken, secondsInOneYear, k, g0),
+        'YieldMath: Resulting base reserves too high'
       )
     })
 
     /* it('Rounding induced error', async () => {
       await expectRevert(
-        yieldMath.daiInForFYDaiOut(OneToken, OneToken, 0, secondsInOneYear, k, g0),
+        yieldMath.baseInForFYTokenOut(OneToken, OneToken, 0, secondsInOneYear, k, g0),
         'YieldMath: Rounding induced error'
       )
     }) */

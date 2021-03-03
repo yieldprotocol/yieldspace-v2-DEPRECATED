@@ -1,11 +1,11 @@
 const { bignumber, add, subtract, multiply, divide, pow } = require('mathjs')
 
 // https://www.desmos.com/calculator/mllhtohxfx
-/* export function mint(daiReserves: any, fyDaiReserves: any, supply: any, dai: any): [any, any] {
-  const Z = bignumber(daiReserves)
-  const Y = bignumber(fyDaiReserves)
+/* export function mint(baseReserves: any, fyTokenReserves: any, supply: any, base: any): [any, any] {
+  const Z = bignumber(baseReserves)
+  const Y = bignumber(fyTokenReserves)
   const S = bignumber(supply)
-  const z = bignumber(dai)
+  const z = bignumber(base)
   const m = divide(multiply(S, z), Z)
   const y = divide(multiply(Y, m), S)
 
@@ -13,39 +13,39 @@ const { bignumber, add, subtract, multiply, divide, pow } = require('mathjs')
 } */
 
 export function tradeAndMint(
-  daiReserves: any,
-  fyDaiReservesVirtual: any,
-  fyDaiReservesReal: any,
+  baseReserves: any,
+  fyTokenReservesVirtual: any,
+  fyTokenReservesReal: any,
   supply: any,
-  fyDaiIn: any,
-  fyDaiToBuy: any,
+  fyTokenIn: any,
+  fyTokenToBuy: any,
   timeTillMaturity: any
 ): [any, any] {
-  const Z = bignumber(daiReserves)
-  const YV = bignumber(fyDaiReservesVirtual)
-  const YR = bignumber(fyDaiReservesReal)
+  const Z = bignumber(baseReserves)
+  const YV = bignumber(fyTokenReservesVirtual)
+  const YR = bignumber(fyTokenReservesReal)
   const S = bignumber(supply)
-  const yIn = bignumber(fyDaiIn)
-  const yBuy = bignumber(fyDaiToBuy)
+  const yIn = bignumber(fyTokenIn)
+  const yBuy = bignumber(fyTokenToBuy)
   const T = bignumber(timeTillMaturity)
 
   let zSold
   if (yBuy > 0) {
-    zSold = buyFYDai(Z, YV, yBuy, T)
+    zSold = buyFYToken(Z, YV, yBuy, T)
   } else {
-    zSold = bignumber(-sellFYDai(Z, YV, -yBuy, T)) // A negative yBuy (fyDai to buy) means that fyDai was actually sold to the pool
+    zSold = bignumber(-sellFYToken(Z, YV, -yBuy, T)) // A negative yBuy (fyToken to buy) means that fyToken was actually sold to the pool
   }
 
   return mint(add(Z, zSold), subtract(YR, yBuy), S, add(yIn, yBuy))
 }
 
-export function mint(daiReserves: any, fyDaiReservesReal: any, supply: any, fyDaiIn: any): [any, any] {
-  const Z = bignumber(daiReserves)
-  const Y = bignumber(fyDaiReservesReal)
+export function mint(baseReserves: any, fyTokenReservesReal: any, supply: any, fyTokenIn: any): [any, any] {
+  const Z = bignumber(baseReserves)
+  const Y = bignumber(fyTokenReservesReal)
   const S = bignumber(supply)
-  const yIn = bignumber(fyDaiIn)
+  const yIn = bignumber(fyTokenIn)
 
-  // Mint specifying how much Dai to take in. Reverse of `mint`.
+  // Mint specifying how much Base to take in. Reverse of `mint`.
   const m = divide(multiply(S, yIn), Y)
   const zIn = divide(multiply(Z, m), S)
 
@@ -53,9 +53,9 @@ export function mint(daiReserves: any, fyDaiReservesReal: any, supply: any, fyDa
 }
 
 // https://www.desmos.com/calculator/ubsalzunpo
-export function burn(daiReserves: any, fyDaiReservesReal: any, supply: any, lpTokens: any): [any, any] {
-  const Z = bignumber(daiReserves)
-  const Y = bignumber(fyDaiReservesReal)
+export function burn(baseReserves: any, fyTokenReservesReal: any, supply: any, lpTokens: any): [any, any] {
+  const Z = bignumber(baseReserves)
+  const Y = bignumber(fyTokenReservesReal)
   const S = bignumber(supply)
   const x = bignumber(lpTokens)
   const z = divide(multiply(x, Z), S)
@@ -65,35 +65,35 @@ export function burn(daiReserves: any, fyDaiReservesReal: any, supply: any, lpTo
 }
 
 export function burnAndTrade(
-  daiReserves: any,
-  fyDaiReservesVirtual: any,
-  fyDaiReservesReal: any,
+  baseReserves: any,
+  fyTokenReservesVirtual: any,
+  fyTokenReservesReal: any,
   supply: any,
   lpTokens: any,
-  fyDaiToSell: any,
+  fyTokenToSell: any,
   timeTillMaturity: any
 ): [any, any] {
-  const Z = bignumber(daiReserves)
-  const YV = bignumber(fyDaiReservesVirtual)
-  const YR = bignumber(fyDaiReservesReal)
+  const Z = bignumber(baseReserves)
+  const YV = bignumber(fyTokenReservesVirtual)
+  const YR = bignumber(fyTokenReservesReal)
   const S = bignumber(supply)
   const x = bignumber(lpTokens)
-  const y2 = bignumber(fyDaiToSell)
+  const y2 = bignumber(fyTokenToSell)
   const T = bignumber(timeTillMaturity)
 
   const [z1, y1] = burn(Z, YR, S, x)
-  const z2 = sellFYDai(subtract(Z, z1), subtract(YV, y1), y2, T)
+  const z2 = sellFYToken(subtract(Z, z1), subtract(YV, y1), y2, T)
 
   return [add(z1, z2), subtract(y1, y2)]
 }
 
 // https://www.desmos.com/calculator/5nf2xuy6yb
-export function sellDai(daiReserves: any, fyDaiReserves: any, dai: any, timeTillMaturity: any): any {
+export function sellBase(baseReserves: any, fyTokenReserves: any, base: any, timeTillMaturity: any): any {
   const precision = bignumber(1000000000000) // Flat fee charged to prevent issues due to low precision
-  const Z = bignumber(daiReserves)
-  const Y = bignumber(fyDaiReserves)
+  const Z = bignumber(baseReserves)
+  const Y = bignumber(fyTokenReserves)
   const T = bignumber(timeTillMaturity)
-  const x = bignumber(dai)
+  const x = bignumber(base)
   const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(950 / 1000)
   const t = multiply(k, T)
@@ -110,12 +110,12 @@ export function sellDai(daiReserves: any, fyDaiReserves: any, dai: any, timeTill
 }
 
 // https://www.desmos.com/calculator/6jlrre7ybt
-export function sellFYDai(daiReserves: any, fyDaiReserves: any, fyDai: any, timeTillMaturity: any): any {
+export function sellFYToken(baseReserves: any, fyTokenReserves: any, fyToken: any, timeTillMaturity: any): any {
   const precision = bignumber(1000000000000)
-  const Z = bignumber(daiReserves)
-  const Y = bignumber(fyDaiReserves)
+  const Z = bignumber(baseReserves)
+  const Y = bignumber(fyTokenReserves)
   const T = bignumber(timeTillMaturity)
-  const x = bignumber(fyDai)
+  const x = bignumber(fyToken)
   const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(1000 / 950)
   const t = multiply(k, T)
@@ -132,12 +132,12 @@ export function sellFYDai(daiReserves: any, fyDaiReserves: any, fyDai: any, time
 }
 
 // https://www.desmos.com/calculator/0rgnmtckvy
-export function buyDai(daiReserves: any, fyDaiReserves: any, dai: any, timeTillMaturity: any): any {
+export function buyBase(baseReserves: any, fyTokenReserves: any, base: any, timeTillMaturity: any): any {
   const precision = bignumber(1000000000000)
-  const Z = bignumber(daiReserves)
-  const Y = bignumber(fyDaiReserves)
+  const Z = bignumber(baseReserves)
+  const Y = bignumber(fyTokenReserves)
   const T = bignumber(timeTillMaturity)
-  const x = bignumber(dai)
+  const x = bignumber(base)
   const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(1000 / 950)
   const t = multiply(k, T)
@@ -154,12 +154,12 @@ export function buyDai(daiReserves: any, fyDaiReserves: any, dai: any, timeTillM
 }
 
 // https://www.desmos.com/calculator/ws5oqj8x5i
-export function buyFYDai(daiReserves: any, fyDaiReserves: any, fyDai: any, timeTillMaturity: any): any {
+export function buyFYToken(baseReserves: any, fyTokenReserves: any, fyToken: any, timeTillMaturity: any): any {
   const precision = bignumber(1000000000000)
-  const Z = bignumber(daiReserves)
-  const Y = bignumber(fyDaiReserves)
+  const Z = bignumber(baseReserves)
+  const Y = bignumber(fyTokenReserves)
   const T = bignumber(timeTillMaturity)
-  const x = bignumber(fyDai)
+  const x = bignumber(fyToken)
   const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(950 / 1000)
   const t = multiply(k, T)

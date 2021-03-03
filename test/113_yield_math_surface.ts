@@ -8,7 +8,7 @@ import * as helper from 'ganache-time-traveler'
 import { BN } from '@openzeppelin/test-helpers'
 import { expect } from 'chai'
 // const { bignumber, add, subtract, multiply, divide, pow, floor } = require('mathjs')
-import { sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
+import { sellBase, sellFYToken, buyBase, buyFYToken } from './shared/yieldspace'
 const { floor } = require('mathjs')
 import { Contract } from './shared/fixtures'
 
@@ -27,8 +27,8 @@ const secondsInFourYears = secondsInOneYear.mul(FOUR) // Seconds in 4 years
 const k = ONE64.div(secondsInFourYears)
 
 const g0 = ONE64 // No fees
-const g1 = new BN('950').mul(ONE64).div(new BN('1000')) // Sell dai to the pool
-const g2 = new BN('1000').mul(ONE64).div(new BN('950')) // Sell fyDai to the pool
+const g1 = new BN('950').mul(ONE64).div(new BN('1000')) // Sell base to the pool
+const g2 = new BN('1000').mul(ONE64).div(new BN('950')) // Sell fyToken to the pool
 
 const PRECISION = new BN('100000000000000') // 1e14
 
@@ -60,14 +60,14 @@ contract('YieldMath - Surface', async (accounts) => {
 
   let yieldMath: Contract
 
-  const daiReserves = [
+  const baseReserves = [
     // '100000000000000000000000',
     // '1000000000000000000000000',
     '10000000000000000000000000',
     '100000000000000000000000000',
     '1000000000000000000000000000',
   ]
-  const fyDaiReserveDeltas = [
+  const fyTokenReserveDeltas = [
     // '10000000000000000000',
     // '1000000000000000000000',
     '100000000000000000000000',
@@ -110,36 +110,36 @@ contract('YieldMath - Surface', async (accounts) => {
     it('Compare a lattice of on-chain vs off-chain yieldspace trades', async function () {
       this.timeout(0)
 
-      for (var daiReserve of daiReserves) {
-        for (var fyDaiReserveDelta of fyDaiReserveDeltas) {
+      for (var baseReserve of baseReserves) {
+        for (var fyTokenReserveDelta of fyTokenReserveDeltas) {
           for (var tradeSize of tradeSizes) {
             for (var timeTillMaturity of timesTillMaturity) {
-              console.log(`daiReserve, fyDaiReserveDelta, tradeSize, timeTillMaturity`)
-              console.log(`${daiReserve}, ${fyDaiReserveDelta}, ${tradeSize}, ${timeTillMaturity}`)
-              const fyDaiReserve = new BN(daiReserve).add(new BN(fyDaiReserveDelta)).toString()
+              console.log(`baseReserve, fyTokenReserveDelta, tradeSize, timeTillMaturity`)
+              console.log(`${baseReserve}, ${fyTokenReserveDelta}, ${tradeSize}, ${timeTillMaturity}`)
+              const fyTokenReserve = new BN(baseReserve).add(new BN(fyTokenReserveDelta)).toString()
               let offChain, onChain
-              offChain = sellFYDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.daiOutForFYDaiIn(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g2)
-              console.log(`offChain sellFYDai: ${floor(offChain).toFixed()}`)
-              console.log(`onChain sellFYDai: ${onChain}`)
+              offChain = sellFYToken(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.baseOutForFYTokenIn(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g2)
+              console.log(`offChain sellFYToken: ${floor(offChain).toFixed()}`)
+              console.log(`onChain sellFYToken: ${onChain}`)
               almostEqual(onChain, floor(offChain).toFixed(), PRECISION)
 
-              offChain = sellDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.fyDaiOutForDaiIn(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g1)
-              console.log(`offChain sellDai: ${floor(offChain).toFixed()}`)
-              console.log(`onChain sellDai: ${onChain}`)
+              offChain = sellBase(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.fyTokenOutForBaseIn(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g1)
+              console.log(`offChain sellBase: ${floor(offChain).toFixed()}`)
+              console.log(`onChain sellBase: ${onChain}`)
               almostEqual(onChain, floor(offChain).toFixed(), PRECISION)
 
-              offChain = buyDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.fyDaiInForDaiOut(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g2)
-              console.log(`offChain buyDai: ${floor(offChain).toFixed()}`)
-              console.log(`onChain buyDai: ${onChain}`)
+              offChain = buyBase(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.fyTokenInForBaseOut(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g2)
+              console.log(`offChain buyBase: ${floor(offChain).toFixed()}`)
+              console.log(`onChain buyBase: ${onChain}`)
               almostEqual(onChain, floor(offChain).toFixed(), PRECISION)
 
-              offChain = buyFYDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.daiInForFYDaiOut(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g1)
-              console.log(`offChain buyFYDai: ${floor(offChain).toFixed()}`)
-              console.log(`onChain buyFYDai: ${onChain}`)
+              offChain = buyFYToken(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.baseInForFYTokenOut(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g1)
+              console.log(`offChain buyFYToken: ${floor(offChain).toFixed()}`)
+              console.log(`onChain buyFYToken: ${onChain}`)
               almostEqual(onChain, floor(offChain).toFixed(), PRECISION)
 
               console.log()
