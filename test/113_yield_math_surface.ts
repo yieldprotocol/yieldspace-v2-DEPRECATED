@@ -21,8 +21,6 @@ describe('YieldMath - Surface', async () => {
   let yieldMathLibrary: YieldMath
   let yieldMath: YieldMathWrapper
 
-  const MAX = BigNumber.from('340282366920938463463374607431768211455') // type(uint128).max
-  const OneToken = BigNumber.from('1000000000000000000') // 1e18
   const ONE64 = BigNumber.from('18446744073709551616') // In 64.64 format
   const secondsInOneYear = BigNumber.from(60 * 60 * 24 * 365) // Seconds in 4 years
   const secondsInFourYears = secondsInOneYear.mul(4) // Seconds in 4 years
