@@ -3,13 +3,8 @@ import { YieldMath } from '../typechain/YieldMath'
 
 import { BigNumber } from 'ethers'
 
-import { ethers, waffle } from 'hardhat'
+import { ethers } from 'hardhat'
 import { expect } from 'chai'
-const { deployContract, link } = waffle
-
-// @ts-ignore
-// import { BN } from '@openzeppelin/test-helpers'
-
 
 describe('YieldMath - Reverts', async () => {
   let yieldMathLibrary: YieldMath

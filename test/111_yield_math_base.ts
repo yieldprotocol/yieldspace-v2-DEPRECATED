@@ -3,10 +3,7 @@ import { YieldMath } from '../typechain/YieldMath'
 
 import { BigNumber } from 'ethers'
 
-import { ethers, waffle } from 'hardhat'
-import { expect } from 'chai'
-const { deployContract, link } = waffle
-
+import { ethers } from 'hardhat'
 
 /**
  * Throws given message unless given condition is true.
