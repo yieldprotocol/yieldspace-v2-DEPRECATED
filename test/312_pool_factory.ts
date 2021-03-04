@@ -7,27 +7,15 @@ import { DaiMock as Dai } from '../typechain/DaiMock'
 import { FYDaiMock as FYDai } from '../typechain/FYDaiMock'
 import { SafeERC20Namer } from '../typechain/SafeERC20Namer'
 
-import { BigNumber } from 'ethers'
-
 import { ethers } from 'hardhat'
 import { expect, use } from 'chai'
 use(require('chai-bignumber')());
-const timeMachine = require('ether-time-traveler')
-
-const PRECISION = BigNumber.from('100000000000000') // 1e14
-
-function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
-  // Check that abs(x - y) < p:
-  const diff = x.gt(y) ? BigNumber.from(x).sub(y) : BigNumber.from(y).sub(x) // Not sure why I have to convert x and y to BigNumber
-  expect(diff.div(p)).to.eq(0)    // Hack to avoid silly conversions. BigNumber truncates decimals off.
-}
 
 async function currentTimestamp() {
   return (await ethers.provider.getBlock(ethers.provider.getBlockNumber())).timestamp
 }
 
 describe('PoolFactory', async () => {
-  let snapshotId: string
   let ownerAcc: SignerWithAddress
 
   let yieldMathLibrary: YieldMath
@@ -43,8 +31,6 @@ describe('PoolFactory', async () => {
   let maturity1: number
 
   before(async () => {
-    snapshotId = await timeMachine.takeSnapshot(ethers.provider)
-
     const signers = await ethers.getSigners()
     ownerAcc = signers[0]
 
@@ -70,8 +56,6 @@ describe('PoolFactory', async () => {
   })
 
   beforeEach(async () => {
-    snapshotId = await timeMachine.takeSnapshot(ethers.provider)
-    
     dai = await DaiFactory.deploy() as unknown as Dai
     await dai.deployed();
 
@@ -81,10 +65,6 @@ describe('PoolFactory', async () => {
     
     factory = await PoolFactoryFactory.deploy() as unknown as PoolFactory
     await factory.deployed();
-  })
-
-  afterEach(async () => {
-    await timeMachine.revertToSnapshot(ethers.provider, snapshotId)
   })
 
   it('should create pools', async () => {
