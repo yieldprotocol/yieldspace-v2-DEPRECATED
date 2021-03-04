@@ -7,9 +7,6 @@ import { ethers } from 'hardhat'
 import { expect, use } from 'chai'
 use(require('chai-bignumber')());
 
-import { sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
-const { floor } = require('mathjs')
-
 const PRECISION = BigNumber.from('100000000000000') // 1e14
 
 function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {

@@ -1,70 +1,108 @@
-import { artifacts, contract, web3 } from 'hardhat'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 
-const Pool = artifacts.require('Pool')
-const PoolFactory = artifacts.require('PoolFactory')
-const Dai = artifacts.require('DaiMock')
-const FYDai = artifacts.require('FYDaiMock')
-const SafeERC20Namer = artifacts.require('SafeERC20Namer')
-const YieldMath = artifacts.require('YieldMath')
+import { YieldMath } from '../typechain/YieldMath'
+import { Pool } from '../typechain/Pool'
+import { PoolFactory } from '../typechain/PoolFactory'
+import { DaiMock as Dai } from '../typechain/DaiMock'
+import { FYDaiMock as FYDai } from '../typechain/FYDaiMock'
+import { SafeERC20Namer } from '../typechain/SafeERC20Namer'
 
-import * as helper from 'ganache-time-traveler'
-import { assert } from 'chai'
-import { Contract } from './shared/fixtures'
+import { BigNumber } from 'ethers'
 
+import { ethers } from 'hardhat'
+import { expect, use } from 'chai'
+use(require('chai-bignumber')());
+const timeMachine = require('ether-time-traveler')
 
-async function currentTimestamp() {
-  const block = await web3.eth.getBlockNumber()
-  return parseInt((await web3.eth.getBlock(block)).timestamp.toString())
+const PRECISION = BigNumber.from('100000000000000') // 1e14
+
+function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
+  // Check that abs(x - y) < p:
+  const diff = x.gt(y) ? BigNumber.from(x).sub(y) : BigNumber.from(y).sub(x) // Not sure why I have to convert x and y to BigNumber
+  expect(diff.div(p)).to.eq(0)    // Hack to avoid silly conversions. BigNumber truncates decimals off.
 }
 
-contract('PoolFactory', async ([owner]) => {
-  let snapshot: any
-  let snapshotId: string
+async function currentTimestamp() {
+  return (await ethers.provider.getBlock(ethers.provider.getBlockNumber())).timestamp
+}
 
-  let factory: Contract
-  let dai: Contract
-  let fyDai1: Contract
+describe('PoolFactory', async () => {
+  let snapshotId: string
+  let ownerAcc: SignerWithAddress
+
+  let yieldMathLibrary: YieldMath
+  let safeERC20NamerLibrary: SafeERC20Namer
+
+  let DaiFactory: any
+  let FYDaiFactory: any
+  let PoolFactoryFactory: any
+
+  let factory: PoolFactory
+  let dai: Dai
+  let fyDai1: FYDai
   let maturity1: number
 
   before(async () => {
-    const yieldMathLibrary = await YieldMath.new()
-    const safeERC20NamerLibrary = await SafeERC20Namer.new()
-    await PoolFactory.link(yieldMathLibrary)
-    await PoolFactory.link(safeERC20NamerLibrary)
+    snapshotId = await timeMachine.takeSnapshot(ethers.provider)
+
+    const signers = await ethers.getSigners()
+    ownerAcc = signers[0]
+
+    const YieldMathFactory = await ethers.getContractFactory("YieldMath");
+    yieldMathLibrary = await YieldMathFactory.deploy() as unknown as YieldMath
+    await yieldMathLibrary.deployed();
+
+    const SafeERC20NamerFactory = await ethers.getContractFactory("SafeERC20Namer");
+    safeERC20NamerLibrary = await SafeERC20NamerFactory.deploy() as unknown as SafeERC20Namer
+    await safeERC20NamerLibrary.deployed();
+
+    DaiFactory = await ethers.getContractFactory("DaiMock");
+    FYDaiFactory = await ethers.getContractFactory("FYDaiMock");
+    PoolFactoryFactory = await ethers.getContractFactory(
+      "PoolFactory",
+      {
+        libraries: {
+          YieldMath: yieldMathLibrary.address,
+          SafeERC20Namer: safeERC20NamerLibrary.address
+        }
+      }
+    );
   })
 
   beforeEach(async () => {
-    snapshot = await helper.takeSnapshot()
-    snapshotId = snapshot['result']
+    snapshotId = await timeMachine.takeSnapshot(ethers.provider)
+    
+    dai = await DaiFactory.deploy() as unknown as Dai
+    await dai.deployed();
 
-    // Setup dai
-    dai = await Dai.new()
-
-    // Setup fyDai
     maturity1 = (await currentTimestamp()) + 31556952 // One year
-    fyDai1 = await FYDai.new(dai.address, maturity1)
-
-    // Setup Pool
-    factory = await PoolFactory.new({
-      from: owner,
-    })
+    fyDai1 = await FYDaiFactory.deploy(dai.address, maturity1) as unknown as FYDai
+    await fyDai1.deployed();
+    
+    factory = await PoolFactoryFactory.deploy() as unknown as PoolFactory
+    await factory.deployed();
   })
 
   afterEach(async () => {
-    await helper.revertToSnapshot(snapshotId)
+    await timeMachine.revertToSnapshot(ethers.provider, snapshotId)
   })
 
   it('should create pools', async () => {
     const calculatedAddress = await factory.calculatePoolAddress(dai.address, fyDai1.address)
-    await factory.createPool(dai.address, fyDai1.address, {
-      from: owner,
-    })
+    await factory.createPool(dai.address, fyDai1.address)
 
-    const pool = await Pool.at(calculatedAddress)
+    const poolABI = [
+      'function baseToken() view returns (address)',
+      'function fyToken() view returns (address)',
+      'function name() view returns (string)',
+      'function symbol() view returns (string)',
+    ]
 
-    assert.equal(await pool.baseToken(), dai.address, 'Pool has the wrong dai address')
-    assert.equal(await pool.fyToken(), fyDai1.address, 'Pool has the wrong fyDai address')
-    assert.equal(await pool.name(), 'Yield Test LP Token', 'Pool has the wrong name')
-    assert.equal(await pool.symbol(), 'TSTLP', 'Pool has the wrong symbol')
+    const pool = new ethers.Contract(calculatedAddress, poolABI, ownerAcc) as unknown as Pool
+
+    expect(await pool.baseToken()).to.equal(dai.address, 'Pool has the wrong dai address')
+    expect(await pool.fyToken()).to.equal(fyDai1.address, 'Pool has the wrong fyDai address')
+    expect(await pool.name()).to.equal('Yield Test LP Token', 'Pool has the wrong name')
+    expect(await pool.symbol()).to.equal('TSTLP', 'Pool has the wrong symbol')
   })
 })
