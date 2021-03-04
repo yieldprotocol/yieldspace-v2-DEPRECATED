@@ -210,6 +210,45 @@ contract('Pool', async (accounts) => {
       almostEqual(fyDaiInPreview, floor(expectedFYDaiIn).toFixed(), daiOut.divn(1000000))
     })
 
+    it('calculates the TWAP price', async () => {
+      const daiReserves = await pool.getBaseTokenReserves()
+      const fyDaiReserves = await pool.getFYTokenReserves()
+      const fyDaiIn = toWad('0.01')
+      const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
+      const timeTillMaturity = new BN(maturity1).sub(now)
+
+      const expectedDaiOut = sellFYDai(
+        daiReserves.toString(),
+        fyDaiReserves.toString(),
+        fyDaiIn.toString(),
+        timeTillMaturity.toString()
+      )
+
+      const cumulativePrice1 = await pool.cumulativeFYDaiPrice()
+      assert.equal(cumulativePrice1, 0, 'Price should start at 0')
+      const timestamp1 = (await pool.getStoredReserves())[2]
+
+      await helper.advanceTime(120)
+      await helper.advanceBlock()
+
+      await pool.sync()
+
+      const cumulativePrice2 = await pool.cumulativeFYDaiPrice()
+      const timestamp2 = (await pool.getStoredReserves())[2]
+      const price2 = cumulativePrice2.div(timestamp2.sub(timestamp1)).toString()
+      almostEqual(price2, floor(expectedDaiOut).toFixed(), fyDaiIn.divn(1000000))
+
+      await helper.advanceTime(120)
+      await helper.advanceBlock()
+
+      await pool.sync()
+
+      const cumulativePrice3 = await pool.cumulativeFYDaiPrice()
+      const timestamp3 = (await pool.getStoredReserves())[2]
+      const price3 = cumulativePrice3.sub(cumulativePrice2).div(timestamp3.sub(timestamp2)).toString()
+      almostEqual(price3, floor(expectedDaiOut).toFixed(), fyDaiIn.divn(1000000))
+    })
+
     describe('with extra fyDai reserves', () => {
       beforeEach(async () => {
         const additionalFYDaiReserves = toWad(34.4)
