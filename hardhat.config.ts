@@ -1,11 +1,12 @@
 import *  as fs from 'fs'
 import * as path from 'path'
-import '@nomiclabs/hardhat-truffle5'
-import 'solidity-coverage'
-import 'hardhat-gas-reporter'
-import 'hardhat-deploy'
-import '@nomiclabs/hardhat-etherscan'
 
+import '@nomiclabs/hardhat-waffle'
+import '@nomiclabs/hardhat-etherscan'
+import 'hardhat-gas-reporter'
+import 'hardhat-typechain'
+import 'solidity-coverage'
+import 'hardhat-deploy'
 
 // REQUIRED TO ENSURE METADATA IS SAVED IN DEPLOYMENTS (because solidity-coverage disable it otherwise)
 /* import {
@@ -46,7 +47,36 @@ if (!etherscanKey) {
 }
 
 module.exports = {
+  paths: {
+    sources: './contracts',
+    tests: './test',
+    cache: './cache',
+    coverage: './coverage',
+    coverageJson: './coverage.json',
+    artifacts: './artifacts',
+  },
+  solidity: {
+    version: '0.7.5',
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 20000,
+      }
+    }
+  },
+  typechain: {
+    outDir: 'typechain',
+    target: 'ethers-v5',
+  },
+  gasReporter: {
+    enabled: true,
+  },
   defaultNetwork: 'hardhat',
+  namedAccounts: {
+    deployer: 0,
+    owner: 1,
+    other: 2,
+  },
   networks: {
     kovan: {
       accounts,
@@ -75,27 +105,4 @@ module.exports = {
   etherscan: {
     apiKey: etherscanKey
   },
-  solidity: {
-    version: '0.7.5',
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 20000,
-      }
-    }
-  },
-  gasReporter: {
-    enabled: true,
-  },
-  paths: {
-    sources: './contracts',
-    tests: './test',
-    cache: './cache',
-    coverage: './coverage',
-    coverageJson: './coverage.json',
-    artifacts: './artifacts',
-  },
-  namedAccounts: {
-    deployer: 0
-  }
 }
