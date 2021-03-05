@@ -7,8 +7,11 @@ import { DaiMock as Dai } from '../typechain/DaiMock'
 import { FYDaiMock as FYDai } from '../typechain/FYDaiMock'
 import { SafeERC20Namer } from '../typechain/SafeERC20Namer'
 
-import { ethers } from 'hardhat'
+import { YieldSpaceEnvironment } from './shared/fixtures'
+
+import { ethers, waffle } from 'hardhat'
 import { expect } from 'chai'
+const { loadFixture } = waffle
 
 async function currentTimestamp() {
   return (await ethers.provider.getBlock(ethers.provider.getBlockNumber())).timestamp
@@ -16,57 +19,36 @@ async function currentTimestamp() {
 
 describe('PoolFactory', async () => {
   let ownerAcc: SignerWithAddress
-
-  let yieldMathLibrary: YieldMath
-  let safeERC20NamerLibrary: SafeERC20Namer
-
-  let DaiFactory: any
-  let FYDaiFactory: any
-  let PoolFactoryFactory: any
-
+  let yieldSpace: YieldSpaceEnvironment
   let factory: PoolFactory
-  let dai: Dai
-  let fyDai1: FYDai
-  let maturity1: number
+
+  const baseId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
+  const fyTokenId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
+
+  async function fixture() {
+    return await YieldSpaceEnvironment.setup(ownerAcc, [], [])
+  }
 
   before(async () => {
     const signers = await ethers.getSigners()
     ownerAcc = signers[0]
-
-    const YieldMathFactory = await ethers.getContractFactory("YieldMath");
-    yieldMathLibrary = await YieldMathFactory.deploy() as unknown as YieldMath
-    await yieldMathLibrary.deployed();
-
-    const SafeERC20NamerFactory = await ethers.getContractFactory("SafeERC20Namer");
-    safeERC20NamerLibrary = await SafeERC20NamerFactory.deploy() as unknown as SafeERC20Namer
-    await safeERC20NamerLibrary.deployed();
-
-    DaiFactory = await ethers.getContractFactory("DaiMock");
-    FYDaiFactory = await ethers.getContractFactory("FYDaiMock");
-    PoolFactoryFactory = await ethers.getContractFactory(
-      "PoolFactory",
-      {
-        libraries: {
-          YieldMath: yieldMathLibrary.address,
-          SafeERC20Namer: safeERC20NamerLibrary.address
-        }
-      }
-    );
   })
 
   beforeEach(async () => {
-    dai = await DaiFactory.deploy() as unknown as Dai
-    await dai.deployed();
-
-    maturity1 = (await currentTimestamp()) + 31556952 // One year
-    fyDai1 = await FYDaiFactory.deploy(dai.address, maturity1) as unknown as FYDai
-    await fyDai1.deployed();
-    
-    factory = await PoolFactoryFactory.deploy() as unknown as PoolFactory
-    await factory.deployed();
+    yieldSpace = await loadFixture(fixture)
+    factory = yieldSpace.factory as PoolFactory
   })
 
   it('should create pools', async () => {
+    const DaiFactory = await ethers.getContractFactory("DaiMock");
+    const FYDaiFactory = await ethers.getContractFactory("FYDaiMock");
+    const dai = await DaiFactory.deploy() as unknown as Dai
+    await dai.deployed();
+
+    const maturity1 = (await currentTimestamp()) + 31556952 // One year
+    const fyDai1 = await FYDaiFactory.deploy(dai.address, maturity1) as unknown as FYDai
+    await fyDai1.deployed();
+
     const calculatedAddress = await factory.calculatePoolAddress(dai.address, fyDai1.address)
     await factory.createPool(dai.address, fyDai1.address)
 
