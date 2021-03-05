@@ -412,8 +412,10 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         return baseTokenIn;
     }
 
-    /// @dev Mint liquidity tokens in exchange for LP tokens from a different Pool.
-    /// @param from Wallet providing the LP tokens. Must have approved the operator with `pool.addDelegate(operator)`.
+    /// @dev Sell fyTokens in exchange for fyTokens from a different pool. Both pools must have the same base token.
+    /// User must have approved the pool2 to operate for him in pool1 with `pool1.addDelegate(pool2.address)`.
+    /// User must have approved the pool1 to take from him fyToken1 with `fyToken1.approve(pool1.address, fyTokenIn)`.
+    /// @param from Wallet providing the LP tokens.
     /// @param to Wallet receiving the minted liquidity tokens.
     /// @param pool Origin pool for the fyToken being rolled.
     /// @param fyTokenIn Amount of `fyToken` that will be rolled.
