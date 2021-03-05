@@ -47,14 +47,6 @@ if (!etherscanKey) {
 }
 
 module.exports = {
-  paths: {
-    sources: './contracts',
-    tests: './test',
-    cache: './cache',
-    coverage: './coverage',
-    coverageJson: './coverage.json',
-    artifacts: './artifacts',
-  },
   solidity: {
     version: '0.7.5',
     settings: {
