@@ -1,20 +1,18 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 
-import { YieldMath } from '../typechain/YieldMath'
 import { Pool } from '../typechain/Pool'
 import { PoolFactory } from '../typechain/PoolFactory'
 import { DaiMock as Dai } from '../typechain/DaiMock'
 import { FYDaiMock as FYDai } from '../typechain/FYDaiMock'
-import { SafeERC20Namer } from '../typechain/SafeERC20Namer'
+import { YieldSpaceEnvironment } from './shared/fixtures'
 
 import { BigNumber } from 'ethers'
 
-import { ethers } from 'hardhat'
+import { ethers, waffle } from 'hardhat'
 import { expect } from 'chai'
+const { loadFixture } = waffle
 
 const timeMachine = require('ether-time-traveler')
-
-const PRECISION = BigNumber.from('100000000000000') // 1e14
 
 function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
   // Check that abs(x - y) < p:
@@ -46,14 +44,9 @@ describe('Pool', async () => {
   let user2: string
   let operator: string
 
-  let yieldMathLibrary: YieldMath
-  let safeERC20NamerLibrary: SafeERC20Namer
-
-  let DaiFactory: any
-  let FYDaiFactory: any
-  let PoolFactoryFactory: any
-
+  let yieldSpace: YieldSpaceEnvironment
   let factory: PoolFactory
+
   let pool: Pool
   let poolFromUser1: Pool
   let poolFromOwner: Pool
@@ -64,9 +57,18 @@ describe('Pool', async () => {
   let fyDai1: FYDai
   let fyDai1FromUser1: FYDai
   let fyDai1FromOwner: FYDai
-  let maturity1: number
+  let maturity1: BigNumber
+
+  const baseId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
+  const fyTokenId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
+
+  async function fixture() {
+    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [fyTokenId])
+  }
 
   before(async () => {
+    snapshotId = await timeMachine.takeSnapshot(ethers.provider)
+
     const signers = await ethers.getSigners()
     ownerAcc = signers[0]
     owner = ownerAcc.address
@@ -76,99 +78,34 @@ describe('Pool', async () => {
     user2 = user2Acc.address
     operatorAcc = signers[3]
     operator = operatorAcc.address
+  })
 
-    const YieldMathFactory = await ethers.getContractFactory("YieldMath");
-    yieldMathLibrary = await YieldMathFactory.deploy() as unknown as YieldMath
-    await yieldMathLibrary.deployed();
-
-    const SafeERC20NamerFactory = await ethers.getContractFactory("SafeERC20Namer");
-    safeERC20NamerLibrary = await SafeERC20NamerFactory.deploy() as unknown as SafeERC20Namer
-    await safeERC20NamerLibrary.deployed();
-
-    DaiFactory = await ethers.getContractFactory("DaiMock");
-    FYDaiFactory = await ethers.getContractFactory("FYDaiMock");
-    PoolFactoryFactory = await ethers.getContractFactory(
-      "PoolFactory",
-      {
-        libraries: {
-          YieldMath: yieldMathLibrary.address,
-          SafeERC20Namer: safeERC20NamerLibrary.address
-        }
-      }
-    )
-
-    maturity1 = (await currentTimestamp()) + 31556952 // One year
+  after(async () => {
+    await timeMachine.revertToSnapshot(ethers.provider, snapshotId)
   })
 
   beforeEach(async () => {
-    snapshotId = await timeMachine.takeSnapshot(ethers.provider)
-    
-    dai = await DaiFactory.deploy() as unknown as Dai
-    await dai.deployed();
+    yieldSpace = await loadFixture(fixture)
+    factory = yieldSpace.factory as PoolFactory
+    dai = yieldSpace.bases.get(baseId) as Dai
     daiFromUser1 = dai.connect(user1Acc)
     daiFromOwner = dai.connect(ownerAcc)
 
-    fyDai1 = await FYDaiFactory.deploy(dai.address, maturity1) as unknown as FYDai
-    await fyDai1.deployed();
+    fyDai1 = yieldSpace.fyTokens.get(fyTokenId) as FYDai
     fyDai1FromUser1 = fyDai1.connect(user1Acc)
     fyDai1FromOwner = fyDai1.connect(ownerAcc)
     
-    factory = await PoolFactoryFactory.deploy() as unknown as PoolFactory
-    await factory.deployed();
-
-    const calculatedAddress = await factory.calculatePoolAddress(dai.address, fyDai1.address)
-    await factory.createPool(dai.address, fyDai1.address)
-
-    const poolABI = [
-      'event Trade(uint256 maturity, address indexed from, address indexed to, int256 daiTokens, int256 fyDaiTokens)',
-      'event Liquidity(uint256 maturity, address indexed from, address indexed to, int256 daiTokens, int256 fyDaiTokens, int256 poolTokens)',
-      'function k() view returns(int128)',
-      'function baseToken() view returns(address)',
-      'function fyToken() view returns(address)',
-      'function getBaseTokenReserves() view returns(uint128)',
-      'function getFYTokenReserves() view returns(uint128)',
-      'function sellBaseToken(address, address, uint128) returns(uint128)',
-      'function buyBaseToken(address, address, uint128) returns(uint128)',
-      'function sellFYToken(address, address, uint128) returns(uint128)',
-      'function buyFYToken(address, address, uint128) returns(uint128)',
-      'function sellBaseTokenPreview(uint128) view returns(uint128)',
-      'function buyBaseTokenPreview(uint128) view returns(uint128)',
-      'function sellFYTokenPreview(uint128) view returns(uint128)',
-      'function buyFYTokenPreview(uint128) view returns(uint128)',
-      'function mint(address, address, uint256) returns (uint256)',
-      'function mintWithToken(address, address, uint256) returns (uint256, uint256)',
-      'function burn(address, address, uint256 tokensBurned) returns (uint256, uint256)',
-      'function burnForBaseToken(address, address, uint256) returns (uint256)',
-
-      'function totalSupply() view returns (uint256)',
-      'function balanceOf(address) view returns (uint256)',
-      'function transfer(address, uint256) returns (bool)',
-      'function allowance(address, address) view returns (uint256)',
-      'function approve(address, uint256) returns (bool)',
-      'function transferFrom(address, address, uint256) returns (bool)',
-      'event Transfer(address indexed from, address indexed to, uint256 value)',
-      'event Approval(address indexed owner, address indexed spender, uint256 value)',
-
-      'function addDelegate(address)',
-      'function addDelegateBySignature(address, address, uint, uint8, bytes32, bytes32)',
-    ]
-
-    pool = new ethers.Contract(calculatedAddress, poolABI, ownerAcc) as unknown as Pool
+    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyTokenId) as Pool
     poolFromUser1 = pool.connect(user1Acc)
     poolFromOwner = pool.connect(ownerAcc)
-  })
 
-  afterEach(async () => {
-    await timeMachine.revertToSnapshot(ethers.provider, snapshotId)
+    maturity1 = await fyDai1.maturity()
   })
 
   it('should setup pool', async () => {
     const b = BigNumber.from('18446744073709551615')
     const k = b.div(BigNumber.from('126144000'))
     expect(await pool.k()).to.be.equal(k)
-
-    const g1 = BigNumber.from('950').mul(b).div(BigNumber.from('1000')).add(BigNumber.from(1)) // Sell Dai to the pool
-    const g2 = BigNumber.from('1000').mul(b).div(BigNumber.from('950')).add(BigNumber.from(1)) // Sell fyDai to the pool
   })
 
   it('adds initial liquidity', async () => {

@@ -1,11 +1,9 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 
-import { YieldMath } from '../typechain/YieldMath'
 import { Pool } from '../typechain/Pool'
 import { PoolFactory } from '../typechain/PoolFactory'
 import { DaiMock as Dai } from '../typechain/DaiMock'
 import { FYDaiMock as FYDai } from '../typechain/FYDaiMock'
-import { SafeERC20Namer } from '../typechain/SafeERC20Namer'
 
 import { YieldSpaceEnvironment } from './shared/fixtures'
 
