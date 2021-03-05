@@ -3,6 +3,8 @@ import * as path from 'path'
 
 import '@nomiclabs/hardhat-waffle'
 import '@nomiclabs/hardhat-etherscan'
+import 'hardhat-abi-exporter'
+import 'hardhat-contract-sizer'
 import 'hardhat-gas-reporter'
 import 'hardhat-typechain'
 import 'solidity-coverage'
@@ -59,6 +61,11 @@ module.exports = {
   typechain: {
     outDir: 'typechain',
     target: 'ethers-v5',
+  },
+  contractSizer: {
+    alphaSort: true,
+    runOnCompile: false,
+    disambiguatePaths: false,
   },
   gasReporter: {
     enabled: true,
