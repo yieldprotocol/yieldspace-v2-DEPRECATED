@@ -17,7 +17,7 @@ output/
 build/
 
 # Typescript
-typescript/
+typechain/
 
 # Solidity-coverage
 coverage/
