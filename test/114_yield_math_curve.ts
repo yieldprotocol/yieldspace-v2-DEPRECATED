@@ -4,8 +4,9 @@ import { YieldMath } from '../typechain/YieldMath'
 import { BigNumber } from 'ethers'
 
 import { ethers } from 'hardhat'
+import { solidity } from "ethereum-waffle";
 import { expect, use } from 'chai'
-use(require('chai-bignumber')());
+use(solidity);
 
 const PRECISION = BigNumber.from('100000000000000') // 1e14
 
@@ -77,7 +78,7 @@ describe('YieldMath - Curve', async () => {
           result = await yieldMath.fyDaiOutForDaiIn(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_)
         }
 
-        expect(result.toString()).to.be.bignumber.gt(previousResult.toString())
+        expect(result).to.be.gt(previousResult)
         previousResult = result
       }
     })
@@ -108,7 +109,7 @@ describe('YieldMath - Curve', async () => {
             almostEqual(result, maximum, PRECISION)
           } else {
             // Easier to test prices diverging from 1
-            expect(result.toString()).to.be.bignumber.lt(previousResult.toString())
+            expect(result).to.be.lt(previousResult)
           }
           previousResult = result
         }
@@ -139,7 +140,7 @@ describe('YieldMath - Curve', async () => {
           result = await yieldMath.daiOutForFYDaiIn(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_)
         }
 
-        expect(result.toString()).to.be.bignumber.gt(previousResult.toString())
+        expect(result).to.be.gt(previousResult)
         previousResult = result
       }
     })
@@ -169,7 +170,7 @@ describe('YieldMath - Curve', async () => {
             almostEqual(result, minimum, PRECISION)
           } else {
             // Easier to test prices diverging from 1
-            expect(result.toString()).to.be.bignumber.gt(previousResult.toString())
+            expect(result).to.be.gt(previousResult)
           }
           previousResult = result
         }
@@ -200,7 +201,7 @@ describe('YieldMath - Curve', async () => {
           result = await yieldMath.fyDaiInForDaiOut(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_)
         }
 
-        expect(result.toString()).to.be.bignumber.gt(previousResult.toString())
+        expect(result).to.be.gt(previousResult)
         previousResult = result
       }
     })
@@ -230,7 +231,7 @@ describe('YieldMath - Curve', async () => {
             almostEqual(result, maximum, PRECISION)
           } else {
             // Easier to test prices diverging from 1
-            expect(result.toString()).to.be.bignumber.lt(previousResult.toString())
+            expect(result).to.be.lt(previousResult)
           }
           previousResult = result
         }
@@ -261,7 +262,7 @@ describe('YieldMath - Curve', async () => {
           result = await yieldMath.daiInForFYDaiOut(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_)
         }
 
-        expect(result.toString()).to.be.bignumber.gt(previousResult.toString())
+        expect(result).to.be.gt(previousResult)
         previousResult = result
       }
     })
@@ -291,7 +292,7 @@ describe('YieldMath - Curve', async () => {
             almostEqual(result, minimum, PRECISION)
           } else {
             // Easier to test prices diverging from 1
-            expect(result.toString()).to.be.bignumber.gt(previousResult.toString())
+            expect(result).to.be.gt(previousResult)
           }
           previousResult = result
         }

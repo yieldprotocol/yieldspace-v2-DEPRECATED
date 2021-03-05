@@ -10,8 +10,8 @@ import { SafeERC20Namer } from '../typechain/SafeERC20Namer'
 import { BigNumber } from 'ethers'
 
 import { ethers } from 'hardhat'
-import { expect, use } from 'chai'
-use(require('chai-bignumber')());
+import { expect } from 'chai'
+
 const timeMachine = require('ether-time-traveler')
 
 const PRECISION = BigNumber.from('100000000000000') // 1e14

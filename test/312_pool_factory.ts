@@ -8,8 +8,7 @@ import { FYDaiMock as FYDai } from '../typechain/FYDaiMock'
 import { SafeERC20Namer } from '../typechain/SafeERC20Namer'
 
 import { ethers } from 'hardhat'
-import { expect, use } from 'chai'
-use(require('chai-bignumber')());
+import { expect } from 'chai'
 
 async function currentTimestamp() {
   return (await ethers.provider.getBlock(ethers.provider.getBlockNumber())).timestamp
