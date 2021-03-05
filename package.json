@@ -45,9 +45,7 @@
     "typechain-target-ethers-v5": "^5.0.1",
     "typescript": "^3.9.7",
 
-    "@openzeppelin/contracts": "^3.3.0",
-    "@openzeppelin/test-helpers": "^0.5.6",
-    "ganache-time-traveler": "^1.0.14"
+    "@openzeppelin/contracts": "^3.3.0"
     
   }
 }
