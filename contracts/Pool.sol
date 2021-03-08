@@ -120,7 +120,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     // update reserves and, on the first call per block, price accumulators
     function _update(uint128 baseBalance, uint128 fyBalance, uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) private {
         require(baseBalance <= type(uint112).max && fyBalance <= type(uint112).max, 'OVERFLOW');
-        uint32 blockTimestamp = uint32(block.timestamp % 2**32);
+        uint32 blockTimestamp = uint32(block.timestamp);
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && _storedBaseTokenReserve != 0 && _storedFYTokenReserve != 0) {
             // * never overflows, and + overflow is desired
@@ -247,7 +247,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             tokenOut = tokensBurned.mul(baseTokenReserves).div(supply);
             fyTokenOut = tokensBurned.mul(fyTokenReserves).div(supply);
 
-            uint256 newFYTokenReserves = fyTokenReserves.add(supply).sub(tokensBurned);
+            uint256 newFYTokenReserves = fyTokenReserves.sub(fyTokenOut).add(supply).sub(tokensBurned);
             (uint112 storedBaseTokenReserves, uint112 storedFYTokenReserves,) = getStoredReserves();
             _update(
                 toUint128(baseTokenReserves.sub(tokenOut)),
