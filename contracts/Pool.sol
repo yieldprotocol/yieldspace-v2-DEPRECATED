@@ -144,7 +144,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     /// @param to Wallet receiving the minted liquidity tokens.
     /// @param fyTokenToBuy Amount of `fyToken` being bought in the Pool, from this we calculate how much baseToken it will be taken in.
     /// @return The amount of liquidity tokens minted.
-    function mintWithToken(address from, address to, uint256 fyTokenToBuy)
+    function mintWithToken(address from, address to, uint256 fyTokenToBuy) // TODO: Rename to mintWithBaseToken
         external
         onlyHolderOrDelegate(from)
         returns (uint256, uint256)
