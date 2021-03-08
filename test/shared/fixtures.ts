@@ -8,42 +8,9 @@ import { DaiMock as ERC20 } from '../../typechain/DaiMock' // TODO: Rename/refac
 import { FYDaiMock as FYToken } from '../../typechain/FYDaiMock' // TODO: Rename/refactor mock
 import { SafeERC20Namer } from '../../typechain/SafeERC20Namer'
 import { ethers } from 'hardhat'
+import { BigNumber } from 'ethers'
 
 export const THREE_MONTHS: number = 3 * 30 * 24 * 60 * 60
-
-const poolABI = [
-  'event Trade(uint256 maturity, address indexed from, address indexed to, int256 daiTokens, int256 fyDaiTokens)',
-  'event Liquidity(uint256 maturity, address indexed from, address indexed to, int256 daiTokens, int256 fyDaiTokens, int256 poolTokens)',
-  'function k() view returns(int128)',
-  'function baseToken() view returns(address)',
-  'function fyToken() view returns(address)',
-  'function getBaseTokenReserves() view returns(uint128)',
-  'function getFYTokenReserves() view returns(uint128)',
-  'function sellBaseToken(address, address, uint128) returns(uint128)',
-  'function buyBaseToken(address, address, uint128) returns(uint128)',
-  'function sellFYToken(address, address, uint128) returns(uint128)',
-  'function buyFYToken(address, address, uint128) returns(uint128)',
-  'function sellBaseTokenPreview(uint128) view returns(uint128)',
-  'function buyBaseTokenPreview(uint128) view returns(uint128)',
-  'function sellFYTokenPreview(uint128) view returns(uint128)',
-  'function buyFYTokenPreview(uint128) view returns(uint128)',
-  'function mint(address, address, uint256) returns (uint256)',
-  'function mintWithToken(address, address, uint256) returns (uint256, uint256)',
-  'function burn(address, address, uint256 tokensBurned) returns (uint256, uint256)',
-  'function burnForBaseToken(address, address, uint256) returns (uint256)',
-
-  'function totalSupply() view returns (uint256)',
-  'function balanceOf(address) view returns (uint256)',
-  'function transfer(address, uint256) returns (bool)',
-  'function allowance(address, address) view returns (uint256)',
-  'function approve(address, uint256) returns (bool)',
-  'function transferFrom(address, address, uint256) returns (bool)',
-  'event Transfer(address indexed from, address indexed to, uint256 value)',
-  'event Approval(address indexed owner, address indexed spender, uint256 value)',
-
-  'function addDelegate(address)',
-  'function addDelegateBySignature(address, address, uint, uint8, bytes32, bytes32)',
-]
 
 export class YieldSpaceEnvironment {
   owner: SignerWithAddress
@@ -67,7 +34,7 @@ export class YieldSpaceEnvironment {
   }
 
   // Set up a test environment with pools according to the cartesian product of the base ids and the fyToken ids
-  public static async setup(owner: SignerWithAddress, baseIds: Array<string>, fyTokenIds: Array<string>) {
+  public static async setup(owner: SignerWithAddress, baseIds: Array<string>, fyTokenIds: Array<string>, initialLiquidity: BigNumber) {
     const ownerAdd = await owner.getAddress()
 
     let yieldMathLibrary: YieldMath
@@ -93,9 +60,9 @@ export class YieldSpaceEnvironment {
     factory = ((await PoolFactoryFactory.deploy()) as unknown) as PoolFactory
     await factory.deployed()
 
-    // ==== Add assets and joins ====
-    // For each asset id passed as an argument, we create a Mock ERC20 which we register in cauldron, and its Join, that we register in Ladle.
-    // We also give 100 tokens of that asset to the owner account, and approve with the owner for the join to take the asset.
+    const WAD = BigNumber.from(10).pow(18)
+    const initialBase = WAD.mul(initialLiquidity)
+    const initialFYToken = initialBase.div(9)
     const bases: Map<string, ERC20> = new Map()
     const fyTokens: Map<string, FYToken> = new Map()
     const pools: Map<string, Map<string, Pool>> = new Map()
@@ -116,13 +83,22 @@ export class YieldSpaceEnvironment {
         const fyToken = ((await FYTokenFactory.deploy(base.address, maturity)) as unknown) as FYToken
         await fyToken.deployed()
         fyTokens.set(fyTokenId, fyToken)
+
         // deploy base/fyToken pool
         const calculatedAddress = await factory.calculatePoolAddress(base.address, fyToken.address)
         await factory.createPool(base.address, fyToken.address)
-        const pool = (new ethers.Contract(calculatedAddress, poolABI, owner) as unknown) as Pool
+        const pool = (await ethers.getContractAt('Pool', calculatedAddress, owner) as unknown) as Pool
         fyTokenPoolPairs.set(fyTokenId, pool)
+
         // init pool
+        await base.mint(ownerAdd, initialBase)
+        await base.approve(pool.address, initialBase)
+        await pool.mint(ownerAdd, ownerAdd, initialBase)
+
         // skew pool to 5% interest rate
+        await fyToken.mint(ownerAdd, initialFYToken)
+        await fyToken.approve(pool.address, initialFYToken)
+        await pool.sellFYToken(ownerAdd, ownerAdd, initialFYToken)
       }
     }
 

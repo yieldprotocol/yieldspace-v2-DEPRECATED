@@ -7,6 +7,7 @@ import { FYDaiMock as FYDai } from '../typechain/FYDaiMock'
 import { YieldSpaceEnvironment } from './shared/fixtures'
 
 import { ethers, waffle } from 'hardhat'
+import { BigNumber } from 'ethers'
 import { expect } from 'chai'
 const { loadFixture } = waffle
 
@@ -16,7 +17,7 @@ describe('PoolFactory', async () => {
   let factory: PoolFactory
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [], [])
+    return await YieldSpaceEnvironment.setup(ownerAcc, [], [], BigNumber.from('0'))
   }
 
   before(async () => {

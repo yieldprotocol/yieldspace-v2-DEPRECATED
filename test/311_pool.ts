@@ -65,7 +65,7 @@ describe('Pool', async function () {
   const fyTokenId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [fyTokenId])
+    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [fyTokenId], BigNumber.from('0'))
   }
 
   before(async () => {
@@ -97,6 +97,7 @@ describe('Pool', async function () {
     fyDai1FromUser1 = fyDai1.connect(user1Acc)
     fyDai1FromOwner = fyDai1.connect(ownerAcc)
 
+    // Deploy a fresh pool so that we can test initialization
     pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyTokenId) as Pool
     poolFromUser1 = pool.connect(user1Acc)
     poolFromOwner = pool.connect(ownerAcc)
