@@ -11,6 +11,7 @@ import { ethers } from 'hardhat'
 
 export const THREE_MONTHS: number = 3 * 30 * 24 * 60 * 60
 
+/*
 const poolABI = [
   'event Trade(uint256 maturity, address indexed from, address indexed to, int256 daiTokens, int256 fyDaiTokens)',
   'event Liquidity(uint256 maturity, address indexed from, address indexed to, int256 daiTokens, int256 fyDaiTokens, int256 poolTokens)',
@@ -44,6 +45,7 @@ const poolABI = [
   'function addDelegate(address)',
   'function addDelegateBySignature(address, address, uint, uint8, bytes32, bytes32)',
 ]
+*/
 
 export class YieldSpaceEnvironment {
   owner: SignerWithAddress
@@ -119,7 +121,8 @@ export class YieldSpaceEnvironment {
         // deploy base/fyToken pool
         const calculatedAddress = await factory.calculatePoolAddress(base.address, fyToken.address)
         await factory.createPool(base.address, fyToken.address)
-        const pool = (new ethers.Contract(calculatedAddress, poolABI, owner) as unknown) as Pool
+        const pool = (await ethers.getContractAt('Pool', calculatedAddress, owner) as unknown) as Pool
+        // const pool = (new ethers.Contract(calculatedAddress, poolABI, owner) as unknown) as Pool
         fyTokenPoolPairs.set(fyTokenId, pool)
         // init pool
         // skew pool to 5% interest rate
