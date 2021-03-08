@@ -33,6 +33,7 @@ describe('Pool', async () => {
   const daiTokens = BigNumber.from('1000000000000000000000000')
   const fyDaiTokens = daiTokens
   const initialDai = daiTokens
+  const OVERRIDES = { gasLimit: 1_000_000 }
 
   let snapshotId: string
   let ownerAcc: SignerWithAddress
@@ -210,7 +211,7 @@ describe('Pool', async () => {
       await fyDai1FromUser1.approve(pool.address, fyDaiTokens)
 
       
-      await expect(poolFromUser1.buyBaseToken(user1, user2, daiOut))
+      await expect(poolFromUser1.buyBaseToken(user1, user2, daiOut, OVERRIDES))
         .to.emit(pool, 'Trade')
         .withArgs(
           maturity1,
@@ -290,7 +291,7 @@ describe('Pool', async () => {
         const poolTokensBefore = await poolFromOwner.balanceOf(user2)
 
         await daiFromUser1.approve(pool.address, maxDaiIn)
-        await expect(poolFromUser1.mintWithToken(user1, user2, fyDaiToBuy))
+        await expect(poolFromUser1.mintWithToken(user1, user2, fyDaiToBuy, OVERRIDES))
           .to.emit(pool, 'Liquidity')
           .withArgs(
             maturity1,
@@ -363,7 +364,7 @@ describe('Pool', async () => {
         const lpTokensIn = WAD.mul(2) // TODO: Why does it run out of gas with 1 WAD?
 
         await poolFromUser1.approve(pool.address, lpTokensIn)
-        await expect(poolFromUser1.burnForBaseToken(user1, user2, lpTokensIn))
+        await expect(poolFromUser1.burnForBaseToken(user1, user2, lpTokensIn, OVERRIDES))
           .to.emit(pool, 'Liquidity')
           .withArgs(
             maturity1,
@@ -414,7 +415,7 @@ describe('Pool', async () => {
         await daiFromOwner.mint(user1, daiIn)
         await daiFromUser1.approve(pool.address, daiIn)
 
-        await expect(poolFromUser1.sellBaseToken(user1, user2, daiIn))
+        await expect(poolFromUser1.sellBaseToken(user1, user2, daiIn, OVERRIDES))
         .to.emit(pool, 'Trade')
         .withArgs(
           maturity1,
@@ -458,7 +459,7 @@ describe('Pool', async () => {
         const daiBalanceBefore = await daiFromOwner.balanceOf(user1)
 
         await daiFromUser1.approve(poolFromUser1.address, daiTokens)
-        await expect(poolFromUser1.buyFYToken(user1, user2, fyDaiOut))
+        await expect(poolFromUser1.buyFYToken(user1, user2, fyDaiOut, OVERRIDES))
           .to.emit(pool, 'Trade')
           .withArgs(
             maturity1,
