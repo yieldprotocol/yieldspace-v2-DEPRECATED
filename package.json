@@ -6,15 +6,13 @@
   "author": "",
   "scripts": {
     "build": "hardhat compile",
-    "test": "hardhat test test/*.ts",
-    "ganache": "./scripts/ganache.sh",
-    "deploy:ganache": "yarn ganache && truffle migrate",
-    "mainnet-ganache": "./scripts/mainnet-ganache.sh",
-    "coverage": "hardhat coverage --network coverage --temp build --testfiles 'test/*.ts'",
-    "lint": "prettier ./test/**/*.ts --check",
-    "lint:ts": "prettier ./test/**/*.ts --write",
-    "lint:sol": "solhint -f table contracts/**/*.sol",
-    "prettier:sol": "prettier --write contracts/**/*.sol"
+    "test": "hardhat test",
+    "test:deploy": "hardhat deploy --tags DeployTest",
+    "coverage": "hardhat coverage",
+    "lint:sol": "solhint -f table contracts/*.sol",
+    "lint:ts": "prettier ./test/*.ts --check",
+    "lint:ts:fix": "prettier ./test/*.ts --write",
+    "prepublishOnly": "npx tsdx build --tsconfig ./tsconfig-publish.json"
   },
   "devDependencies": {
     "@ethersproject/providers": "^5.0.15",
@@ -29,6 +27,7 @@
     "ether-time-traveler": "1.1.0",
     "erc3156": "^0.4.8",
     "ethers": "^5.0.31",
+    "ethereumjs-util": "^7.0.9",
     "ethereum-waffle": "^3.2.2",
     "hardhat": "^2.0.8",
     "hardhat-abi-exporter": "^2.0.3",
