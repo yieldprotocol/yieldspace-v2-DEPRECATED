@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { PoolFactory } from '../typechain/PoolFactory'
 import { DaiMock as Dai } from '../typechain/DaiMock'
-import { FYDaiMock as FYDai } from '../typechain/FYDaiMock'
+import { FYDaiMock as FYToken } from '../typechain/FYDaiMock'
 
 import { YieldSpaceEnvironment } from './shared/fixtures'
 
@@ -32,13 +32,13 @@ describe('PoolFactory', async () => {
 
   it('should create pools', async () => {
     const DaiFactory = await ethers.getContractFactory('DaiMock')
-    const FYDaiFactory = await ethers.getContractFactory('FYDaiMock')
+    const FYTokenFactory = await ethers.getContractFactory('FYDaiMock')
     const dai = ((await DaiFactory.deploy()) as unknown) as Dai
     await dai.deployed()
 
     const { timestamp } = await ethers.provider.getBlock('latest')
     const maturity1 = timestamp + 31556952 // One year
-    const fyDai1 = ((await FYDaiFactory.deploy(dai.address, maturity1)) as unknown) as FYDai
+    const fyDai1 = ((await FYTokenFactory.deploy(dai.address, maturity1)) as unknown) as FYToken
     await fyDai1.deployed()
 
     const calculatedAddress = await factory.calculatePoolAddress(dai.address, fyDai1.address)

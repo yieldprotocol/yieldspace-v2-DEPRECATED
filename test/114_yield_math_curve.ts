@@ -113,7 +113,7 @@ describe('YieldMath - Curve', async () => {
       }
     })
 
-    it('A lower g means more Dai out with `daiOutForFYDaiIn`', async () => {
+    it('A lower g means more Dai out with `daiOutForFYTokenIn`', async () => {
       for (var i = 0; i < values.length; i++) {
         var daiReservesValue = values[i][0]
         var fyDaiReservesValue = values[i][1]
@@ -142,7 +142,7 @@ describe('YieldMath - Curve', async () => {
       }
     })
 
-    it('As we approach maturity, price drops to 1 for `daiOutForFYDaiIn`', async () => {
+    it('As we approach maturity, price drops to 1 for `daiOutForFYTokenIn`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
         var daiReservesValue = values[i][0]
@@ -235,7 +235,7 @@ describe('YieldMath - Curve', async () => {
       }
     })
 
-    it('A lower g means more Dai in with `daiInForFYDaiOut`', async () => {
+    it('A lower g means more Dai in with `daiInForFYTokenOut`', async () => {
       for (var i = 0; i < values.length; i++) {
         var daiReservesValue = values[i][0]
         var fyDaiReservesValue = values[i][1]
@@ -264,7 +264,7 @@ describe('YieldMath - Curve', async () => {
       }
     })
 
-    it('As we approach maturity, price drops to 1 for `daiInForFYDaiOut`', async () => {
+    it('As we approach maturity, price drops to 1 for `daiInForFYTokenOut`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
         var daiReservesValue = values[i][0]

@@ -76,7 +76,7 @@ describe('YieldMath - Reverts', async () => {
     }) */
   })
 
-  describe('daiOutForFYDaiIn reverts', () => {
+  describe('daiOutForFYTokenIn reverts', () => {
     beforeEach(async () => {})
 
     // If time to maturity is higher than 1/k, multiplied or divided by g, we are too far from maturity.

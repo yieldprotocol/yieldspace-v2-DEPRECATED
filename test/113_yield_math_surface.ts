@@ -6,7 +6,7 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 
-import { sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
+import { sellDai, sellFYToken, buyDai, buyFYToken } from './shared/yieldspace'
 
 const PRECISION = BigNumber.from('100000000000000') // 1e14
 
@@ -85,10 +85,10 @@ describe('YieldMath - Surface', async () => {
               console.log(`${daiReserve}, ${fyDaiReserveDelta}, ${tradeSize}, ${timeTillMaturity}`)
               const fyDaiReserve = daiReserve.add(fyDaiReserveDelta)
               let offChain, onChain
-              offChain = sellFYDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
+              offChain = sellFYToken(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
               onChain = await yieldMath.daiOutForFYDaiIn(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g2)
-              console.log(`offChain sellFYDai: ${offChain}`)
-              console.log(`onChain sellFYDai: ${onChain}`)
+              console.log(`offChain sellFYToken: ${offChain}`)
+              console.log(`onChain sellFYToken: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
               offChain = sellDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
@@ -103,10 +103,10 @@ describe('YieldMath - Surface', async () => {
               console.log(`onChain buyDai: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = buyFYDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
+              offChain = buyFYToken(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
               onChain = await yieldMath.daiInForFYDaiOut(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g1)
-              console.log(`offChain buyFYDai: ${offChain}`)
-              console.log(`onChain buyFYDai: ${onChain}`)
+              console.log(`offChain buyFYToken: ${offChain}`)
+              console.log(`onChain buyFYToken: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
               console.log()

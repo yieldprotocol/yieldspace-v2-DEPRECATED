@@ -24,7 +24,7 @@ async function currentTimestamp() {
   return (await ethers.provider.getBlock(ethers.provider.getBlockNumber())).timestamp
 }
 
-import { sellDai, sellFYDai } from './shared/yieldspace'
+import { sellDai, sellFYToken } from './shared/yieldspace'
 const WAD = BigNumber.from(10).pow(18)
 
 describe('Pool', async function () {
@@ -85,7 +85,7 @@ describe('Pool', async function () {
     const fyTokenIn = WAD.mul(10)
     await fyToken1.mint(owner, fyTokenIn)
 
-    const baseIn = sellFYDai(
+    const baseIn = sellFYToken(
       await pool1.getBaseTokenReserves(),
       await pool1.getFYTokenReserves(),
       fyTokenIn,

@@ -41,7 +41,7 @@ export function mintWithDai(
   const y = tobn(fyDai)
   const T = tobn(timeTillMaturity)
 
-  const z1 = tobn(buyFYDai(Z, YV, y, T)) // Buy fyDai
+  const z1 = tobn(buyFYToken(Z, YV, y, T)) // Buy fyDai
   // Mint specifying how much fyDai to take in. Reverse of `mint`.
   const m = divide(multiply(S, y), subtract(YR, y))
   const z2 = divide(multiply(add(Z, z1), m), S)
@@ -82,7 +82,7 @@ export function burnForDai(
   const T = tobn(timeTillMaturity)
 
   const [z1, y] = burn(Z, YR, S, x)
-  const z2 = sellFYDai(Z, YV, y, T)
+  const z2 = sellFYToken(Z, YV, y, T)
 
   return toBN(add(tobn(z1), tobn(z2)))
 }
@@ -115,7 +115,7 @@ export function sellDai(
 }
 
 // https://www.desmos.com/calculator/6jlrre7ybt
-export function sellFYDai(
+export function sellFYToken(
   daiReserves: BigNumber,
   fyDaiReserves: BigNumber,
   fyDai: BigNumber,
@@ -169,7 +169,7 @@ export function buyDai(
 }
 
 // https://www.desmos.com/calculator/ws5oqj8x5i
-export function buyFYDai(
+export function buyFYToken(
   daiReserves: BigNumber,
   fyDaiReserves: BigNumber,
   fyDai: BigNumber,
