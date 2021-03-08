@@ -1,70 +1,52 @@
-import { artifacts, contract, web3 } from 'hardhat'
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 
-const Pool = artifacts.require('Pool')
-const PoolFactory = artifacts.require('PoolFactory')
-const Dai = artifacts.require('DaiMock')
-const FYDai = artifacts.require('FYDaiMock')
-const SafeERC20Namer = artifacts.require('SafeERC20Namer')
-const YieldMath = artifacts.require('YieldMath')
+import { PoolFactory } from '../typechain/PoolFactory'
+import { DaiMock as Dai } from '../typechain/DaiMock'
+import { FYDaiMock as FYDai } from '../typechain/FYDaiMock'
 
-import * as helper from 'ganache-time-traveler'
-import { assert } from 'chai'
-import { Contract } from './shared/fixtures'
+import { YieldSpaceEnvironment } from './shared/fixtures'
 
+import { ethers, waffle } from 'hardhat'
+import { expect } from 'chai'
+const { loadFixture } = waffle
 
-async function currentTimestamp() {
-  const block = await web3.eth.getBlockNumber()
-  return parseInt((await web3.eth.getBlock(block)).timestamp.toString())
-}
+describe('PoolFactory', async () => {
+  let ownerAcc: SignerWithAddress
+  let yieldSpace: YieldSpaceEnvironment
+  let factory: PoolFactory
 
-contract('PoolFactory', async ([owner]) => {
-  let snapshot: any
-  let snapshotId: string
-
-  let factory: Contract
-  let dai: Contract
-  let fyDai1: Contract
-  let maturity1: number
+  async function fixture() {
+    return await YieldSpaceEnvironment.setup(ownerAcc, [], [])
+  }
 
   before(async () => {
-    const yieldMathLibrary = await YieldMath.new()
-    const safeERC20NamerLibrary = await SafeERC20Namer.new()
-    await PoolFactory.link(yieldMathLibrary)
-    await PoolFactory.link(safeERC20NamerLibrary)
+    const signers = await ethers.getSigners()
+    ownerAcc = signers[0]
   })
 
   beforeEach(async () => {
-    snapshot = await helper.takeSnapshot()
-    snapshotId = snapshot['result']
-
-    // Setup dai
-    dai = await Dai.new()
-
-    // Setup fyDai
-    maturity1 = (await currentTimestamp()) + 31556952 // One year
-    fyDai1 = await FYDai.new(dai.address, maturity1)
-
-    // Setup Pool
-    factory = await PoolFactory.new({
-      from: owner,
-    })
-  })
-
-  afterEach(async () => {
-    await helper.revertToSnapshot(snapshotId)
+    yieldSpace = await loadFixture(fixture)
+    factory = yieldSpace.factory as PoolFactory
   })
 
   it('should create pools', async () => {
+    const DaiFactory = await ethers.getContractFactory('DaiMock')
+    const FYDaiFactory = await ethers.getContractFactory('FYDaiMock')
+    const dai = ((await DaiFactory.deploy()) as unknown) as Dai
+    await dai.deployed()
+
+    const { timestamp } = await ethers.provider.getBlock('latest')
+    const maturity1 = timestamp + 31556952 // One year
+    const fyDai1 = ((await FYDaiFactory.deploy(dai.address, maturity1)) as unknown) as FYDai
+    await fyDai1.deployed()
+
     const calculatedAddress = await factory.calculatePoolAddress(dai.address, fyDai1.address)
-    await factory.createPool(dai.address, fyDai1.address, {
-      from: owner,
-    })
+    await factory.createPool(dai.address, fyDai1.address)
 
-    const pool = await Pool.at(calculatedAddress)
-
-    assert.equal(await pool.baseToken(), dai.address, 'Pool has the wrong dai address')
-    assert.equal(await pool.fyToken(), fyDai1.address, 'Pool has the wrong fyDai address')
-    assert.equal(await pool.name(), 'Yield Test LP Token', 'Pool has the wrong name')
-    assert.equal(await pool.symbol(), 'TSTLP', 'Pool has the wrong symbol')
+    const pool = await ethers.getContractAt('Pool', calculatedAddress)
+    expect(await pool.baseToken()).to.equal(dai.address, 'Pool has the wrong dai address')
+    expect(await pool.fyToken()).to.equal(fyDai1.address, 'Pool has the wrong fyDai address')
+    expect(await pool.name()).to.equal('Yield Test LP Token', 'Pool has the wrong name')
+    expect(await pool.symbol()).to.equal('TSTLP', 'Pool has the wrong symbol')
   })
 })

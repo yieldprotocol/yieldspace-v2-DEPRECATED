@@ -9,14 +9,16 @@
 .infuraKey
 .secret
 
-# Buidler files
+# Hardhat files
 cache
 artifacts
 node_modules/
 output/
-
-# Truffle files
 build/
+abi/
+
+# Typescript
+typechain/
 
 # Solidity-coverage
 coverage/
