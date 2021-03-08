@@ -19,7 +19,7 @@ describe('YieldMath - Reverts', async () => {
 
   const g0 = ONE64 // No fees
   const g1 = BigNumber.from('950').mul(ONE64).div(BigNumber.from('1000')) // Sell dai to the pool
-  const g2 = BigNumber.from('1000').mul(ONE64).div(BigNumber.from('950')) // Sell fyDai to the pool
+  const g2 = BigNumber.from('1000').mul(ONE64).div(BigNumber.from('950')) // Sell fyToken to the pool
 
   before(async () => {
     const YieldMathFactory = await ethers.getContractFactory('YieldMath')
@@ -36,7 +36,7 @@ describe('YieldMath - Reverts', async () => {
     await yieldMath.deployed()
   })
 
-  describe('fyDaiOutForDaiIn reverts', () => {
+  describe('fyTokenOutForDaiIn reverts', () => {
     beforeEach(async () => {})
 
     // If time to maturity is higher than 1/k, multiplied or divided by g, we are too far from maturity.
@@ -60,8 +60,8 @@ describe('YieldMath - Reverts', async () => {
       ).to.be.revertedWith('YieldMath: Too much dai in')
     })
 
-    // If the fyDai to be obtained exceeds the fyDai reserves, the trade reverts
-    it('Insufficient fyDai reserves', async () => {
+    // If the fyToken to be obtained exceeds the fyToken reserves, the trade reverts
+    it('Insufficient fyToken reserves', async () => {
       await expect(
         yieldMath.fyDaiOutForDaiIn(OneToken, OneToken.mul(10), OneToken.mul(20), secondsInOneYear, k, g0)
       ).to.be.revertedWith('YieldMath: Insufficient fyDai reserves')
@@ -93,8 +93,8 @@ describe('YieldMath - Reverts', async () => {
       ).to.be.revertedWith('YieldMath: Too far from maturity')
     })
 
-    // If the fyDai in, added to the fyDai reserves, exceed 2**128, we will have too much fyDai to operate
-    it('Too much fyDai in', async () => {
+    // If the fyToken in, added to the fyToken reserves, exceed 2**128, we will have too much fyToken to operate
+    it('Too much fyToken in', async () => {
       await expect(
         yieldMath.daiOutForFYDaiIn(OneToken.mul(10), MAX, OneToken, secondsInOneYear, k, g0)
       ).to.be.revertedWith('YieldMath: Too much fyDai in')
@@ -116,7 +116,7 @@ describe('YieldMath - Reverts', async () => {
     }) */
   })
 
-  describe('fyDaiInForDaiOut reverts', () => {
+  describe('fyTokenInForDaiOut reverts', () => {
     beforeEach(async () => {})
 
     // If time to maturity is higher than 1/k, multiplied or divided by g, we are too far from maturity.
@@ -141,7 +141,7 @@ describe('YieldMath - Reverts', async () => {
 
     // If the dai to be obtained exceeds the dai reserves, the trade reverts
     /* TODO: It correctly reverts, why do I get an UnhandledPromiseRejectionWarning?
-    it('Resulting fyDai reserves too high', async () => {
+    it('Resulting fyToken reserves too high', async () => {
       await expect(
         yieldMath.fyDaiInForDaiOut(OneToken.mul(10), MAX, OneToken, secondsInOneYear, k, g0),
         'YieldMath: Resulting fyDai reserves too high'
@@ -175,7 +175,7 @@ describe('YieldMath - Reverts', async () => {
       ).to.be.revertedWith('YieldMath: Too far from maturity')
     })
 
-    it('Too much fyDai out', async () => {
+    it('Too much fyToken out', async () => {
       await expect(
         yieldMath.daiInForFYDaiOut(OneToken, OneToken, OneToken.mul(2), secondsInOneYear, k, g0)
       ).to.be.revertedWith('YieldMath: Too much fyDai out')

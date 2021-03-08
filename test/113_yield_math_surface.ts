@@ -27,7 +27,7 @@ describe('YieldMath - Surface', async () => {
 
   const g0 = ONE64 // No fees
   const g1 = BigNumber.from('950').mul(ONE64).div(BigNumber.from('1000')) // Sell dai to the pool
-  const g2 = BigNumber.from('1000').mul(ONE64).div(BigNumber.from('950')) // Sell fyDai to the pool
+  const g2 = BigNumber.from('1000').mul(ONE64).div(BigNumber.from('950')) // Sell fyToken to the pool
 
   const daiReserves = [
     // BigNumber.from('100000000000000000000000'),
@@ -36,7 +36,7 @@ describe('YieldMath - Surface', async () => {
     BigNumber.from('100000000000000000000000000'),
     BigNumber.from('1000000000000000000000000000'),
   ]
-  const fyDaiReserveDeltas = [
+  const fyTokenReserveDeltas = [
     // BigNumber.from('10000000000000000000'),
     // BigNumber.from('1000000000000000000000'),
     BigNumber.from('100000000000000000000000'),
@@ -78,33 +78,33 @@ describe('YieldMath - Surface', async () => {
       this.timeout(0)
 
       for (var daiReserve of daiReserves) {
-        for (var fyDaiReserveDelta of fyDaiReserveDeltas) {
+        for (var fyTokenReserveDelta of fyTokenReserveDeltas) {
           for (var tradeSize of tradeSizes) {
             for (var timeTillMaturity of timesTillMaturity) {
-              console.log(`daiReserve, fyDaiReserveDelta, tradeSize, timeTillMaturity`)
-              console.log(`${daiReserve}, ${fyDaiReserveDelta}, ${tradeSize}, ${timeTillMaturity}`)
-              const fyDaiReserve = daiReserve.add(fyDaiReserveDelta)
+              console.log(`daiReserve, fyTokenReserveDelta, tradeSize, timeTillMaturity`)
+              console.log(`${daiReserve}, ${fyTokenReserveDelta}, ${tradeSize}, ${timeTillMaturity}`)
+              const fyTokenReserve = daiReserve.add(fyTokenReserveDelta)
               let offChain, onChain
-              offChain = sellFYToken(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.daiOutForFYDaiIn(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g2)
+              offChain = sellFYToken(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.daiOutForFYDaiIn(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g2)
               console.log(`offChain sellFYToken: ${offChain}`)
               console.log(`onChain sellFYToken: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = sellDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.fyDaiOutForDaiIn(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g1)
+              offChain = sellDai(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.fyDaiOutForDaiIn(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g1)
               console.log(`offChain sellDai: ${offChain}`)
               console.log(`onChain sellDai: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = buyDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.fyDaiInForDaiOut(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g2)
+              offChain = buyDai(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.fyDaiInForDaiOut(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g2)
               console.log(`offChain buyDai: ${offChain}`)
               console.log(`onChain buyDai: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = buyFYToken(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.daiInForFYDaiOut(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g1)
+              offChain = buyFYToken(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.daiInForFYDaiOut(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g1)
               console.log(`offChain buyFYToken: ${offChain}`)
               console.log(`onChain buyFYToken: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)

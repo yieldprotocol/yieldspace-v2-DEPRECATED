@@ -38,15 +38,15 @@ describe('PoolFactory', async () => {
 
     const { timestamp } = await ethers.provider.getBlock('latest')
     const maturity1 = timestamp + 31556952 // One year
-    const fyDai1 = ((await FYTokenFactory.deploy(dai.address, maturity1)) as unknown) as FYToken
-    await fyDai1.deployed()
+    const fyToken1 = ((await FYTokenFactory.deploy(dai.address, maturity1)) as unknown) as FYToken
+    await fyToken1.deployed()
 
-    const calculatedAddress = await factory.calculatePoolAddress(dai.address, fyDai1.address)
-    await factory.createPool(dai.address, fyDai1.address)
+    const calculatedAddress = await factory.calculatePoolAddress(dai.address, fyToken1.address)
+    await factory.createPool(dai.address, fyToken1.address)
 
     const pool = await ethers.getContractAt('Pool', calculatedAddress)
     expect(await pool.baseToken()).to.equal(dai.address, 'Pool has the wrong dai address')
-    expect(await pool.fyToken()).to.equal(fyDai1.address, 'Pool has the wrong fyDai address')
+    expect(await pool.fyToken()).to.equal(fyToken1.address, 'Pool has the wrong fyToken address')
     expect(await pool.name()).to.equal('Yield Test LP Token', 'Pool has the wrong name')
     expect(await pool.symbol()).to.equal('TSTLP', 'Pool has the wrong symbol')
   })
