@@ -30,20 +30,20 @@ describe('PoolFactory', async () => {
   })
 
   it('should create pools', async () => {
-    const DaiFactory = await ethers.getContractFactory("DaiMock");
-    const FYDaiFactory = await ethers.getContractFactory("FYDaiMock");
-    const dai = await DaiFactory.deploy() as unknown as Dai
-    await dai.deployed();
+    const DaiFactory = await ethers.getContractFactory('DaiMock')
+    const FYDaiFactory = await ethers.getContractFactory('FYDaiMock')
+    const dai = ((await DaiFactory.deploy()) as unknown) as Dai
+    await dai.deployed()
 
-    const { timestamp } = await ethers.provider.getBlock("latest")
+    const { timestamp } = await ethers.provider.getBlock('latest')
     const maturity1 = timestamp + 31556952 // One year
-    const fyDai1 = await FYDaiFactory.deploy(dai.address, maturity1) as unknown as FYDai
-    await fyDai1.deployed();
+    const fyDai1 = ((await FYDaiFactory.deploy(dai.address, maturity1)) as unknown) as FYDai
+    await fyDai1.deployed()
 
     const calculatedAddress = await factory.calculatePoolAddress(dai.address, fyDai1.address)
     await factory.createPool(dai.address, fyDai1.address)
 
-    const pool = await ethers.getContractAt("Pool", calculatedAddress)
+    const pool = await ethers.getContractAt('Pool', calculatedAddress)
     expect(await pool.baseToken()).to.equal(dai.address, 'Pool has the wrong dai address')
     expect(await pool.fyToken()).to.equal(fyDai1.address, 'Pool has the wrong fyDai address')
     expect(await pool.name()).to.equal('Yield Test LP Token', 'Pool has the wrong name')

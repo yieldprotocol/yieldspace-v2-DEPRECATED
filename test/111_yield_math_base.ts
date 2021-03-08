@@ -20,21 +20,18 @@ describe('YieldMath - Base', async () => {
   let yieldMath: YieldMathWrapper
 
   before(async () => {
-    const YieldMathFactory = await ethers.getContractFactory("YieldMath");
-    yieldMathLibrary = await YieldMathFactory.deploy() as unknown as YieldMath // TODO: Why does the Factory return a Contract and not a YieldMath?
-    await yieldMathLibrary.deployed();
+    const YieldMathFactory = await ethers.getContractFactory('YieldMath')
+    yieldMathLibrary = ((await YieldMathFactory.deploy()) as unknown) as YieldMath // TODO: Why does the Factory return a Contract and not a YieldMath?
+    await yieldMathLibrary.deployed()
 
-    const YieldMathWrapperFactory = await ethers.getContractFactory(
-      "YieldMathWrapper",
-      {
-        libraries: {
-          YieldMath: yieldMathLibrary.address
-        }
-      }
-    );
-    
-    yieldMath = await YieldMathWrapperFactory.deploy() as unknown as YieldMathWrapper // TODO: See above
-    await yieldMath.deployed();
+    const YieldMathWrapperFactory = await ethers.getContractFactory('YieldMathWrapper', {
+      libraries: {
+        YieldMath: yieldMathLibrary.address,
+      },
+    })
+
+    yieldMath = ((await YieldMathWrapperFactory.deploy()) as unknown) as YieldMathWrapper // TODO: See above
+    await yieldMath.deployed()
   })
 
   describe('Test pure math functions', async () => {

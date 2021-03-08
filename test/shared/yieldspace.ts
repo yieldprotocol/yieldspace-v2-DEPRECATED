@@ -10,7 +10,12 @@ function tobn(x: BigNumber): typeof bignumber {
 }
 
 // https://www.desmos.com/calculator/mllhtohxfx
-export function mint(daiReserves: BigNumber, fyDaiReserves: BigNumber, supply: BigNumber, dai: BigNumber): [BigNumber, BigNumber] {
+export function mint(
+  daiReserves: BigNumber,
+  fyDaiReserves: BigNumber,
+  supply: BigNumber,
+  dai: BigNumber
+): [BigNumber, BigNumber] {
   const Z = tobn(daiReserves)
   const Y = tobn(fyDaiReserves)
   const S = tobn(supply)
@@ -45,7 +50,12 @@ export function mintWithDai(
 }
 
 // https://www.desmos.com/calculator/ubsalzunpo
-export function burn(daiReserves: BigNumber, fyDaiReserves: BigNumber, supply: BigNumber, lpTokens: BigNumber): [BigNumber, BigNumber] {
+export function burn(
+  daiReserves: BigNumber,
+  fyDaiReserves: BigNumber,
+  supply: BigNumber,
+  lpTokens: BigNumber
+): [BigNumber, BigNumber] {
   const Z = tobn(daiReserves)
   const Y = tobn(fyDaiReserves)
   const S = tobn(supply)
@@ -78,7 +88,12 @@ export function burnForDai(
 }
 
 // https://www.desmos.com/calculator/5nf2xuy6yb
-export function sellDai(daiReserves: BigNumber, fyDaiReserves: BigNumber, dai: BigNumber, timeTillMaturity: BigNumber): BigNumber {
+export function sellDai(
+  daiReserves: BigNumber,
+  fyDaiReserves: BigNumber,
+  dai: BigNumber,
+  timeTillMaturity: BigNumber
+): BigNumber {
   const fee = bignumber(1000000000000)
   const Z = tobn(daiReserves)
   const Y = tobn(fyDaiReserves)
@@ -100,7 +115,12 @@ export function sellDai(daiReserves: BigNumber, fyDaiReserves: BigNumber, dai: B
 }
 
 // https://www.desmos.com/calculator/6jlrre7ybt
-export function sellFYDai(daiReserves: BigNumber, fyDaiReserves: BigNumber, fyDai: BigNumber, timeTillMaturity: BigNumber): BigNumber {
+export function sellFYDai(
+  daiReserves: BigNumber,
+  fyDaiReserves: BigNumber,
+  fyDai: BigNumber,
+  timeTillMaturity: BigNumber
+): BigNumber {
   const fee = bignumber(1000000000000)
   const Z = tobn(daiReserves)
   const Y = tobn(fyDaiReserves)
@@ -122,7 +142,12 @@ export function sellFYDai(daiReserves: BigNumber, fyDaiReserves: BigNumber, fyDa
 }
 
 // https://www.desmos.com/calculator/0rgnmtckvy
-export function buyDai(daiReserves: BigNumber, fyDaiReserves: BigNumber, dai: BigNumber, timeTillMaturity: BigNumber): BigNumber {
+export function buyDai(
+  daiReserves: BigNumber,
+  fyDaiReserves: BigNumber,
+  dai: BigNumber,
+  timeTillMaturity: BigNumber
+): BigNumber {
   const fee = bignumber(1000000000000)
   const Z = tobn(daiReserves)
   const Y = tobn(fyDaiReserves)
@@ -144,7 +169,12 @@ export function buyDai(daiReserves: BigNumber, fyDaiReserves: BigNumber, dai: Bi
 }
 
 // https://www.desmos.com/calculator/ws5oqj8x5i
-export function buyFYDai(daiReserves: BigNumber, fyDaiReserves: BigNumber, fyDai: BigNumber, timeTillMaturity: BigNumber): BigNumber {
+export function buyFYDai(
+  daiReserves: BigNumber,
+  fyDaiReserves: BigNumber,
+  fyDai: BigNumber,
+  timeTillMaturity: BigNumber
+): BigNumber {
   const fee = bignumber(1000000000000)
   const Z = tobn(daiReserves)
   const Y = tobn(fyDaiReserves)

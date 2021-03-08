@@ -4,16 +4,16 @@ import { YieldMath } from '../typechain/YieldMath'
 import { BigNumber } from 'ethers'
 
 import { ethers } from 'hardhat'
-import { solidity } from "ethereum-waffle";
+import { solidity } from 'ethereum-waffle'
 import { expect, use } from 'chai'
-use(solidity);
+use(solidity)
 
 const PRECISION = BigNumber.from('100000000000000') // 1e14
 
 function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
   // Check that abs(x - y) < p:
   const diff = x.gt(y) ? BigNumber.from(x).sub(y) : BigNumber.from(y).sub(x) // Not sure why I have to convert x and y to BigNumber
-  expect(diff.div(p)).to.eq(0)    // Hack to avoid silly conversions. BigNumber truncates decimals off.
+  expect(diff.div(p)).to.eq(0) // Hack to avoid silly conversions. BigNumber truncates decimals off.
 }
 
 describe('YieldMath - Curve', async () => {
@@ -37,21 +37,18 @@ describe('YieldMath - Curve', async () => {
   const timeTillMaturity = ['0', '40', '4000', '400000', '40000000']
 
   before(async () => {
-    const YieldMathFactory = await ethers.getContractFactory("YieldMath");
-    yieldMathLibrary = await YieldMathFactory.deploy() as unknown as YieldMath // TODO: Why does the Factory return a Contract and not a YieldMath?
-    await yieldMathLibrary.deployed();
+    const YieldMathFactory = await ethers.getContractFactory('YieldMath')
+    yieldMathLibrary = ((await YieldMathFactory.deploy()) as unknown) as YieldMath // TODO: Why does the Factory return a Contract and not a YieldMath?
+    await yieldMathLibrary.deployed()
 
-    const YieldMathWrapperFactory = await ethers.getContractFactory(
-      "YieldMathWrapper",
-      {
-        libraries: {
-          YieldMath: yieldMathLibrary.address
-        }
-      }
-    );
-    
-    yieldMath = await YieldMathWrapperFactory.deploy() as unknown as YieldMathWrapper // TODO: See above
-    await yieldMath.deployed();
+    const YieldMathWrapperFactory = await ethers.getContractFactory('YieldMathWrapper', {
+      libraries: {
+        YieldMath: yieldMathLibrary.address,
+      },
+    })
+
+    yieldMath = ((await YieldMathWrapperFactory.deploy()) as unknown) as YieldMathWrapper // TODO: See above
+    await yieldMath.deployed()
   })
 
   describe('Test trading functions', async () => {
