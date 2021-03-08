@@ -1,80 +1,89 @@
-const { bignumber, add, subtract, multiply, divide, pow } = require('mathjs')
+import { BigNumber } from 'ethers'
+const { bignumber, add, subtract, multiply, divide, pow, floor } = require('mathjs')
+
+function toBN(x: typeof bignumber): BigNumber {
+  return BigNumber.from(floor(x).toFixed().toString())
+}
+
+function tobn(x: BigNumber): typeof bignumber {
+  return bignumber(x.toString())
+}
 
 // https://www.desmos.com/calculator/mllhtohxfx
-export function mint(daiReserves: any, fyDaiReserves: any, supply: any, dai: any): [any, any] {
-  const Z = bignumber(daiReserves)
-  const Y = bignumber(fyDaiReserves)
-  const S = bignumber(supply)
-  const z = bignumber(dai)
+export function mint(daiReserves: BigNumber, fyDaiReserves: BigNumber, supply: BigNumber, dai: BigNumber): [BigNumber, BigNumber] {
+  const Z = tobn(daiReserves)
+  const Y = tobn(fyDaiReserves)
+  const S = tobn(supply)
+  const z = tobn(dai)
   const m = divide(multiply(S, z), Z)
   const y = divide(multiply(Y, m), S)
 
-  return [m, y]
+  return [toBN(m), toBN(y)]
 }
 
 export function mintWithDai(
-  daiReserves: any,
-  fyDaiReservesVirtual: any,
-  fyDaiReservesReal: any,
-  supply: any,
-  fyDai: any,
-  timeTillMaturity: any
-): [any, any] {
-  const Z = bignumber(daiReserves)
-  const YV = bignumber(fyDaiReservesVirtual)
-  const YR = bignumber(fyDaiReservesReal)
-  const S = bignumber(supply)
-  const y = bignumber(fyDai)
-  const T = bignumber(timeTillMaturity)
+  daiReserves: BigNumber,
+  fyDaiReservesVirtual: BigNumber,
+  fyDaiReservesReal: BigNumber,
+  supply: BigNumber,
+  fyDai: BigNumber,
+  timeTillMaturity: BigNumber
+): [BigNumber, BigNumber] {
+  const Z = tobn(daiReserves)
+  const YV = tobn(fyDaiReservesVirtual)
+  const YR = tobn(fyDaiReservesReal)
+  const S = tobn(supply)
+  const y = tobn(fyDai)
+  const T = tobn(timeTillMaturity)
 
-  const z1 = buyFYDai(Z, YV, y, T) // Buy fyDai
+  const z1 = tobn(buyFYDai(Z, YV, y, T)) // Buy fyDai
   // Mint specifying how much fyDai to take in. Reverse of `mint`.
   const m = divide(multiply(S, y), subtract(YR, y))
   const z2 = divide(multiply(add(Z, z1), m), S)
 
-  return [m, add(z1, z2)]
+  return [toBN(m), toBN(add(z1, z2))]
 }
 
 // https://www.desmos.com/calculator/ubsalzunpo
-export function burn(daiReserves: any, fyDaiReserves: any, supply: any, lpTokens: any): [any, any] {
-  const Z = bignumber(daiReserves)
-  const Y = bignumber(fyDaiReserves)
-  const S = bignumber(supply)
-  const x = bignumber(lpTokens)
+export function burn(daiReserves: BigNumber, fyDaiReserves: BigNumber, supply: BigNumber, lpTokens: BigNumber): [BigNumber, BigNumber] {
+  const Z = tobn(daiReserves)
+  const Y = tobn(fyDaiReserves)
+  const S = tobn(supply)
+  const x = tobn(lpTokens)
   const z = divide(multiply(x, Z), S)
   const y = divide(multiply(x, Y), S)
 
-  return [z, y]
+  return [toBN(z), toBN(y)]
 }
 
 export function burnForDai(
-  daiReserves: any,
-  fyDaiReservesVirtual: any,
-  fyDaiReservesReal: any,
-  supply: any,
-  lpTokens: any,
-  timeTillMaturity: any
-): any {
-  const Z = bignumber(daiReserves)
-  const YV = bignumber(fyDaiReservesVirtual)
-  const YR = bignumber(fyDaiReservesReal)
-  const S = bignumber(supply)
-  const x = bignumber(lpTokens)
-  const T = bignumber(timeTillMaturity)
+  daiReserves: BigNumber,
+  fyDaiReservesVirtual: BigNumber,
+  fyDaiReservesReal: BigNumber,
+  supply: BigNumber,
+  lpTokens: BigNumber,
+  timeTillMaturity: BigNumber
+): BigNumber {
+  const Z = tobn(daiReserves)
+  const YV = tobn(fyDaiReservesVirtual)
+  const YR = tobn(fyDaiReservesReal)
+  const S = tobn(supply)
+  const x = tobn(lpTokens)
+  const T = tobn(timeTillMaturity)
 
   const [z1, y] = burn(Z, YR, S, x)
   const z2 = sellFYDai(Z, YV, y, T)
 
-  return add(z1, z2)
+  return toBN(add(tobn(z1), tobn(z2)))
 }
 
 // https://www.desmos.com/calculator/5nf2xuy6yb
-export function sellDai(daiReserves: any, fyDaiReserves: any, dai: any, timeTillMaturity: any): any {
+export function sellDai(daiReserves: BigNumber, fyDaiReserves: BigNumber, dai: BigNumber, timeTillMaturity: BigNumber): BigNumber {
   const fee = bignumber(1000000000000)
-  const Z = bignumber(daiReserves)
-  const Y = bignumber(fyDaiReserves)
-  const T = bignumber(timeTillMaturity)
-  const x = bignumber(dai)
+  const Z = tobn(daiReserves)
+  const Y = tobn(fyDaiReserves)
+  const T = tobn(timeTillMaturity)
+  const x = tobn(dai)
   const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(950 / 1000)
   const t = multiply(k, T)
@@ -87,16 +96,16 @@ export function sellDai(daiReserves: any, fyDaiReserves: any, dai: any, timeTill
   const y = subtract(Y, pow(sum, invA))
   const yFee = subtract(y, fee)
 
-  return yFee
+  return toBN(yFee)
 }
 
 // https://www.desmos.com/calculator/6jlrre7ybt
-export function sellFYDai(daiReserves: any, fyDaiReserves: any, fyDai: any, timeTillMaturity: any): any {
+export function sellFYDai(daiReserves: BigNumber, fyDaiReserves: BigNumber, fyDai: BigNumber, timeTillMaturity: BigNumber): BigNumber {
   const fee = bignumber(1000000000000)
-  const Z = bignumber(daiReserves)
-  const Y = bignumber(fyDaiReserves)
-  const T = bignumber(timeTillMaturity)
-  const x = bignumber(fyDai)
+  const Z = tobn(daiReserves)
+  const Y = tobn(fyDaiReserves)
+  const T = tobn(timeTillMaturity)
+  const x = tobn(fyDai)
   const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(1000 / 950)
   const t = multiply(k, T)
@@ -109,16 +118,16 @@ export function sellFYDai(daiReserves: any, fyDaiReserves: any, fyDai: any, time
   const y = subtract(Z, pow(sum, invA))
   const yFee = subtract(y, fee)
 
-  return yFee
+  return toBN(yFee)
 }
 
 // https://www.desmos.com/calculator/0rgnmtckvy
-export function buyDai(daiReserves: any, fyDaiReserves: any, dai: any, timeTillMaturity: any): any {
+export function buyDai(daiReserves: BigNumber, fyDaiReserves: BigNumber, dai: BigNumber, timeTillMaturity: BigNumber): BigNumber {
   const fee = bignumber(1000000000000)
-  const Z = bignumber(daiReserves)
-  const Y = bignumber(fyDaiReserves)
-  const T = bignumber(timeTillMaturity)
-  const x = bignumber(dai)
+  const Z = tobn(daiReserves)
+  const Y = tobn(fyDaiReserves)
+  const T = tobn(timeTillMaturity)
+  const x = tobn(dai)
   const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(1000 / 950)
   const t = multiply(k, T)
@@ -131,16 +140,16 @@ export function buyDai(daiReserves: any, fyDaiReserves: any, dai: any, timeTillM
   const y = subtract(pow(sum, invA), Y)
   const yFee = add(y, fee)
 
-  return yFee
+  return toBN(yFee)
 }
 
 // https://www.desmos.com/calculator/ws5oqj8x5i
-export function buyFYDai(daiReserves: any, fyDaiReserves: any, fyDai: any, timeTillMaturity: any): any {
+export function buyFYDai(daiReserves: BigNumber, fyDaiReserves: BigNumber, fyDai: BigNumber, timeTillMaturity: BigNumber): BigNumber {
   const fee = bignumber(1000000000000)
-  const Z = bignumber(daiReserves)
-  const Y = bignumber(fyDaiReserves)
-  const T = bignumber(timeTillMaturity)
-  const x = bignumber(fyDai)
+  const Z = tobn(daiReserves)
+  const Y = tobn(fyDaiReserves)
+  const T = tobn(timeTillMaturity)
+  const x = tobn(fyDai)
   const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(950 / 1000)
   const t = multiply(k, T)
@@ -153,5 +162,5 @@ export function buyFYDai(daiReserves: any, fyDaiReserves: any, fyDai: any, timeT
   const y = subtract(pow(sum, invA), Z)
   const yFee = add(y, fee)
 
-  return yFee
+  return toBN(yFee)
 }
