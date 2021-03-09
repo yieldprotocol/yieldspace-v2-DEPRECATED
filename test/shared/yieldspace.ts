@@ -26,7 +26,7 @@ export function mint(
   return [toBN(m), toBN(y)]
 }
 
-export function mintWithDai(
+export function mintWithBase(
   daiReserves: BigNumber,
   fyTokenReservesVirtual: BigNumber,
   fyTokenReservesReal: BigNumber,
@@ -66,7 +66,7 @@ export function burn(
   return [toBN(z), toBN(y)]
 }
 
-export function burnForDai(
+export function burnForBase(
   daiReserves: BigNumber,
   fyTokenReservesVirtual: BigNumber,
   fyTokenReservesReal: BigNumber,
@@ -88,7 +88,7 @@ export function burnForDai(
 }
 
 // https://www.desmos.com/calculator/5nf2xuy6yb
-export function sellDai(
+export function sellBase(
   daiReserves: BigNumber,
   fyTokenReserves: BigNumber,
   dai: BigNumber,
@@ -142,7 +142,7 @@ export function sellFYToken(
 }
 
 // https://www.desmos.com/calculator/0rgnmtckvy
-export function buyDai(
+export function buyBase(
   daiReserves: BigNumber,
   fyTokenReserves: BigNumber,
   dai: BigNumber,

@@ -52,7 +52,7 @@ describe('YieldMath - Curve', async () => {
   })
 
   describe('Test trading functions', async () => {
-    it('A higher g means more fyToken out with `fyTokenOutForDaiIn`', async () => {
+    it('A higher g means more fyToken out with `fyTokenOutForBaseIn`', async () => {
       for (var i = 0; i < values.length; i++) {
         var daiReservesValue = values[i][0]
         var fyTokenReservesValue = values[i][1]
@@ -80,7 +80,7 @@ describe('YieldMath - Curve', async () => {
       }
     })
 
-    it('As we approach maturity, price grows to 1 for `fyTokenOutForDaiIn`', async () => {
+    it('As we approach maturity, price grows to 1 for `fyTokenOutForBaseIn`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
         var daiReservesValue = values[i][0]
@@ -113,7 +113,7 @@ describe('YieldMath - Curve', async () => {
       }
     })
 
-    it('A lower g means more Dai out with `daiOutForFYTokenIn`', async () => {
+    it('A lower g means more Base out with `daiOutForFYTokenIn`', async () => {
       for (var i = 0; i < values.length; i++) {
         var daiReservesValue = values[i][0]
         var fyTokenReservesValue = values[i][1]
@@ -174,7 +174,7 @@ describe('YieldMath - Curve', async () => {
       }
     })
 
-    it('A higher g means more fyToken in with `fyTokenInForDaiOut`', async () => {
+    it('A higher g means more fyToken in with `fyTokenInForBaseOut`', async () => {
       for (var i = 0; i < values.length; i++) {
         var daiReservesValue = values[i][0]
         var fyTokenReservesValue = values[i][1]
@@ -203,7 +203,7 @@ describe('YieldMath - Curve', async () => {
       }
     })
 
-    it('As we approach maturity, price grows to 1 for `fyTokenInForDaiOut`', async () => {
+    it('As we approach maturity, price grows to 1 for `fyTokenInForBaseOut`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
         var daiReservesValue = values[i][0]
@@ -235,7 +235,7 @@ describe('YieldMath - Curve', async () => {
       }
     })
 
-    it('A lower g means more Dai in with `daiInForFYTokenOut`', async () => {
+    it('A lower g means more Base in with `daiInForFYTokenOut`', async () => {
       for (var i = 0; i < values.length; i++) {
         var daiReservesValue = values[i][0]
         var fyTokenReservesValue = values[i][1]

@@ -6,7 +6,7 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 
-import { sellDai, sellFYToken, buyDai, buyFYToken } from './shared/yieldspace'
+import { sellBase, sellFYToken, buyBase, buyFYToken } from './shared/yieldspace'
 
 const PRECISION = BigNumber.from('100000000000000') // 1e14
 
@@ -91,16 +91,16 @@ describe('YieldMath - Surface', async () => {
               console.log(`onChain sellFYToken: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = sellDai(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              offChain = sellBase(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity)
               onChain = await yieldMath.fyDaiOutForDaiIn(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g1)
-              console.log(`offChain sellDai: ${offChain}`)
-              console.log(`onChain sellDai: ${onChain}`)
+              console.log(`offChain sellBase: ${offChain}`)
+              console.log(`onChain sellBase: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = buyDai(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              offChain = buyBase(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity)
               onChain = await yieldMath.fyDaiInForDaiOut(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g2)
-              console.log(`offChain buyDai: ${offChain}`)
-              console.log(`onChain buyDai: ${onChain}`)
+              console.log(`offChain buyBase: ${offChain}`)
+              console.log(`onChain buyBase: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
               offChain = buyFYToken(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity)

@@ -36,7 +36,7 @@ describe('YieldMath - Reverts', async () => {
     await yieldMath.deployed()
   })
 
-  describe('fyTokenOutForDaiIn reverts', () => {
+  describe('fyTokenOutForBaseIn reverts', () => {
     beforeEach(async () => {})
 
     // If time to maturity is higher than 1/k, multiplied or divided by g, we are too far from maturity.
@@ -116,7 +116,7 @@ describe('YieldMath - Reverts', async () => {
     }) */
   })
 
-  describe('fyTokenInForDaiOut reverts', () => {
+  describe('fyTokenInForBaseOut reverts', () => {
     beforeEach(async () => {})
 
     // If time to maturity is higher than 1/k, multiplied or divided by g, we are too far from maturity.
@@ -158,7 +158,7 @@ describe('YieldMath - Reverts', async () => {
     }) */
   })
 
-  describe('daiInForFYDaiOut reverts', () => {
+  describe('daiInForFYBaseOut reverts', () => {
     beforeEach(async () => {})
 
     // If time to maturity is higher than 1/k, multiplied or divided by g, we are too far from maturity.
