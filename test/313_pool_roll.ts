@@ -2,8 +2,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { Pool } from '../typechain/Pool'
 import { PoolFactory } from '../typechain/PoolFactory'
-import { DaiMock as ERC20 } from '../typechain/DaiMock'
-import { FYDaiMock as FYToken } from '../typechain/FYDaiMock'
+import { BaseMock as Base } from '../typechain/BaseMock'
+import { FYTokenMock as FYToken } from '../typechain/FYTokenMock'
 import { YieldSpaceEnvironment } from './shared/fixtures'
 
 import { BigNumber } from 'ethers'
@@ -24,7 +24,7 @@ async function currentTimestamp() {
   return (await ethers.provider.getBlock(ethers.provider.getBlockNumber())).timestamp
 }
 
-import { sellDai, sellFYDai } from './shared/yieldspace'
+import { sellBase, sellFYToken } from './shared/yieldspace'
 const WAD = BigNumber.from(10).pow(18)
 
 describe('Pool', async function () {
@@ -40,7 +40,7 @@ describe('Pool', async function () {
   let pool1: Pool
   let pool2: Pool
 
-  let base: ERC20
+  let base: Base
   let fyToken1: FYToken
   let fyToken2: FYToken
   let maturity1: BigNumber
@@ -69,7 +69,7 @@ describe('Pool', async function () {
   beforeEach(async () => {
     yieldSpace = await loadFixture(fixture)
     factory = yieldSpace.factory as PoolFactory
-    base = yieldSpace.bases.get(baseId) as ERC20
+    base = yieldSpace.bases.get(baseId) as Base
 
     fyToken1 = yieldSpace.fyTokens.get(fyToken1Id) as FYToken
     fyToken2 = yieldSpace.fyTokens.get(fyToken2Id) as FYToken
@@ -85,13 +85,13 @@ describe('Pool', async function () {
     const fyTokenIn = WAD.mul(10)
     await fyToken1.mint(owner, fyTokenIn)
 
-    const baseIn = sellFYDai(
+    const baseIn = sellFYToken(
       await pool1.getBaseTokenReserves(),
       await pool1.getFYTokenReserves(),
       fyTokenIn,
       maturity1.sub(await currentTimestamp())
     )
-    const fyTokenOut = sellDai(
+    const fyTokenOut = sellBase(
       await pool2.getBaseTokenReserves(),
       await pool2.getFYTokenReserves(),
       baseIn,

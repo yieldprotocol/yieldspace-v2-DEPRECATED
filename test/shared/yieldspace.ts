@@ -11,38 +11,38 @@ function tobn(x: BigNumber): typeof bignumber {
 
 // https://www.desmos.com/calculator/mllhtohxfx
 export function mint(
-  daiReserves: BigNumber,
-  fyDaiReserves: BigNumber,
+  baseReserves: BigNumber,
+  fyTokenReserves: BigNumber,
   supply: BigNumber,
-  dai: BigNumber
+  base: BigNumber
 ): [BigNumber, BigNumber] {
-  const Z = tobn(daiReserves)
-  const Y = tobn(fyDaiReserves)
+  const Z = tobn(baseReserves)
+  const Y = tobn(fyTokenReserves)
   const S = tobn(supply)
-  const z = tobn(dai)
+  const z = tobn(base)
   const m = divide(multiply(S, z), Z)
   const y = divide(multiply(Y, m), S)
 
   return [toBN(m), toBN(y)]
 }
 
-export function mintWithDai(
-  daiReserves: BigNumber,
-  fyDaiReservesVirtual: BigNumber,
-  fyDaiReservesReal: BigNumber,
+export function mintWithBase(
+  baseReserves: BigNumber,
+  fyTokenReservesVirtual: BigNumber,
+  fyTokenReservesReal: BigNumber,
   supply: BigNumber,
-  fyDai: BigNumber,
+  fyToken: BigNumber,
   timeTillMaturity: BigNumber
 ): [BigNumber, BigNumber] {
-  const Z = tobn(daiReserves)
-  const YV = tobn(fyDaiReservesVirtual)
-  const YR = tobn(fyDaiReservesReal)
+  const Z = tobn(baseReserves)
+  const YV = tobn(fyTokenReservesVirtual)
+  const YR = tobn(fyTokenReservesReal)
   const S = tobn(supply)
-  const y = tobn(fyDai)
+  const y = tobn(fyToken)
   const T = tobn(timeTillMaturity)
 
-  const z1 = tobn(buyFYDai(Z, YV, y, T)) // Buy fyDai
-  // Mint specifying how much fyDai to take in. Reverse of `mint`.
+  const z1 = tobn(buyFYToken(Z, YV, y, T)) // Buy fyToken
+  // Mint specifying how much fyToken to take in. Reverse of `mint`.
   const m = divide(multiply(S, y), subtract(YR, y))
   const z2 = divide(multiply(add(Z, z1), m), S)
 
@@ -51,13 +51,13 @@ export function mintWithDai(
 
 // https://www.desmos.com/calculator/ubsalzunpo
 export function burn(
-  daiReserves: BigNumber,
-  fyDaiReserves: BigNumber,
+  baseReserves: BigNumber,
+  fyTokenReserves: BigNumber,
   supply: BigNumber,
   lpTokens: BigNumber
 ): [BigNumber, BigNumber] {
-  const Z = tobn(daiReserves)
-  const Y = tobn(fyDaiReserves)
+  const Z = tobn(baseReserves)
+  const Y = tobn(fyTokenReserves)
   const S = tobn(supply)
   const x = tobn(lpTokens)
   const z = divide(multiply(x, Z), S)
@@ -66,39 +66,39 @@ export function burn(
   return [toBN(z), toBN(y)]
 }
 
-export function burnForDai(
-  daiReserves: BigNumber,
-  fyDaiReservesVirtual: BigNumber,
-  fyDaiReservesReal: BigNumber,
+export function burnForBase(
+  baseReserves: BigNumber,
+  fyTokenReservesVirtual: BigNumber,
+  fyTokenReservesReal: BigNumber,
   supply: BigNumber,
   lpTokens: BigNumber,
   timeTillMaturity: BigNumber
 ): BigNumber {
-  const Z = tobn(daiReserves)
-  const YV = tobn(fyDaiReservesVirtual)
-  const YR = tobn(fyDaiReservesReal)
+  const Z = tobn(baseReserves)
+  const YV = tobn(fyTokenReservesVirtual)
+  const YR = tobn(fyTokenReservesReal)
   const S = tobn(supply)
   const x = tobn(lpTokens)
   const T = tobn(timeTillMaturity)
 
   const [z1, y] = burn(Z, YR, S, x)
-  const z2 = sellFYDai(Z, YV, y, T)
+  const z2 = sellFYToken(Z, YV, y, T)
 
   return toBN(add(tobn(z1), tobn(z2)))
 }
 
 // https://www.desmos.com/calculator/5nf2xuy6yb
-export function sellDai(
-  daiReserves: BigNumber,
-  fyDaiReserves: BigNumber,
-  dai: BigNumber,
+export function sellBase(
+  baseReserves: BigNumber,
+  fyTokenReserves: BigNumber,
+  base: BigNumber,
   timeTillMaturity: BigNumber
 ): BigNumber {
   const fee = bignumber(1000000000000)
-  const Z = tobn(daiReserves)
-  const Y = tobn(fyDaiReserves)
+  const Z = tobn(baseReserves)
+  const Y = tobn(fyTokenReserves)
   const T = tobn(timeTillMaturity)
-  const x = tobn(dai)
+  const x = tobn(base)
   const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(950 / 1000)
   const t = multiply(k, T)
@@ -115,17 +115,17 @@ export function sellDai(
 }
 
 // https://www.desmos.com/calculator/6jlrre7ybt
-export function sellFYDai(
-  daiReserves: BigNumber,
-  fyDaiReserves: BigNumber,
-  fyDai: BigNumber,
+export function sellFYToken(
+  baseReserves: BigNumber,
+  fyTokenReserves: BigNumber,
+  fyToken: BigNumber,
   timeTillMaturity: BigNumber
 ): BigNumber {
   const fee = bignumber(1000000000000)
-  const Z = tobn(daiReserves)
-  const Y = tobn(fyDaiReserves)
+  const Z = tobn(baseReserves)
+  const Y = tobn(fyTokenReserves)
   const T = tobn(timeTillMaturity)
-  const x = tobn(fyDai)
+  const x = tobn(fyToken)
   const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(1000 / 950)
   const t = multiply(k, T)
@@ -142,17 +142,17 @@ export function sellFYDai(
 }
 
 // https://www.desmos.com/calculator/0rgnmtckvy
-export function buyDai(
-  daiReserves: BigNumber,
-  fyDaiReserves: BigNumber,
-  dai: BigNumber,
+export function buyBase(
+  baseReserves: BigNumber,
+  fyTokenReserves: BigNumber,
+  base: BigNumber,
   timeTillMaturity: BigNumber
 ): BigNumber {
   const fee = bignumber(1000000000000)
-  const Z = tobn(daiReserves)
-  const Y = tobn(fyDaiReserves)
+  const Z = tobn(baseReserves)
+  const Y = tobn(fyTokenReserves)
   const T = tobn(timeTillMaturity)
-  const x = tobn(dai)
+  const x = tobn(base)
   const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(1000 / 950)
   const t = multiply(k, T)
@@ -169,17 +169,17 @@ export function buyDai(
 }
 
 // https://www.desmos.com/calculator/ws5oqj8x5i
-export function buyFYDai(
-  daiReserves: BigNumber,
-  fyDaiReserves: BigNumber,
-  fyDai: BigNumber,
+export function buyFYToken(
+  baseReserves: BigNumber,
+  fyTokenReserves: BigNumber,
+  fyToken: BigNumber,
   timeTillMaturity: BigNumber
 ): BigNumber {
   const fee = bignumber(1000000000000)
-  const Z = tobn(daiReserves)
-  const Y = tobn(fyDaiReserves)
+  const Z = tobn(baseReserves)
+  const Y = tobn(fyTokenReserves)
   const T = tobn(timeTillMaturity)
-  const x = tobn(fyDai)
+  const x = tobn(fyToken)
   const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(950 / 1000)
   const t = multiply(k, T)

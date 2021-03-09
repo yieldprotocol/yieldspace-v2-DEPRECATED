@@ -6,7 +6,7 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 
-import { sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
+import { sellBase, sellFYToken, buyBase, buyFYToken } from './shared/yieldspace'
 
 const PRECISION = BigNumber.from('100000000000000') // 1e14
 
@@ -26,17 +26,17 @@ describe('YieldMath - Surface', async () => {
   const k = ONE64.div(secondsInFourYears)
 
   const g0 = ONE64 // No fees
-  const g1 = BigNumber.from('950').mul(ONE64).div(BigNumber.from('1000')) // Sell dai to the pool
-  const g2 = BigNumber.from('1000').mul(ONE64).div(BigNumber.from('950')) // Sell fyDai to the pool
+  const g1 = BigNumber.from('950').mul(ONE64).div(BigNumber.from('1000')) // Sell base to the pool
+  const g2 = BigNumber.from('1000').mul(ONE64).div(BigNumber.from('950')) // Sell fyToken to the pool
 
-  const daiReserves = [
+  const baseReserves = [
     // BigNumber.from('100000000000000000000000'),
     // BigNumber.from('1000000000000000000000000'),
     BigNumber.from('10000000000000000000000000'),
     BigNumber.from('100000000000000000000000000'),
     BigNumber.from('1000000000000000000000000000'),
   ]
-  const fyDaiReserveDeltas = [
+  const fyTokenReserveDeltas = [
     // BigNumber.from('10000000000000000000'),
     // BigNumber.from('1000000000000000000000'),
     BigNumber.from('100000000000000000000000'),
@@ -77,36 +77,36 @@ describe('YieldMath - Surface', async () => {
     it('Compare a lattice of on-chain vs off-chain yieldspace trades', async function () {
       this.timeout(0)
 
-      for (var daiReserve of daiReserves) {
-        for (var fyDaiReserveDelta of fyDaiReserveDeltas) {
+      for (var baseReserve of baseReserves) {
+        for (var fyTokenReserveDelta of fyTokenReserveDeltas) {
           for (var tradeSize of tradeSizes) {
             for (var timeTillMaturity of timesTillMaturity) {
-              console.log(`daiReserve, fyDaiReserveDelta, tradeSize, timeTillMaturity`)
-              console.log(`${daiReserve}, ${fyDaiReserveDelta}, ${tradeSize}, ${timeTillMaturity}`)
-              const fyDaiReserve = daiReserve.add(fyDaiReserveDelta)
+              console.log(`baseReserve, fyTokenReserveDelta, tradeSize, timeTillMaturity`)
+              console.log(`${baseReserve}, ${fyTokenReserveDelta}, ${tradeSize}, ${timeTillMaturity}`)
+              const fyTokenReserve = baseReserve.add(fyTokenReserveDelta)
               let offChain, onChain
-              offChain = sellFYDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.daiOutForFYDaiIn(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g2)
-              console.log(`offChain sellFYDai: ${offChain}`)
-              console.log(`onChain sellFYDai: ${onChain}`)
+              offChain = sellFYToken(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.daiOutForFYDaiIn(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g2)
+              console.log(`offChain sellFYToken: ${offChain}`)
+              console.log(`onChain sellFYToken: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = sellDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.fyDaiOutForDaiIn(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g1)
-              console.log(`offChain sellDai: ${offChain}`)
-              console.log(`onChain sellDai: ${onChain}`)
+              offChain = sellBase(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.fyDaiOutForDaiIn(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g1)
+              console.log(`offChain sellBase: ${offChain}`)
+              console.log(`onChain sellBase: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = buyDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.fyDaiInForDaiOut(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g2)
-              console.log(`offChain buyDai: ${offChain}`)
-              console.log(`onChain buyDai: ${onChain}`)
+              offChain = buyBase(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.fyDaiInForDaiOut(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g2)
+              console.log(`offChain buyBase: ${offChain}`)
+              console.log(`onChain buyBase: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = buyFYDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.daiInForFYDaiOut(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g1)
-              console.log(`offChain buyFYDai: ${offChain}`)
-              console.log(`onChain buyFYDai: ${onChain}`)
+              offChain = buyFYToken(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.daiInForFYDaiOut(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g1)
+              console.log(`offChain buyFYToken: ${offChain}`)
+              console.log(`onChain buyFYToken: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
               console.log()

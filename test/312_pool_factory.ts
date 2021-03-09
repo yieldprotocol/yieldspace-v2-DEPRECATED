@@ -1,8 +1,8 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 
 import { PoolFactory } from '../typechain/PoolFactory'
-import { DaiMock as Dai } from '../typechain/DaiMock'
-import { FYDaiMock as FYDai } from '../typechain/FYDaiMock'
+import { BaseMock as Base } from '../typechain/BaseMock'
+import { FYTokenMock as FYToken } from '../typechain/FYTokenMock'
 
 import { YieldSpaceEnvironment } from './shared/fixtures'
 
@@ -31,22 +31,22 @@ describe('PoolFactory', async () => {
   })
 
   it('should create pools', async () => {
-    const DaiFactory = await ethers.getContractFactory('DaiMock')
-    const FYDaiFactory = await ethers.getContractFactory('FYDaiMock')
-    const dai = ((await DaiFactory.deploy()) as unknown) as Dai
-    await dai.deployed()
+    const BaseFactory = await ethers.getContractFactory('BaseMock')
+    const FYTokenFactory = await ethers.getContractFactory('FYTokenMock')
+    const base = ((await BaseFactory.deploy()) as unknown) as Base
+    await base.deployed()
 
     const { timestamp } = await ethers.provider.getBlock('latest')
     const maturity1 = timestamp + 31556952 // One year
-    const fyDai1 = ((await FYDaiFactory.deploy(dai.address, maturity1)) as unknown) as FYDai
-    await fyDai1.deployed()
+    const fyToken1 = ((await FYTokenFactory.deploy(base.address, maturity1)) as unknown) as FYToken
+    await fyToken1.deployed()
 
-    const calculatedAddress = await factory.calculatePoolAddress(dai.address, fyDai1.address)
-    await factory.createPool(dai.address, fyDai1.address)
+    const calculatedAddress = await factory.calculatePoolAddress(base.address, fyToken1.address)
+    await factory.createPool(base.address, fyToken1.address)
 
     const pool = await ethers.getContractAt('Pool', calculatedAddress)
-    expect(await pool.baseToken()).to.equal(dai.address, 'Pool has the wrong dai address')
-    expect(await pool.fyToken()).to.equal(fyDai1.address, 'Pool has the wrong fyDai address')
+    expect(await pool.baseToken()).to.equal(base.address, 'Pool has the wrong base address')
+    expect(await pool.fyToken()).to.equal(fyToken1.address, 'Pool has the wrong fyToken address')
     expect(await pool.name()).to.equal('Yield Test LP Token', 'Pool has the wrong name')
     expect(await pool.symbol()).to.equal('TSTLP', 'Pool has the wrong symbol')
   })
