@@ -26,7 +26,7 @@ describe('YieldMath - Curve', async () => {
   const k = ONE64.div(secondsInFourYears)
 
   const g0 = ONE64 // No fees
-  const g1 = BigNumber.from('950').mul(ONE64).div(BigNumber.from('1000')) // Sell dai to the pool
+  const g1 = BigNumber.from('950').mul(ONE64).div(BigNumber.from('1000')) // Sell base to the pool
   const g2 = BigNumber.from('1000').mul(ONE64).div(BigNumber.from('950')) // Sell fyToken to the pool
 
   const values = [
@@ -54,14 +54,14 @@ describe('YieldMath - Curve', async () => {
   describe('Test trading functions', async () => {
     it('A higher g means more fyToken out with `fyTokenOutForBaseIn`', async () => {
       for (var i = 0; i < values.length; i++) {
-        var daiReservesValue = values[i][0]
+        var baseReservesValue = values[i][0]
         var fyTokenReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseAmountValue = values[i][2]
         var timeTillMaturityValue = values[i][3]
 
-        var daiReserves = BigNumber.from(daiReservesValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
         var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
-        var daiAmount = BigNumber.from(daiAmountValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
         var timeTillMaturity = BigNumber.from(timeTillMaturityValue)
         var g = [
           ['9', '10'],
@@ -72,7 +72,7 @@ describe('YieldMath - Curve', async () => {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.fyDaiOutForDaiIn(daiReserves, fyTokenReserves, daiAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.fyDaiOutForDaiIn(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.gt(previousResult)
@@ -83,22 +83,22 @@ describe('YieldMath - Curve', async () => {
     it('As we approach maturity, price grows to 1 for `fyTokenOutForBaseIn`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
-        var daiReservesValue = values[i][0]
+        var baseReservesValue = values[i][0]
         var fyTokenReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseAmountValue = values[i][2]
 
-        var daiReserves = BigNumber.from(daiReservesValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
         var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
-        var daiAmount = BigNumber.from(daiAmountValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
 
         const flatFee = BigNumber.from('1000000000000')
-        const maximum = daiAmount.sub(flatFee)
+        const maximum = baseAmount.sub(flatFee)
         var result = maximum
         var previousResult = maximum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
 
-          result = await yieldMath.fyDaiOutForDaiIn(daiReserves, fyTokenReserves, daiAmount, t, k, g1)
+          result = await yieldMath.fyDaiOutForDaiIn(baseReserves, fyTokenReserves, baseAmount, t, k, g1)
 
           // console.log("      " + result.toString())
           if (j == 0) {
@@ -113,16 +113,16 @@ describe('YieldMath - Curve', async () => {
       }
     })
 
-    it('A lower g means more Base out with `daiOutForFYTokenIn`', async () => {
+    it('A lower g means more Base out with `baseOutForFYTokenIn`', async () => {
       for (var i = 0; i < values.length; i++) {
-        var daiReservesValue = values[i][0]
+        var baseReservesValue = values[i][0]
         var fyTokenReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseAmountValue = values[i][2]
         var timeTillMaturityValue = values[i][3]
 
-        var daiReserves = BigNumber.from(daiReservesValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
         var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
-        var daiAmount = BigNumber.from(daiAmountValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
         var timeTillMaturity = BigNumber.from(timeTillMaturityValue)
 
         var g = [
@@ -134,7 +134,7 @@ describe('YieldMath - Curve', async () => {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.daiOutForFYDaiIn(daiReserves, fyTokenReserves, daiAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.daiOutForFYDaiIn(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.gt(previousResult)
@@ -142,24 +142,24 @@ describe('YieldMath - Curve', async () => {
       }
     })
 
-    it('As we approach maturity, price drops to 1 for `daiOutForFYTokenIn`', async () => {
+    it('As we approach maturity, price drops to 1 for `baseOutForFYTokenIn`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
-        var daiReservesValue = values[i][0]
+        var baseReservesValue = values[i][0]
         var fyTokenReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseAmountValue = values[i][2]
 
-        var daiReserves = BigNumber.from(daiReservesValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
         var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
-        var daiAmount = BigNumber.from(daiAmountValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
 
         const flatFee = BigNumber.from('1000000000000')
-        const minimum = daiAmount.sub(flatFee)
+        const minimum = baseAmount.sub(flatFee)
         var result = minimum
         var previousResult = minimum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          result = await yieldMath.daiOutForFYDaiIn(daiReserves, fyTokenReserves, daiAmount, t, k, g2)
+          result = await yieldMath.daiOutForFYDaiIn(baseReserves, fyTokenReserves, baseAmount, t, k, g2)
 
           // console.log("      " + result.toString())
           if (j == 0) {
@@ -176,14 +176,14 @@ describe('YieldMath - Curve', async () => {
 
     it('A higher g means more fyToken in with `fyTokenInForBaseOut`', async () => {
       for (var i = 0; i < values.length; i++) {
-        var daiReservesValue = values[i][0]
+        var baseReservesValue = values[i][0]
         var fyTokenReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseAmountValue = values[i][2]
         var timeTillMaturityValue = values[i][3]
 
-        var daiReserves = BigNumber.from(daiReservesValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
         var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
-        var daiAmount = BigNumber.from(daiAmountValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
         var timeTillMaturity = BigNumber.from(timeTillMaturityValue)
 
         var g = [
@@ -195,7 +195,7 @@ describe('YieldMath - Curve', async () => {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.fyDaiInForDaiOut(daiReserves, fyTokenReserves, daiAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.fyDaiInForDaiOut(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.gt(previousResult)
@@ -206,21 +206,21 @@ describe('YieldMath - Curve', async () => {
     it('As we approach maturity, price grows to 1 for `fyTokenInForBaseOut`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
-        var daiReservesValue = values[i][0]
+        var baseReservesValue = values[i][0]
         var fyTokenReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseAmountValue = values[i][2]
 
-        var daiReserves = BigNumber.from(daiReservesValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
         var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
-        var daiAmount = BigNumber.from(daiAmountValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
 
         const flatFee = BigNumber.from('1000000000000')
-        const maximum = daiAmount.add(flatFee)
+        const maximum = baseAmount.add(flatFee)
         var result = maximum
         var previousResult = maximum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          result = await yieldMath.fyDaiInForDaiOut(daiReserves, fyTokenReserves, daiAmount, t, k, g2)
+          result = await yieldMath.fyDaiInForDaiOut(baseReserves, fyTokenReserves, baseAmount, t, k, g2)
 
           // console.log("      " + result.toString())
           if (j == 0) {
@@ -235,16 +235,16 @@ describe('YieldMath - Curve', async () => {
       }
     })
 
-    it('A lower g means more Base in with `daiInForFYTokenOut`', async () => {
+    it('A lower g means more Base in with `baseInForFYTokenOut`', async () => {
       for (var i = 0; i < values.length; i++) {
-        var daiReservesValue = values[i][0]
+        var baseReservesValue = values[i][0]
         var fyTokenReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseAmountValue = values[i][2]
         var timeTillMaturityValue = values[i][3]
 
-        var daiReserves = BigNumber.from(daiReservesValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
         var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
-        var daiAmount = BigNumber.from(daiAmountValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
         var timeTillMaturity = BigNumber.from(timeTillMaturityValue)
 
         var g = [
@@ -256,7 +256,7 @@ describe('YieldMath - Curve', async () => {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.daiInForFYDaiOut(daiReserves, fyTokenReserves, daiAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.daiInForFYDaiOut(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.gt(previousResult)
@@ -264,24 +264,24 @@ describe('YieldMath - Curve', async () => {
       }
     })
 
-    it('As we approach maturity, price drops to 1 for `daiInForFYTokenOut`', async () => {
+    it('As we approach maturity, price drops to 1 for `baseInForFYTokenOut`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
-        var daiReservesValue = values[i][0]
+        var baseReservesValue = values[i][0]
         var fyTokenReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseAmountValue = values[i][2]
 
-        var daiReserves = BigNumber.from(daiReservesValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
         var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
-        var daiAmount = BigNumber.from(daiAmountValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
 
         const flatFee = BigNumber.from('1000000000000')
-        const minimum = daiAmount.add(flatFee)
+        const minimum = baseAmount.add(flatFee)
         var result = minimum
         var previousResult = minimum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          result = await yieldMath.daiInForFYDaiOut(daiReserves, fyTokenReserves, daiAmount, t, k, g1)
+          result = await yieldMath.daiInForFYDaiOut(baseReserves, fyTokenReserves, baseAmount, t, k, g1)
 
           // console.log("      " + result.toString())
           if (j == 0) {

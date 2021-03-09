@@ -26,10 +26,10 @@ describe('YieldMath - Surface', async () => {
   const k = ONE64.div(secondsInFourYears)
 
   const g0 = ONE64 // No fees
-  const g1 = BigNumber.from('950').mul(ONE64).div(BigNumber.from('1000')) // Sell dai to the pool
+  const g1 = BigNumber.from('950').mul(ONE64).div(BigNumber.from('1000')) // Sell base to the pool
   const g2 = BigNumber.from('1000').mul(ONE64).div(BigNumber.from('950')) // Sell fyToken to the pool
 
-  const daiReserves = [
+  const baseReserves = [
     // BigNumber.from('100000000000000000000000'),
     // BigNumber.from('1000000000000000000000000'),
     BigNumber.from('10000000000000000000000000'),
@@ -77,34 +77,34 @@ describe('YieldMath - Surface', async () => {
     it('Compare a lattice of on-chain vs off-chain yieldspace trades', async function () {
       this.timeout(0)
 
-      for (var daiReserve of daiReserves) {
+      for (var baseReserve of baseReserves) {
         for (var fyTokenReserveDelta of fyTokenReserveDeltas) {
           for (var tradeSize of tradeSizes) {
             for (var timeTillMaturity of timesTillMaturity) {
-              console.log(`daiReserve, fyTokenReserveDelta, tradeSize, timeTillMaturity`)
-              console.log(`${daiReserve}, ${fyTokenReserveDelta}, ${tradeSize}, ${timeTillMaturity}`)
-              const fyTokenReserve = daiReserve.add(fyTokenReserveDelta)
+              console.log(`baseReserve, fyTokenReserveDelta, tradeSize, timeTillMaturity`)
+              console.log(`${baseReserve}, ${fyTokenReserveDelta}, ${tradeSize}, ${timeTillMaturity}`)
+              const fyTokenReserve = baseReserve.add(fyTokenReserveDelta)
               let offChain, onChain
-              offChain = sellFYToken(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.daiOutForFYDaiIn(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g2)
+              offChain = sellFYToken(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.daiOutForFYDaiIn(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g2)
               console.log(`offChain sellFYToken: ${offChain}`)
               console.log(`onChain sellFYToken: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = sellBase(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.fyDaiOutForDaiIn(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g1)
+              offChain = sellBase(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.fyDaiOutForDaiIn(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g1)
               console.log(`offChain sellBase: ${offChain}`)
               console.log(`onChain sellBase: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = buyBase(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.fyDaiInForDaiOut(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g2)
+              offChain = buyBase(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.fyDaiInForDaiOut(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g2)
               console.log(`offChain buyBase: ${offChain}`)
               console.log(`onChain buyBase: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = buyFYToken(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.daiInForFYDaiOut(daiReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g1)
+              offChain = buyFYToken(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.daiInForFYDaiOut(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity, k, g1)
               console.log(`offChain buyFYToken: ${offChain}`)
               console.log(`onChain buyFYToken: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)

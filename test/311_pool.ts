@@ -31,9 +31,9 @@ describe('Pool', async function () {
   this.timeout(0)
 
   // These values impact the pool results
-  const daiTokens = BigNumber.from('1000000000000000000000000')
-  const fyTokenTokens = daiTokens
-  const initialBase = daiTokens
+  const baseTokens = BigNumber.from('1000000000000000000000000')
+  const fyTokenTokens = baseTokens
+  const initialBase = baseTokens
   const OVERRIDES = { gasLimit: 1_000_000 }
 
   let snapshotId: string
@@ -53,9 +53,9 @@ describe('Pool', async function () {
   let poolFromUser1: Pool
   let poolFromOwner: Pool
 
-  let dai: Base
-  let daiFromOwner: Base
-  let daiFromUser1: Base
+  let base: Base
+  let baseFromOwner: Base
+  let baseFromUser1: Base
   let fyToken1: FYToken
   let fyToken1FromUser1: FYToken
   let fyToken1FromOwner: FYToken
@@ -89,9 +89,9 @@ describe('Pool', async function () {
   beforeEach(async () => {
     yieldSpace = await loadFixture(fixture)
     factory = yieldSpace.factory as PoolFactory
-    dai = yieldSpace.bases.get(baseId) as Base
-    daiFromUser1 = dai.connect(user1Acc)
-    daiFromOwner = dai.connect(ownerAcc)
+    base = yieldSpace.bases.get(baseId) as Base
+    baseFromUser1 = base.connect(user1Acc)
+    baseFromOwner = base.connect(ownerAcc)
 
     fyToken1 = yieldSpace.fyTokens.get(fyTokenId) as FYToken
     fyToken1FromUser1 = fyToken1.connect(user1Acc)
@@ -112,9 +112,9 @@ describe('Pool', async function () {
   })
 
   it('adds initial liquidity', async () => {
-    await dai.mint(user1, initialBase)
+    await base.mint(user1, initialBase)
 
-    await daiFromUser1.approve(pool.address, initialBase)
+    await baseFromUser1.approve(pool.address, initialBase)
     await expect(poolFromUser1.mint(user1, user1, initialBase))
       .to.emit(pool, 'Liquidity')
       .withArgs(maturity1, user1, user1, initialBase.mul(-1), 0, initialBase)
@@ -127,70 +127,70 @@ describe('Pool', async function () {
 
   describe('with initial liquidity', () => {
     beforeEach(async () => {
-      await dai.mint(user1, initialBase)
-      await daiFromUser1.approve(pool.address, initialBase)
+      await base.mint(user1, initialBase)
+      await baseFromUser1.approve(pool.address, initialBase)
       await poolFromUser1.mint(user1, user1, initialBase)
     })
 
     it('sells fyToken', async () => {
-      const daiReserves = await pool.getBaseTokenReserves()
+      const baseReserves = await pool.getBaseTokenReserves()
       const fyTokenReserves = await pool.getFYTokenReserves()
       const fyTokenIn = WAD
       const timeTillMaturity = maturity1.sub(await currentTimestamp())
 
-      expect(await dai.balanceOf(user2)).to.equal(
+      expect(await base.balanceOf(user2)).to.equal(
         0,
-        "'User2' wallet should have no dai, instead has " + (await dai.balanceOf(user2))
+        "'User2' wallet should have no base, instead has " + (await base.balanceOf(user2))
       )
 
       // Test preview since we are here
-      const daiOutPreview = await poolFromUser1.sellFYTokenPreview(fyTokenIn)
+      const baseOutPreview = await poolFromUser1.sellFYTokenPreview(fyTokenIn)
 
-      const expectedBaseOut = sellFYToken(daiReserves, fyTokenReserves, fyTokenIn, timeTillMaturity)
+      const expectedBaseOut = sellFYToken(baseReserves, fyTokenReserves, fyTokenIn, timeTillMaturity)
 
       await fyToken1FromUser1.mint(user1, fyTokenIn)
       await fyToken1FromUser1.approve(pool.address, fyTokenIn)
       await expect(poolFromUser1.sellFYToken(user1, user2, fyTokenIn))
         .to.emit(pool, 'Trade')
-        .withArgs(maturity1, user1, user2, await daiFromUser1.balanceOf(user2), fyTokenIn.mul(-1))
+        .withArgs(maturity1, user1, user2, await baseFromUser1.balanceOf(user2), fyTokenIn.mul(-1))
 
       expect(await fyToken1.balanceOf(user1)).to.equal(0, "'From' wallet should have no fyToken tokens")
 
-      const daiOut = await dai.balanceOf(user2)
+      const baseOut = await base.balanceOf(user2)
 
-      almostEqual(daiOut, expectedBaseOut, fyTokenIn.div(1000000))
-      almostEqual(daiOutPreview, expectedBaseOut, fyTokenIn.div(1000000))
+      almostEqual(baseOut, expectedBaseOut, fyTokenIn.div(1000000))
+      almostEqual(baseOutPreview, expectedBaseOut, fyTokenIn.div(1000000))
     })
 
-    it('buys dai', async () => {
-      const daiReserves = await pool.getBaseTokenReserves()
+    it('buys base', async () => {
+      const baseReserves = await pool.getBaseTokenReserves()
       const fyTokenReserves = await pool.getFYTokenReserves()
-      const daiOut = WAD.mul(10) // TODO: This runs out of gas with WAD, why?
+      const baseOut = WAD.mul(10) // TODO: This runs out of gas with WAD, why?
 
       const timeTillMaturity = maturity1.sub(await currentTimestamp())
 
-      expect(await dai.balanceOf(user2)).to.equal(
+      expect(await base.balanceOf(user2)).to.equal(
         0,
-        "'User2' wallet should have no dai, instead has " + (await dai.balanceOf(user2))
+        "'User2' wallet should have no base, instead has " + (await base.balanceOf(user2))
       )
 
       // Test preview since we are here
-      const fyTokenInPreview = await poolFromUser1.buyBaseTokenPreview(daiOut)
+      const fyTokenInPreview = await poolFromUser1.buyBaseTokenPreview(baseOut)
 
-      const expectedFYTokenIn = buyBase(daiReserves, fyTokenReserves, daiOut, timeTillMaturity)
+      const expectedFYTokenIn = buyBase(baseReserves, fyTokenReserves, baseOut, timeTillMaturity)
 
       await fyToken1FromUser1.mint(user1, fyTokenTokens)
       await fyToken1FromUser1.approve(pool.address, fyTokenTokens)
 
-      await expect(poolFromUser1.buyBaseToken(user1, user2, daiOut, OVERRIDES))
+      await expect(poolFromUser1.buyBaseToken(user1, user2, baseOut, OVERRIDES))
         .to.emit(pool, 'Trade')
-        .withArgs(maturity1, user1, user2, daiOut, fyTokenTokens.sub(await fyToken1.balanceOf(user1)).mul(-1))
+        .withArgs(maturity1, user1, user2, baseOut, fyTokenTokens.sub(await fyToken1.balanceOf(user1)).mul(-1))
 
       const fyTokenIn = fyTokenTokens.sub(await fyToken1.balanceOf(user1))
-      expect(await dai.balanceOf(user2)).to.equal(daiOut, 'Receiver account should have 1 dai token')
+      expect(await base.balanceOf(user2)).to.equal(baseOut, 'Receiver account should have 1 base token')
 
-      almostEqual(fyTokenIn, expectedFYTokenIn, daiOut.div(1000000))
-      almostEqual(fyTokenInPreview, expectedFYTokenIn, daiOut.div(1000000))
+      almostEqual(fyTokenIn, expectedFYTokenIn, baseOut.div(1000000))
+      almostEqual(fyTokenInPreview, expectedFYTokenIn, baseOut.div(1000000))
     })
 
     describe('with extra fyToken reserves', () => {
@@ -202,18 +202,18 @@ describe('Pool', async function () {
       })
 
       it('mints liquidity tokens', async () => {
-        const daiReserves = await dai.balanceOf(pool.address)
+        const baseReserves = await base.balanceOf(pool.address)
         const fyTokenReserves = await fyToken1.balanceOf(pool.address)
         const supply = await pool.totalSupply()
-        const daiIn = WAD
+        const baseIn = WAD
 
-        await daiFromUser1.mint(user1, daiIn)
+        await baseFromUser1.mint(user1, baseIn)
         await fyToken1FromUser1.mint(user1, fyTokenTokens)
 
         const fyTokenBefore = await fyToken1.balanceOf(user1)
         const poolTokensBefore = await pool.balanceOf(user2)
 
-        await daiFromUser1.approve(pool.address, WAD)
+        await baseFromUser1.approve(pool.address, WAD)
         await fyToken1FromUser1.approve(pool.address, fyTokenTokens)
         await expect(poolFromUser1.mint(user1, user2, WAD))
           .to.emit(pool, 'Liquidity')
@@ -226,17 +226,17 @@ describe('Pool', async function () {
             (await pool.balanceOf(user2)).sub(poolTokensBefore)
           )
 
-        const [expectedMinted, expectedFYTokenIn] = mint(daiReserves, fyTokenReserves, supply, daiIn)
+        const [expectedMinted, expectedFYTokenIn] = mint(baseReserves, fyTokenReserves, supply, baseIn)
 
         const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
         const fyTokenIn = fyTokenBefore.sub(await fyToken1.balanceOf(user1))
 
-        almostEqual(minted, expectedMinted, daiIn.div(10000))
-        almostEqual(fyTokenIn, expectedFYTokenIn, daiIn.div(10000))
+        almostEqual(minted, expectedMinted, baseIn.div(10000))
+        almostEqual(fyTokenIn, expectedFYTokenIn, baseIn.div(10000))
       })
 
-      it('mints liquidity tokens with dai only', async () => {
-        const daiReserves = await daiFromOwner.balanceOf(pool.address)
+      it('mints liquidity tokens with base only', async () => {
+        const baseReserves = await baseFromOwner.balanceOf(pool.address)
         const fyTokenReservesVirtual = await poolFromOwner.getFYTokenReserves()
         const fyTokenReservesReal = await fyToken1FromOwner.balanceOf(pool.address)
         const supply = await poolFromOwner.totalSupply()
@@ -245,25 +245,25 @@ describe('Pool', async function () {
         const fyTokenToBuy = WAD.div(1000)
         const maxBaseIn = WAD.mul(1000)
 
-        await daiFromOwner.mint(user1, maxBaseIn)
+        await baseFromOwner.mint(user1, maxBaseIn)
 
-        const daiBefore = await daiFromOwner.balanceOf(user1)
+        const baseBefore = await baseFromOwner.balanceOf(user1)
         const poolTokensBefore = await poolFromOwner.balanceOf(user2)
 
-        await daiFromUser1.approve(pool.address, maxBaseIn)
+        await baseFromUser1.approve(pool.address, maxBaseIn)
         await expect(poolFromUser1.mintWithToken(user1, user2, fyTokenToBuy, OVERRIDES))
           .to.emit(pool, 'Liquidity')
           .withArgs(
             maturity1,
             user1,
             user2,
-            daiBefore.sub(await daiFromOwner.balanceOf(user1)).mul(-1),
+            baseBefore.sub(await baseFromOwner.balanceOf(user1)).mul(-1),
             0,
             (await poolFromOwner.balanceOf(user2)).sub(poolTokensBefore)
           )
 
         const [expectedMinted, expectedBaseIn] = mintWithBase(
-          daiReserves,
+          baseReserves,
           fyTokenReservesVirtual,
           fyTokenReservesReal,
           supply,
@@ -272,16 +272,16 @@ describe('Pool', async function () {
         )
 
         const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
-        const daiIn = daiBefore.sub(await dai.balanceOf(user1))
+        const baseIn = baseBefore.sub(await base.balanceOf(user1))
 
         almostEqual(minted, expectedMinted, minted.div(10000))
-        almostEqual(daiIn, expectedBaseIn, daiIn.div(10000))
+        almostEqual(baseIn, expectedBaseIn, baseIn.div(10000))
       })
 
       it('burns liquidity tokens', async () => {
         // Use this to test: https://www.desmos.com/calculator/ubsalzunpo
 
-        const daiReserves = await daiFromOwner.balanceOf(pool.address)
+        const baseReserves = await baseFromOwner.balanceOf(pool.address)
         const fyTokenReserves = await fyToken1FromOwner.balanceOf(pool.address)
         const supply = await poolFromOwner.totalSupply()
         const lpTokensIn = WAD
@@ -293,24 +293,24 @@ describe('Pool', async function () {
             maturity1,
             user1,
             user2,
-            daiReserves.sub(await daiFromOwner.balanceOf(pool.address)),
+            baseReserves.sub(await baseFromOwner.balanceOf(pool.address)),
             fyTokenReserves.sub(await fyToken1FromOwner.balanceOf(pool.address)),
             lpTokensIn.mul(-1)
           )
 
-        const [expectedBaseOut, expectedFYTokenOut] = burn(daiReserves, fyTokenReserves, supply, lpTokensIn)
+        const [expectedBaseOut, expectedFYTokenOut] = burn(baseReserves, fyTokenReserves, supply, lpTokensIn)
 
-        const daiOut = daiReserves.sub(await dai.balanceOf(pool.address))
+        const baseOut = baseReserves.sub(await base.balanceOf(pool.address))
         const fyTokenOut = fyTokenReserves.sub(await fyToken1.balanceOf(pool.address))
 
-        almostEqual(daiOut, expectedBaseOut, daiOut.div(10000))
+        almostEqual(baseOut, expectedBaseOut, baseOut.div(10000))
         almostEqual(fyTokenOut, expectedFYTokenOut, fyTokenOut.div(10000))
       })
 
       it('burns liquidity tokens to Base', async () => {
         // Use this to test: https://www.desmos.com/calculator/ubsalzunpo
 
-        const daiReserves = await daiFromOwner.balanceOf(pool.address)
+        const baseReserves = await baseFromOwner.balanceOf(pool.address)
         const fyTokenReservesVirtual = await poolFromOwner.getFYTokenReserves()
         const fyTokenReservesReal = await fyToken1FromOwner.balanceOf(pool.address)
         const supply = await poolFromOwner.totalSupply()
@@ -325,13 +325,13 @@ describe('Pool', async function () {
             maturity1,
             user1,
             user2,
-            daiReserves.sub(await daiFromOwner.balanceOf(pool.address)),
+            baseReserves.sub(await baseFromOwner.balanceOf(pool.address)),
             0,
             lpTokensIn.mul(-1)
           )
 
         const expectedBaseOut = burnForBase(
-          daiReserves,
+          baseReserves,
           fyTokenReservesVirtual,
           fyTokenReservesReal,
           supply,
@@ -339,15 +339,15 @@ describe('Pool', async function () {
           timeTillMaturity
         )
 
-        const daiOut = daiReserves.sub(await dai.balanceOf(pool.address))
+        const baseOut = baseReserves.sub(await base.balanceOf(pool.address))
 
-        almostEqual(daiOut, expectedBaseOut, daiOut.div(10000))
+        almostEqual(baseOut, expectedBaseOut, baseOut.div(10000))
       })
 
-      it('sells dai', async () => {
-        const daiReserves = await poolFromOwner.getBaseTokenReserves()
+      it('sells base', async () => {
+        const baseReserves = await poolFromOwner.getBaseTokenReserves()
         const fyTokenReserves = await poolFromOwner.getFYTokenReserves()
-        const daiIn = WAD
+        const baseIn = WAD
 
         const timeTillMaturity = maturity1.sub(await currentTimestamp())
 
@@ -357,27 +357,27 @@ describe('Pool', async function () {
         )
 
         // Test preview since we are here
-        const fyTokenOutPreview = await poolFromOwner.sellBaseTokenPreview(daiIn)
+        const fyTokenOutPreview = await poolFromOwner.sellBaseTokenPreview(baseIn)
 
-        const expectedFYTokenOut = sellBase(daiReserves, fyTokenReserves, daiIn, timeTillMaturity)
+        const expectedFYTokenOut = sellBase(baseReserves, fyTokenReserves, baseIn, timeTillMaturity)
 
-        await daiFromOwner.mint(user1, daiIn)
-        await daiFromUser1.approve(pool.address, daiIn)
+        await baseFromOwner.mint(user1, baseIn)
+        await baseFromUser1.approve(pool.address, baseIn)
 
-        await expect(poolFromUser1.sellBaseToken(user1, user2, daiIn, OVERRIDES))
+        await expect(poolFromUser1.sellBaseToken(user1, user2, baseIn, OVERRIDES))
           .to.emit(pool, 'Trade')
-          .withArgs(maturity1, user1, user2, daiIn.mul(-1), await fyToken1FromOwner.balanceOf(user2))
+          .withArgs(maturity1, user1, user2, baseIn.mul(-1), await fyToken1FromOwner.balanceOf(user2))
 
         const fyTokenOut = await fyToken1FromOwner.balanceOf(user2)
 
-        expect(await daiFromOwner.balanceOf(user1)).to.equal(0, "'From' wallet should have no dai tokens")
+        expect(await baseFromOwner.balanceOf(user1)).to.equal(0, "'From' wallet should have no base tokens")
 
-        almostEqual(fyTokenOut, expectedFYTokenOut, daiIn.div(1000000))
-        almostEqual(fyTokenOutPreview, expectedFYTokenOut, daiIn.div(1000000))
+        almostEqual(fyTokenOut, expectedFYTokenOut, baseIn.div(1000000))
+        almostEqual(fyTokenOutPreview, expectedFYTokenOut, baseIn.div(1000000))
       })
 
       it('buys fyToken', async () => {
-        const daiReserves = await poolFromOwner.getBaseTokenReserves()
+        const baseReserves = await poolFromOwner.getBaseTokenReserves()
         const fyTokenReserves = await poolFromOwner.getFYTokenReserves()
         const fyTokenOut = WAD
 
@@ -389,30 +389,30 @@ describe('Pool', async function () {
         )
 
         // Test preview since we are here
-        const daiInPreview = await poolFromOwner.buyFYTokenPreview(fyTokenOut)
+        const baseInPreview = await poolFromOwner.buyFYTokenPreview(fyTokenOut)
 
-        const expectedBaseIn = buyFYToken(daiReserves, fyTokenReserves, fyTokenOut, timeTillMaturity)
+        const expectedBaseIn = buyFYToken(baseReserves, fyTokenReserves, fyTokenOut, timeTillMaturity)
 
-        await daiFromOwner.mint(user1, daiTokens)
-        const daiBalanceBefore = await daiFromOwner.balanceOf(user1)
+        await baseFromOwner.mint(user1, baseTokens)
+        const baseBalanceBefore = await baseFromOwner.balanceOf(user1)
 
-        await daiFromUser1.approve(poolFromUser1.address, daiTokens)
+        await baseFromUser1.approve(poolFromUser1.address, baseTokens)
         await expect(poolFromUser1.buyFYToken(user1, user2, fyTokenOut, OVERRIDES))
           .to.emit(pool, 'Trade')
           .withArgs(
             maturity1,
             user1,
             user2,
-            daiBalanceBefore.sub(await daiFromOwner.balanceOf(user1)).mul(-1),
+            baseBalanceBefore.sub(await baseFromOwner.balanceOf(user1)).mul(-1),
             fyTokenOut
           )
 
-        const daiIn = daiBalanceBefore.sub(await daiFromOwner.balanceOf(user1))
+        const baseIn = baseBalanceBefore.sub(await baseFromOwner.balanceOf(user1))
 
         expect(await fyToken1FromOwner.balanceOf(user2)).to.equal(fyTokenOut, "'User2' wallet should have 1 fyToken token")
 
-        almostEqual(daiIn, expectedBaseIn, daiIn.div(1000000))
-        almostEqual(daiInPreview, expectedBaseIn, daiIn.div(1000000))
+        almostEqual(baseIn, expectedBaseIn, baseIn.div(1000000))
+        almostEqual(baseInPreview, expectedBaseIn, baseIn.div(1000000))
       })
 
       it("once mature, doesn't allow trading", async () => {

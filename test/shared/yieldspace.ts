@@ -11,15 +11,15 @@ function tobn(x: BigNumber): typeof bignumber {
 
 // https://www.desmos.com/calculator/mllhtohxfx
 export function mint(
-  daiReserves: BigNumber,
+  baseReserves: BigNumber,
   fyTokenReserves: BigNumber,
   supply: BigNumber,
-  dai: BigNumber
+  base: BigNumber
 ): [BigNumber, BigNumber] {
-  const Z = tobn(daiReserves)
+  const Z = tobn(baseReserves)
   const Y = tobn(fyTokenReserves)
   const S = tobn(supply)
-  const z = tobn(dai)
+  const z = tobn(base)
   const m = divide(multiply(S, z), Z)
   const y = divide(multiply(Y, m), S)
 
@@ -27,14 +27,14 @@ export function mint(
 }
 
 export function mintWithBase(
-  daiReserves: BigNumber,
+  baseReserves: BigNumber,
   fyTokenReservesVirtual: BigNumber,
   fyTokenReservesReal: BigNumber,
   supply: BigNumber,
   fyToken: BigNumber,
   timeTillMaturity: BigNumber
 ): [BigNumber, BigNumber] {
-  const Z = tobn(daiReserves)
+  const Z = tobn(baseReserves)
   const YV = tobn(fyTokenReservesVirtual)
   const YR = tobn(fyTokenReservesReal)
   const S = tobn(supply)
@@ -51,12 +51,12 @@ export function mintWithBase(
 
 // https://www.desmos.com/calculator/ubsalzunpo
 export function burn(
-  daiReserves: BigNumber,
+  baseReserves: BigNumber,
   fyTokenReserves: BigNumber,
   supply: BigNumber,
   lpTokens: BigNumber
 ): [BigNumber, BigNumber] {
-  const Z = tobn(daiReserves)
+  const Z = tobn(baseReserves)
   const Y = tobn(fyTokenReserves)
   const S = tobn(supply)
   const x = tobn(lpTokens)
@@ -67,14 +67,14 @@ export function burn(
 }
 
 export function burnForBase(
-  daiReserves: BigNumber,
+  baseReserves: BigNumber,
   fyTokenReservesVirtual: BigNumber,
   fyTokenReservesReal: BigNumber,
   supply: BigNumber,
   lpTokens: BigNumber,
   timeTillMaturity: BigNumber
 ): BigNumber {
-  const Z = tobn(daiReserves)
+  const Z = tobn(baseReserves)
   const YV = tobn(fyTokenReservesVirtual)
   const YR = tobn(fyTokenReservesReal)
   const S = tobn(supply)
@@ -89,16 +89,16 @@ export function burnForBase(
 
 // https://www.desmos.com/calculator/5nf2xuy6yb
 export function sellBase(
-  daiReserves: BigNumber,
+  baseReserves: BigNumber,
   fyTokenReserves: BigNumber,
-  dai: BigNumber,
+  base: BigNumber,
   timeTillMaturity: BigNumber
 ): BigNumber {
   const fee = bignumber(1000000000000)
-  const Z = tobn(daiReserves)
+  const Z = tobn(baseReserves)
   const Y = tobn(fyTokenReserves)
   const T = tobn(timeTillMaturity)
-  const x = tobn(dai)
+  const x = tobn(base)
   const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(950 / 1000)
   const t = multiply(k, T)
@@ -116,13 +116,13 @@ export function sellBase(
 
 // https://www.desmos.com/calculator/6jlrre7ybt
 export function sellFYToken(
-  daiReserves: BigNumber,
+  baseReserves: BigNumber,
   fyTokenReserves: BigNumber,
   fyToken: BigNumber,
   timeTillMaturity: BigNumber
 ): BigNumber {
   const fee = bignumber(1000000000000)
-  const Z = tobn(daiReserves)
+  const Z = tobn(baseReserves)
   const Y = tobn(fyTokenReserves)
   const T = tobn(timeTillMaturity)
   const x = tobn(fyToken)
@@ -143,16 +143,16 @@ export function sellFYToken(
 
 // https://www.desmos.com/calculator/0rgnmtckvy
 export function buyBase(
-  daiReserves: BigNumber,
+  baseReserves: BigNumber,
   fyTokenReserves: BigNumber,
-  dai: BigNumber,
+  base: BigNumber,
   timeTillMaturity: BigNumber
 ): BigNumber {
   const fee = bignumber(1000000000000)
-  const Z = tobn(daiReserves)
+  const Z = tobn(baseReserves)
   const Y = tobn(fyTokenReserves)
   const T = tobn(timeTillMaturity)
-  const x = tobn(dai)
+  const x = tobn(base)
   const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(1000 / 950)
   const t = multiply(k, T)
@@ -170,13 +170,13 @@ export function buyBase(
 
 // https://www.desmos.com/calculator/ws5oqj8x5i
 export function buyFYToken(
-  daiReserves: BigNumber,
+  baseReserves: BigNumber,
   fyTokenReserves: BigNumber,
   fyToken: BigNumber,
   timeTillMaturity: BigNumber
 ): BigNumber {
   const fee = bignumber(1000000000000)
-  const Z = tobn(daiReserves)
+  const Z = tobn(baseReserves)
   const Y = tobn(fyTokenReserves)
   const T = tobn(timeTillMaturity)
   const x = tobn(fyToken)
