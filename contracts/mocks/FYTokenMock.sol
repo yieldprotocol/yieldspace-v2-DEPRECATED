@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.7.5;
 
-import "../interfaces/IDaiMock.sol";
+import "./BaseMock.sol";
 import "../helpers/ERC20Permit.sol";
 
-contract FYDaiMock is ERC20Permit {
-    IDaiMock public dai;
+contract FYTokenMock is ERC20Permit {
+    BaseMock public base;
     uint256 public maturity;
 
-    constructor (IDaiMock dai_, uint256 maturity_) ERC20Permit("Test", "TST") {
-        dai = dai_;
+    constructor (BaseMock base_, uint256 maturity_) ERC20Permit("Test", "TST") {
+        base = base_;
         maturity = maturity_;
     }
 
@@ -23,6 +23,6 @@ contract FYDaiMock is ERC20Permit {
 
     function redeem(address from, address to, uint256 amount) public {
         _burn(from, amount);
-        dai.mint(to, amount);
+        base.mint(to, amount);
     }
 }

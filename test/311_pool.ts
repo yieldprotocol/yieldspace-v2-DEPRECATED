@@ -2,8 +2,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 import { Pool } from '../typechain/Pool'
 import { PoolFactory } from '../typechain/PoolFactory'
-import { DaiMock as Base } from '../typechain/DaiMock'
-import { FYDaiMock as FYToken } from '../typechain/FYDaiMock'
+import { BaseMock as Base } from '../typechain/BaseMock'
+import { FYTokenMock as FYToken } from '../typechain/FYTokenMock'
 import { YieldSpaceEnvironment } from './shared/fixtures'
 
 import { BigNumber } from 'ethers'

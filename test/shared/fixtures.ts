@@ -4,8 +4,8 @@ import { BaseProvider } from '@ethersproject/providers'
 import { YieldMath } from '../../typechain/YieldMath'
 import { Pool } from '../../typechain/Pool'
 import { PoolFactory } from '../../typechain/PoolFactory'
-import { DaiMock as ERC20 } from '../../typechain/DaiMock' // TODO: Rename/refactor mock
-import { FYDaiMock as FYToken } from '../../typechain/FYDaiMock' // TODO: Rename/refactor mock
+import { BaseMock as ERC20 } from '../../typechain/BaseMock' // TODO: Rename/refactor mock
+import { FYTokenMock as FYToken } from '../../typechain/FYTokenMock' // TODO: Rename/refactor mock
 import { SafeERC20Namer } from '../../typechain/SafeERC20Namer'
 import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
@@ -49,8 +49,8 @@ export class YieldSpaceEnvironment {
     safeERC20NamerLibrary = ((await SafeERC20NamerFactory.deploy()) as unknown) as SafeERC20Namer
     await safeERC20NamerLibrary.deployed()
 
-    const BaseFactory = await ethers.getContractFactory('DaiMock')
-    const FYTokenFactory = await ethers.getContractFactory('FYDaiMock')
+    const BaseFactory = await ethers.getContractFactory('BaseMock')
+    const FYTokenFactory = await ethers.getContractFactory('FYTokenMock')
     const PoolFactoryFactory = await ethers.getContractFactory('PoolFactory', {
       libraries: {
         YieldMath: yieldMathLibrary.address,

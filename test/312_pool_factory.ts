@@ -1,8 +1,8 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 
 import { PoolFactory } from '../typechain/PoolFactory'
-import { DaiMock as Base } from '../typechain/DaiMock'
-import { FYDaiMock as FYToken } from '../typechain/FYDaiMock'
+import { BaseMock as Base } from '../typechain/BaseMock'
+import { FYTokenMock as FYToken } from '../typechain/FYTokenMock'
 
 import { YieldSpaceEnvironment } from './shared/fixtures'
 
@@ -31,8 +31,8 @@ describe('PoolFactory', async () => {
   })
 
   it('should create pools', async () => {
-    const BaseFactory = await ethers.getContractFactory('DaiMock')
-    const FYTokenFactory = await ethers.getContractFactory('FYDaiMock')
+    const BaseFactory = await ethers.getContractFactory('BaseMock')
+    const FYTokenFactory = await ethers.getContractFactory('FYTokenMock')
     const base = ((await BaseFactory.deploy()) as unknown) as Base
     await base.deployed()
 
