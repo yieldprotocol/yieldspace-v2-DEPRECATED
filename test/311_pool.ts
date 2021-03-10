@@ -211,20 +211,7 @@ contract('Pool', async (accounts) => {
     })
 
     it('calculates the TWAP price', async () => {
-      const daiReserves = await pool.getBaseTokenReserves()
-      const fyDaiReserves = await pool.getFYTokenReserves()
-      const fyDaiIn = toWad('0.01')
-      const now = new BN((await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp)
-      const timeTillMaturity = new BN(maturity1).sub(now)
-
-      const expectedDaiOut = sellFYDai(
-        daiReserves.toString(),
-        fyDaiReserves.toString(),
-        fyDaiIn.toString(),
-        timeTillMaturity.toString()
-      )
-
-      const cumulativePrice1 = await pool.cumulativeFYDaiPrice()
+      const cumulativePrice1 = await pool.cumulativeReserveRatio()
       assert.equal(cumulativePrice1, 0, 'Price should start at 0')
       const timestamp1 = (await pool.getStoredReserves())[2]
 
@@ -233,20 +220,22 @@ contract('Pool', async (accounts) => {
 
       await pool.sync()
 
-      const cumulativePrice2 = await pool.cumulativeFYDaiPrice()
+      const balancedRatio = new BN('10').pow(new BN('27'))
+
+      const cumulativeRatio2 = await pool.cumulativeReserveRatio()
       const timestamp2 = (await pool.getStoredReserves())[2]
-      const price2 = cumulativePrice2.div(timestamp2.sub(timestamp1)).toString()
-      almostEqual(price2, floor(expectedDaiOut).toFixed(), fyDaiIn.divn(1000000))
+      const ratio2 = cumulativeRatio2.div(timestamp2.sub(timestamp1)).toString()
+      almostEqual(ratio2, balancedRatio, new BN('10000000000'))
 
       await helper.advanceTime(120)
       await helper.advanceBlock()
 
       await pool.sync()
 
-      const cumulativePrice3 = await pool.cumulativeFYDaiPrice()
+      const cumulativeRatio3 = await pool.cumulativeReserveRatio()
       const timestamp3 = (await pool.getStoredReserves())[2]
-      const price3 = cumulativePrice3.sub(cumulativePrice2).div(timestamp3.sub(timestamp2)).toString()
-      almostEqual(price3, floor(expectedDaiOut).toFixed(), fyDaiIn.divn(1000000))
+      const ratio3 = cumulativeRatio3.sub(cumulativeRatio2).div(timestamp3.sub(timestamp2)).toString()
+      almostEqual(ratio3, balancedRatio, new BN('10000000000'))
     })
 
     describe('with extra fyDai reserves', () => {

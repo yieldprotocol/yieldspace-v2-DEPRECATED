@@ -20,7 +20,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
     event Trade(uint256 maturity, address indexed from, address indexed to, int256 daiTokens, int256 fyDaiTokens);
     event Liquidity(uint256 maturity, address indexed from, address indexed to, int256 daiTokens, int256 fyDaiTokens, int256 poolTokens);
-    event Sync(uint112 baseTokenReserve, uint112 storedFYTokenReserve, uint128 cumulativeFYDaiPrice);
+    event Sync(uint112 baseTokenReserve, uint112 storedFYTokenReserve, uint256 cumulativeReserveRatio);
 
     int128 constant public k = int128(uint256((1 << 64)) / 126144000); // 1 / Seconds in 4 years, in 64.64
     int128 constant public g1 = int128(uint256((950 << 64)) / 1000); // To be used when selling baseToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
@@ -34,7 +34,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     uint112 private storedFYTokenReserve;           // uses single storage slot, accessible via getReserves
     uint32  private blockTimestampLast; // uses single storage slot, accessible via getReserves
 
-    uint128 public cumulativeFYDaiPrice;
+    uint256 public cumulativeReserveRatio;
 
     constructor()
         ERC20Permit(
@@ -123,13 +123,14 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         uint32 blockTimestamp = uint32(block.timestamp);
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && _storedBaseTokenReserve != 0 && _storedFYTokenReserve != 0) {
-            // * never overflows, and + overflow is desired
-            cumulativeFYDaiPrice += _sellFYTokenPreview(1e16, _storedBaseTokenReserve, _storedFYTokenReserve) * timeElapsed;
+            uint256 scaledBaseReserve = uint256(_storedBaseTokenReserve) * 1e27;
+            require(scaledBaseReserve / 1e27 == _storedBaseTokenReserve); // overflow check
+            cumulativeReserveRatio += scaledBaseReserve / _storedFYTokenReserve * timeElapsed;
         }
         storedBaseTokenReserve = uint112(baseBalance);
         storedFYTokenReserve = uint112(fyBalance);
         blockTimestampLast = blockTimestamp;
-        emit Sync(storedBaseTokenReserve, storedFYTokenReserve, cumulativeFYDaiPrice);
+        emit Sync(storedBaseTokenReserve, storedFYTokenReserve, cumulativeReserveRatio);
     }
 
     /// @dev Mint liquidity tokens in exchange for adding baseToken and fyToken
