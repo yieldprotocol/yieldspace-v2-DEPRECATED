@@ -144,7 +144,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         onlyHolderOrDelegate(from)
         returns (uint256)
     {
-        (uint112 storedBaseTokenReserves, uint112 storedFYTokenReserves,) = getStoredReserves();
+        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
 
         uint256 supply = totalSupply();
         if (supply == 0) return init(tokenOffered);
@@ -165,8 +166,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _update(
                 toUint128(newBaseTokenReserves),
                 toUint128(newFYTokenReserves.add(tokensMinted)), // Account for the "virtual" fyDai from the new minted LP tokens
-                storedBaseTokenReserves,
-                storedFYTokenReserves
+                _storedBaseTokenReserve,
+                _storedFYTokenReserve
             );
         }
 
@@ -191,7 +192,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         onlyHolderOrDelegate(from)
         returns (uint256, uint256)
     {
-        (uint112 storedBaseTokenReserves, uint112 storedFYTokenReserves,) = getStoredReserves();
+        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
 
         uint256 supply = totalSupply();
         require(supply > 0, "Pool: Use mint first");
@@ -201,8 +203,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         uint256 baseTokenIn = _buyFYTokenPreview(
             toUint128(fyTokenToBuy),
-            storedBaseTokenReserves,
-            storedFYTokenReserves
+            _storedBaseTokenReserve,
+            _storedFYTokenReserve
         ); // This is a virtual buy
 
         require(fyTokenReserves >= fyTokenToBuy, "Pool: Not enough fyDai");
@@ -218,8 +220,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         _update(
             toUint128(newBaseTokenReserves),
             toUint128(fyTokenReserves.add(supply).add(tokensMinted)), // Add LP tokens to get virtual fyToken reserves
-            storedBaseTokenReserves,
-            storedFYTokenReserves
+            _storedBaseTokenReserve,
+            _storedFYTokenReserve
         );
 
         emit Liquidity(maturity, from, to, -toInt256(baseTokenIn), 0, toInt256(tokensMinted));
@@ -249,12 +251,15 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             fyTokenOut = tokensBurned.mul(fyTokenReserves).div(supply);
 
             uint256 newFYTokenReserves = fyTokenReserves.sub(fyTokenOut).add(supply).sub(tokensBurned);
-            (uint112 storedBaseTokenReserves, uint112 storedFYTokenReserves,) = getStoredReserves();
+
+            (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
+                (storedBaseTokenReserve, storedFYTokenReserve);
+
             _update(
                 toUint128(baseTokenReserves.sub(tokenOut)),
                 toUint128(newFYTokenReserves),
-                storedBaseTokenReserves,
-                storedFYTokenReserves
+                _storedBaseTokenReserve,
+                _storedFYTokenReserve
             );
         }
 
@@ -278,7 +283,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         onlyHolderOrDelegate(from)
         returns (uint256)
     {
-        (uint112 storedBaseTokenReserves, uint112 storedFYTokenReserves,) = getStoredReserves();
+        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
 
         uint256 supply = totalSupply();
         // use the actual reserves rather than the virtual reserves
@@ -286,13 +292,13 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         uint256 fyTokenObtained;
         { // avoiding stack too deep
             uint256 fyTokenReserves = fyToken.balanceOf(address(this));
-            tokenOut = tokensBurned.mul(storedBaseTokenReserves).div(supply);
+            tokenOut = tokensBurned.mul(_storedBaseTokenReserve).div(supply);
             fyTokenObtained = tokensBurned.mul(fyTokenReserves).div(supply);
 
             tokenOut = tokenOut.add(
                 YieldMath.daiOutForFYDaiIn(                            // This is a virtual sell
-                    toUint128(uint256(storedBaseTokenReserves).sub(tokenOut)),                // Real reserves, minus virtual burn
-                    sub(storedFYTokenReserves, toUint128(fyTokenObtained)), // Virtual reserves, minus virtual burn
+                    toUint128(uint256(_storedBaseTokenReserve).sub(tokenOut)),                // Real reserves, minus virtual burn
+                    sub(_storedFYTokenReserve, toUint128(fyTokenObtained)), // Virtual reserves, minus virtual burn
                     toUint128(fyTokenObtained),                          // Sell the virtual fyToken obtained
                     toUint128(maturity - block.timestamp),             // This can't be called after maturity
                     k,
@@ -303,8 +309,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _update(
                 toUint128(baseToken.balanceOf(address(this)).sub(tokenOut)),
                 toUint128(fyTokenReserves.add(supply).sub(tokensBurned)),
-                storedBaseTokenReserves,
-                storedFYTokenReserves
+                _storedBaseTokenReserve,
+                _storedFYTokenReserve
             );
         }
 
@@ -327,12 +333,13 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         onlyHolderOrDelegate(from)
         returns(uint128)
     {
-        (uint112 storedBaseTokenReserves, uint112 storedFYTokenReserves,) = getStoredReserves();
+        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
 
         uint128 fyTokenOut = _sellBaseTokenPreview(
             baseTokenIn,
-            storedBaseTokenReserves,
-            storedFYTokenReserves
+            _storedBaseTokenReserve,
+            _storedFYTokenReserve
         );
 
         baseToken.transferFrom(from, address(this), baseTokenIn);
@@ -341,8 +348,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         _update(
             getBaseTokenReserves(),
             getFYTokenReserves(),
-            storedBaseTokenReserves,
-            storedFYTokenReserves
+            _storedBaseTokenReserve,
+            _storedFYTokenReserve
         );
 
         emit Trade(maturity, from, to, -toInt256(baseTokenIn), toInt256(fyTokenOut));
@@ -357,9 +364,10 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         external view override
         returns(uint128)
     {
-        (uint112 storedBaseTokenReserves, uint112 storedFYTokenReserves,) = getStoredReserves();
+        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
 
-        return _sellBaseTokenPreview(baseTokenIn, storedBaseTokenReserves, storedFYTokenReserves);
+        return _sellBaseTokenPreview(baseTokenIn, _storedBaseTokenReserve, _storedFYTokenReserve);
     }
 
     /// @dev Returns how much fyToken would be obtained by selling `baseTokenIn` baseToken
@@ -400,9 +408,10 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         onlyHolderOrDelegate(from)
         returns(uint128)
     {
-        (uint112 storedBaseTokenReserves, uint112 storedFYTokenReserves,) = getStoredReserves();
+        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
 
-        uint128 fyTokenIn = _buyBaseTokenPreview(tokenOut, storedBaseTokenReserves, storedFYTokenReserves);
+        uint128 fyTokenIn = _buyBaseTokenPreview(tokenOut, _storedBaseTokenReserve, _storedFYTokenReserve);
 
         fyToken.transferFrom(from, address(this), fyTokenIn);
         baseToken.transfer(to, tokenOut);
@@ -410,8 +419,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         _update(
             getBaseTokenReserves(),
             getFYTokenReserves(),
-            storedBaseTokenReserves,
-            storedFYTokenReserves
+            _storedBaseTokenReserve,
+            _storedFYTokenReserve
         );
 
         emit Trade(maturity, from, to, toInt256(tokenOut), -toInt256(fyTokenIn));
@@ -426,9 +435,10 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         external view override
         returns(uint128)
     {
-        (uint112 storedBaseTokenReserves, uint112 storedFYTokenReserves,) = getStoredReserves();
+        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
 
-        return _buyBaseTokenPreview(tokenOut, storedBaseTokenReserves, storedFYTokenReserves);
+        return _buyBaseTokenPreview(tokenOut, _storedBaseTokenReserve, _storedFYTokenReserve);
     }
 
     /// @dev Returns how much fyToken would be required to buy `tokenOut` baseToken.
@@ -462,12 +472,13 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         onlyHolderOrDelegate(from)
         returns(uint128)
     {
-        (uint112 storedBaseTokenReserves, uint112 storedFYTokenReserves,) = getStoredReserves();
+        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
 
         uint128 tokenOut = _sellFYTokenPreview(
             fyTokenIn,
-            storedBaseTokenReserves,
-            storedFYTokenReserves
+            _storedBaseTokenReserve,
+            _storedFYTokenReserve
         );
 
         fyToken.transferFrom(from, address(this), fyTokenIn);
@@ -476,8 +487,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         _update(
             getBaseTokenReserves(),
             getFYTokenReserves(),
-            storedBaseTokenReserves,
-            storedFYTokenReserves
+            _storedBaseTokenReserve,
+            _storedFYTokenReserve
         );
 
         emit Trade(maturity, from, to, toInt256(tokenOut), -toInt256(fyTokenIn));
@@ -492,9 +503,10 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         external view override
         returns(uint128)
     {
-        (uint112 storedBaseTokenReserves, uint112 storedFYTokenReserves,) = getStoredReserves();
+        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
 
-        return _sellFYTokenPreview(fyTokenIn, storedBaseTokenReserves, storedFYTokenReserves);
+        return _sellFYTokenPreview(fyTokenIn, _storedBaseTokenReserve, _storedFYTokenReserve);
     }
 
     /// @dev Returns how much baseToken would be obtained by selling `fyTokenIn` fyToken.
@@ -508,8 +520,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         returns(uint128)
     {
         return YieldMath.daiOutForFYDaiIn(
-            uint128(baseTokenReserves),
-            uint128(fyTokenReserves),
+            baseTokenReserves,
+            fyTokenReserves,
             fyTokenIn,
             toUint128(maturity - block.timestamp), // This can't be called after maturity
             k,
@@ -528,12 +540,13 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         onlyHolderOrDelegate(from)
         returns(uint128)
     {
-        (uint112 storedBaseTokenReserves, uint112 storedFYTokenReserves,) = getStoredReserves();
+        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
 
         uint128 baseTokenIn = _buyFYTokenPreview(
             fyTokenOut,
-            storedBaseTokenReserves,
-            storedFYTokenReserves
+            _storedBaseTokenReserve,
+            _storedFYTokenReserve
         );
 
         baseToken.transferFrom(from, address(this), baseTokenIn);
@@ -542,8 +555,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         _update(
             getBaseTokenReserves(),
             getFYTokenReserves(),
-            storedBaseTokenReserves,
-            storedFYTokenReserves
+            _storedBaseTokenReserve,
+            _storedFYTokenReserve
         );
 
         emit Trade(maturity, from, to, -toInt256(baseTokenIn), toInt256(fyTokenOut));
@@ -559,9 +572,10 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         external view override
         returns(uint128)
     {
-        (uint112 storedBaseTokenReserves, uint112 storedFYTokenReserves,) = getStoredReserves();
+        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
 
-        return _buyFYTokenPreview(fyTokenOut, storedBaseTokenReserves, storedFYTokenReserves);
+        return _buyFYTokenPreview(fyTokenOut, _storedBaseTokenReserve, _storedFYTokenReserve);
     }
 
     /// @dev Returns how much baseToken would be required to buy `fyTokenOut` fyToken.
