@@ -409,7 +409,10 @@ describe('Pool', async function () {
 
         const baseIn = baseBalanceBefore.sub(await baseFromOwner.balanceOf(user1))
 
-        expect(await fyToken1FromOwner.balanceOf(user2)).to.equal(fyTokenOut, "'User2' wallet should have 1 fyToken token")
+        expect(await fyToken1FromOwner.balanceOf(user2)).to.equal(
+          fyTokenOut,
+          "'User2' wallet should have 1 fyToken token"
+        )
 
         almostEqual(baseIn, expectedBaseIn, baseIn.div(1000000))
         almostEqual(baseInPreview, expectedBaseIn, baseIn.div(1000000))
