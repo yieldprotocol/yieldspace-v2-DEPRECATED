@@ -123,8 +123,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         uint32 blockTimestamp = uint32(block.timestamp);
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && _storedBaseTokenReserve != 0 && _storedFYTokenReserve != 0) {
-            uint256 scaledBaseReserve = uint256(_storedBaseTokenReserve) * 1e27;
-            cumulativeReserveRatio += scaledBaseReserve / _storedFYTokenReserve * timeElapsed;
+            uint256 scaledFYReserve = uint256(_storedFYTokenReserve) * 1e27;
+            cumulativeReserveRatio += scaledFYReserve / _storedBaseTokenReserve * timeElapsed;
         }
         storedBaseTokenReserve = uint112(baseBalance);
         storedFYTokenReserve = uint112(fyBalance);
