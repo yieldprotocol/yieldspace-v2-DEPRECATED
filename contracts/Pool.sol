@@ -6,17 +6,45 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./YieldMath.sol";
 import "./helpers/Delegable.sol";
-import "./helpers/SafeCast.sol";
 import "./helpers/ERC20Permit.sol";
 import "./helpers/SafeERC20Namer.sol";
 import "./interfaces/IFYToken.sol";
 import "./interfaces/IPool.sol";
 import "./interfaces/IPoolFactory.sol";
 
+library SafeCast256 {
+    /// @dev Safely cast an uint256 to an uint128
+    function u128(uint256 x) internal pure returns (uint128 y) {
+        require (x <= type(uint128).max, "Cast overflow");
+        y = uint128(x);
+    }
+
+    /// @dev Safely cast an uint128 to an int128
+    /* function i128(uint128 x) internal pure returns (int128 y) {
+        require (x <= uint128(type(int128).max), "Cast overflow");
+        y = int128(x);
+    }*/
+}
+
+library Safe128 {
+    /// @dev Safely cast an int128 to an uint128
+    function u128(int128 x) internal pure returns (uint128 y) {
+        require (x >= 0, "Cast overflow");
+        y = uint128(x);
+    }
+
+    /// @dev Safely cast an uint128 to an int128
+    function i128(uint128 x) internal pure returns (int128 y) {
+        require (x <= uint128(type(int128).max), "Cast overflow");
+        y = int128(x);
+    }
+}
+
 
 /// @dev The Pool contract exchanges baseToken for fyToken at a price defined by a specific formula.
 contract Pool is IPool, Delegable(), ERC20Permit {
     using SafeMath for uint256;
+    using SafeCast256 for uint256;
 
     event Trade(uint256 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens);
     event Liquidity(uint256 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens, int256 poolTokens);
@@ -46,7 +74,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         fyToken = _fyToken;
         baseToken = IERC20(IPoolFactory(msg.sender).nextToken());
 
-        maturity = toUint128(_fyToken.maturity());
+        maturity = _fyToken.maturity().u128();
     }
 
     /// @dev Trading can only be done before maturity
@@ -74,15 +102,6 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         uint128 c = a - b;
 
         return c;
-    }
-
-    /// @dev Safe casting from uint256 to uint128
-    function toUint128(uint256 x) internal pure returns(uint128) {
-        require(
-            x <= type(uint128).max,
-            "Pool: Cast overflow"
-        );
-        return uint128(x);
     }
 
     /// @dev Safe casting from uint256 to int256
@@ -163,8 +182,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             require(newFYTokenReserves <= type(uint128).max); // fyTokenReserves can't go over type(uint128).max
 
             _update(
-                toUint128(newBaseTokenReserves),
-                toUint128(newFYTokenReserves.add(tokensMinted)), // Account for the "virtual" fyToken from the new minted LP tokens
+                newBaseTokenReserves.u128(),
+                newFYTokenReserves.add(tokensMinted).u128(), // Account for the "virtual" fyToken from the new minted LP tokens
                 _storedBaseTokenReserve,
                 _storedFYTokenReserve
             );
@@ -201,7 +220,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         uint256 fyTokenReserves = fyToken.balanceOf(address(this));
 
         uint256 baseTokenIn = _buyFYTokenPreview(
-            toUint128(fyTokenToBuy),
+            fyTokenToBuy.u128(),
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         ); // This is a virtual buy
@@ -217,8 +236,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         _mint(to, tokensMinted);
 
         _update(
-            toUint128(newBaseTokenReserves),
-            toUint128(fyTokenReserves.add(supply).add(tokensMinted)), // Add LP tokens to get virtual fyToken reserves
+            newBaseTokenReserves.u128(),
+            fyTokenReserves.add(supply).add(tokensMinted).u128(), // Add LP tokens to get virtual fyToken reserves
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
@@ -255,8 +274,8 @@ contract Pool is IPool, Delegable(), ERC20Permit {
                 (storedBaseTokenReserve, storedFYTokenReserve);
 
             _update(
-                toUint128(baseTokenReserves.sub(tokenOut)),
-                toUint128(newFYTokenReserves),
+                baseTokenReserves.sub(tokenOut).u128(),
+                newFYTokenReserves.u128(),
                 _storedBaseTokenReserve,
                 _storedFYTokenReserve
             );
@@ -296,18 +315,18 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
             tokenOut = tokenOut.add(
                 YieldMath.baseOutForFYTokenIn(                            // This is a virtual sell
-                    toUint128(uint256(_storedBaseTokenReserve).sub(tokenOut)),                // Real reserves, minus virtual burn
-                    sub(_storedFYTokenReserve, toUint128(fyTokenObtained)), // Virtual reserves, minus virtual burn
-                    toUint128(fyTokenObtained),                          // Sell the virtual fyToken obtained
-                    toUint128(maturity - block.timestamp),             // This can't be called after maturity
+                    uint256(_storedBaseTokenReserve).sub(tokenOut).u128(),                // Real reserves, minus virtual burn
+                    sub(_storedFYTokenReserve, fyTokenObtained.u128()), // Virtual reserves, minus virtual burn
+                    fyTokenObtained.u128(),                          // Sell the virtual fyToken obtained
+                    (maturity - block.timestamp).u128(),             // This can't be called after maturity
                     k,
                     g2
                 )
             );
 
             _update(
-                toUint128(baseToken.balanceOf(address(this)).sub(tokenOut)),
-                toUint128(fyTokenReserves.add(supply).sub(tokensBurned)),
+                baseToken.balanceOf(address(this)).sub(tokenOut).u128(),
+                fyTokenReserves.add(supply).sub(tokensBurned).u128(),
                 _storedBaseTokenReserve,
                 _storedFYTokenReserve
             );
@@ -383,7 +402,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             baseTokenReserves,
             fyTokenReserves,
             baseTokenIn,
-            toUint128(maturity - block.timestamp), // This can't be called after maturity
+            (maturity - block.timestamp).u128(), // This can't be called after maturity
             k,
             g1
         );
@@ -454,7 +473,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             baseTokenReserves,
             fyTokenReserves,
             tokenOut,
-            toUint128(maturity - block.timestamp), // This can't be called after maturity
+            (maturity - block.timestamp).u128(), // This can't be called after maturity
             k,
             g2
         );
@@ -522,7 +541,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             baseTokenReserves,
             fyTokenReserves,
             fyTokenIn,
-            toUint128(maturity - block.timestamp), // This can't be called after maturity
+            (maturity - block.timestamp).u128(), // This can't be called after maturity
             k,
             g2
         );
@@ -591,7 +610,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             baseTokenReserves,
             fyTokenReserves,
             fyTokenOut,
-            toUint128(maturity - block.timestamp), // This can't be called after maturity
+            (maturity - block.timestamp).u128(), // This can't be called after maturity
             k,
             g1
         );
@@ -640,7 +659,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedBaseTokenReserve,
             _storedFYTokenReserve,
             baseTokenIn,
-            uint128(maturity - block.timestamp), // This can't be called after maturity
+            (maturity - block.timestamp).u128(), // This can't be called after maturity
             k,
             g1
         );
@@ -669,7 +688,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         public view override
         returns(uint128)
     {
-        return toUint128(fyToken.balanceOf(address(this)).add(totalSupply()));
+        return fyToken.balanceOf(address(this)).add(totalSupply()).u128();
     }
 
     /// @dev Returns the baseToken reserves
@@ -677,6 +696,6 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         public view override
         returns(uint128)
     {
-        return toUint128(baseToken.balanceOf(address(this)));
+        return baseToken.balanceOf(address(this)).u128();
     }
 }
