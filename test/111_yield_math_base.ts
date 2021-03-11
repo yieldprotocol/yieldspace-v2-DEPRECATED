@@ -1,11 +1,9 @@
-import { artifacts, contract } from 'hardhat'
+import { YieldMathWrapper } from '../typechain/YieldMathWrapper'
+import { YieldMath } from '../typechain/YieldMath'
 
-const YieldMathWrapper = artifacts.require('YieldMathWrapper')
-const YieldMath = artifacts.require('YieldMath')
+import { BigNumber } from 'ethers'
 
-// @ts-ignore
-import { BN, expectRevert } from '@openzeppelin/test-helpers'
-import { Contract } from './shared/fixtures'
+import { ethers } from 'hardhat'
 
 /**
  * Throws given message unless given condition is true.
@@ -17,55 +15,23 @@ function assert(message: string, condition: boolean) {
   if (!condition) throw message
 }
 
-function toBigNumber(x: any) {
-  if (typeof x == 'object') x = x.toString()
-  if (typeof x == 'number') return new BN(x)
-  else if (typeof x == 'string') {
-    if (x.startsWith('0x') || x.startsWith('0X')) return new BN(x.substring(2), 16)
-    else return new BN(x)
-  }
-}
-
-contract('YieldMath - Base', async (accounts) => {
-  let yieldMath: Contract
-
-  const ONE = '0x10000000000000000'
+describe('YieldMath - Base', async () => {
+  let yieldMathLibrary: YieldMath
+  let yieldMath: YieldMathWrapper
 
   before(async () => {
-    const yieldMathLibrary = await YieldMath.new()
-    await YieldMathWrapper.link(yieldMathLibrary)
-  })
+    const YieldMathFactory = await ethers.getContractFactory('YieldMath')
+    yieldMathLibrary = ((await YieldMathFactory.deploy()) as unknown) as YieldMath // TODO: Why does the Factory return a Contract and not a YieldMath?
+    await yieldMathLibrary.deployed()
 
-  beforeEach(async () => {
-    yieldMath = await YieldMathWrapper.new()
-  })
+    const YieldMathWrapperFactory = await ethers.getContractFactory('YieldMathWrapper', {
+      libraries: {
+        YieldMath: yieldMathLibrary.address,
+      },
+    })
 
-  it('get the size of the contract', async () => {
-    console.log()
-    console.log('    ·--------------------|------------------|------------------|------------------·')
-    console.log('    |  Contract          ·  Bytecode        ·  Deployed        ·  Constructor     |')
-    console.log('    ·····················|··················|··················|···················')
-
-    const bytecode = yieldMath.constructor._json.bytecode
-    const deployed = yieldMath.constructor._json.deployedBytecode
-    const sizeOfB = bytecode.length / 2
-    const sizeOfD = deployed.length / 2
-    const sizeOfC = sizeOfB - sizeOfD
-    console.log(
-      '    |  ' +
-        yieldMath.constructor._json.contractName.padEnd(18, ' ') +
-        '|' +
-        ('' + sizeOfB).padStart(16, ' ') +
-        '  ' +
-        '|' +
-        ('' + sizeOfD).padStart(16, ' ') +
-        '  ' +
-        '|' +
-        ('' + sizeOfC).padStart(16, ' ') +
-        '  |'
-    )
-    console.log('    ·--------------------|------------------|------------------|------------------·')
-    console.log()
+    yieldMath = ((await YieldMathWrapperFactory.deploy()) as unknown) as YieldMathWrapper // TODO: See above
+    await yieldMath.deployed()
   })
 
   describe('Test pure math functions', async () => {
@@ -95,21 +61,20 @@ contract('YieldMath - Base', async (accounts) => {
 
       for (var i = 0; i < xValues.length; i++) {
         var xValue = xValues[i]
-        // console.log('    log_2 (' + xValue + ')')
-        var x = toBigNumber(xValue)
+        var x = BigNumber.from(xValue)
         var result
         try {
-          result = await yieldMath.log_2(x)
+          result = await yieldMath.log_2(x.toString())
         } catch (e) {
           result = [false, undefined]
         }
-        if (!x.eq(toBigNumber('0x0'))) {
-          assert('log_2 (' + xValue + ')[0]', result[0])
+        if (!x.eq(BigNumber.from('0x0'))) {
+          assert('log_2 (' + xValue + ')[0]', result[0] as boolean)
           assert(
             'log_2 (' + xValue + ')[1]',
             Math.abs(
               Math.log(Number(x)) / Math.LN2 -
-                Number(result[1]) / Number(toBigNumber('0x2000000000000000000000000000000'))
+                Number(result[1]) / Number(BigNumber.from('0x2000000000000000000000000000000'))
             ) < 0.00000000001
           )
         } else {
@@ -138,15 +103,15 @@ contract('YieldMath - Base', async (accounts) => {
       for (var i = 0; i < xValues.length; i++) {
         var xValue = xValues[i]
         // console.log('    pow_2 (' + xValue + ')')
-        var x = toBigNumber(xValue)
+        var x = BigNumber.from(xValue)
         var result
         try {
           result = await yieldMath.pow_2(x)
         } catch (e) {
           result = [false, undefined]
         }
-        assert('pow_2 (' + xValue + ')[0]', result[0])
-        var expected = Math.pow(2, Number(x) / Number(toBigNumber('0x2000000000000000000000000000000')))
+        assert('pow_2 (' + xValue + ')[0]', result[0] as boolean)
+        var expected = Math.pow(2, Number(x) / Number(BigNumber.from('0x2000000000000000000000000000000')))
         assert(
           'pow_2 (' + xValue + ')[1]',
           Math.abs(expected - Number(result[1])) <= Math.max(1.0000000000001, expected / 1000000000000.0)
@@ -181,9 +146,9 @@ contract('YieldMath - Base', async (accounts) => {
           var yValue = yzValues[j][0]
           var zValue = yzValues[j][1]
           // console.log('    pow (' + xValue + ', ' + yValue + ', ' + zValue + ')')
-          var x = toBigNumber(xValue)
-          var y = toBigNumber(yValue)
-          var z = toBigNumber(zValue)
+          var x = BigNumber.from(xValue)
+          var y = BigNumber.from(yValue)
+          var z = BigNumber.from(zValue)
           var result
           try {
             result = await yieldMath.pow(x, y, z)
@@ -191,12 +156,12 @@ contract('YieldMath - Base', async (accounts) => {
             result = [false, undefined]
           }
 
-          if (!z.eq(toBigNumber('0x0')) && (!x.eq(toBigNumber('0x0')) || !y.eq(toBigNumber('0x0')))) {
-            assert('pow (' + xValue + ', ' + yValue + ', ' + zValue + ')[0]', result[0])
+          if (!z.eq(BigNumber.from('0x0')) && (!x.eq(BigNumber.from('0x0')) || !y.eq(BigNumber.from('0x0')))) {
+            assert('pow (' + xValue + ', ' + yValue + ', ' + zValue + ')[0]', result[0] as boolean)
             var expectedLog =
               (Math.log(Number(x)) * Number(y)) / Number(z) + 128 * (1.0 - Number(y) / Number(z)) * Math.LN2
             if (expectedLog < 0.0) expectedLog = -1.0
-            if (x.eq(toBigNumber('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'))) expectedLog = 128 * Math.LN2
+            if (x.eq(BigNumber.from('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'))) expectedLog = 128 * Math.LN2
             var resultLog = Math.log(Number(result[1]))
             if (resultLog < 0.0) resultLog = -1.0
             assert(

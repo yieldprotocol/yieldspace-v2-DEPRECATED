@@ -87,7 +87,7 @@ export function getPermitDigest(
   )
 }
 
-export function getDaiDigest(
+export function getBaseDigest(
   name: string,
   address: string,
   chainId: number,

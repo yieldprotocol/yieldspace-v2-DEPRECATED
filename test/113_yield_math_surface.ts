@@ -1,146 +1,141 @@
-import { artifacts, contract } from 'hardhat'
+import { YieldMathWrapper } from '../typechain/YieldMathWrapper'
+import { YieldMath } from '../typechain/YieldMath'
 
-const YieldMathWrapper = artifacts.require('YieldMathWrapper')
-const YieldMath = artifacts.require('YieldMath')
+import { BigNumber } from 'ethers'
 
-import * as helper from 'ganache-time-traveler'
-// @ts-ignore
-import { BN } from '@openzeppelin/test-helpers'
+import { ethers } from 'hardhat'
 import { expect } from 'chai'
-// const { bignumber, add, subtract, multiply, divide, pow, floor } = require('mathjs')
-import { sellDai, sellFYDai, buyDai, buyFYDai } from './shared/yieldspace'
-const { floor } = require('mathjs')
-import { Contract } from './shared/fixtures'
 
-const ONE = new BN('1')
-const TWO = new BN('2')
-const THREE = new BN('3')
-const FOUR = new BN('4')
-const TEN = new BN('10')
-const TWENTY = new BN('20')
+import { sellBase, sellFYToken, buyBase, buyFYToken } from './shared/yieldspace'
 
-const MAX = new BN('340282366920938463463374607431768211455') // type(uint128).max
-const OneToken = new BN('1000000000000000000') // 1e18
-const ONE64 = new BN('18446744073709551616') // In 64.64 format
-const secondsInOneYear = new BN(60 * 60 * 24 * 365) // Seconds in 4 years
-const secondsInFourYears = secondsInOneYear.mul(FOUR) // Seconds in 4 years
-const k = ONE64.div(secondsInFourYears)
+const PRECISION = BigNumber.from('100000000000000') // 1e14
 
-const g0 = ONE64 // No fees
-const g1 = new BN('950').mul(ONE64).div(new BN('1000')) // Sell dai to the pool
-const g2 = new BN('1000').mul(ONE64).div(new BN('950')) // Sell fyDai to the pool
-
-const PRECISION = new BN('100000000000000') // 1e14
-
-function toBigNumber(x: any): BN {
-  if (typeof x == 'object') x = x.toString()
-  if (typeof x == 'number') return new BN(x)
-  else if (typeof x == 'string') {
-    if (x.startsWith('0x') || x.startsWith('0X')) return new BN(x.substring(2), 16)
-    else return new BN(x)
-  }
-}
-
-function decTo6464(x: any): BN {
-  return new BN((Number(x) * 10000).toString()).mul(ONE64).div(new BN('10000'))
-}
-
-function almostEqual(x: any, y: any, p: any) {
+function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
   // Check that abs(x - y) < p:
-  const xb = toBigNumber(x)
-  const yb = toBigNumber(y)
-  const pb = toBigNumber(p)
-  const diff = xb.gt(yb) ? xb.sub(yb) : yb.sub(xb)
-  expect(diff).to.be.bignumber.lt(pb)
+  const diff = x.gt(y) ? BigNumber.from(x).sub(y) : BigNumber.from(y).sub(x) // Not sure why I have to convert x and y to BigNumber
+  expect(diff.div(p)).to.eq(0) // Hack to avoid silly conversions. BigNumber truncates decimals off.
 }
 
-contract('YieldMath - Surface', async (accounts) => {
-  let snapshot: any
-  let snapshotId: string
+describe('YieldMath - Surface', async () => {
+  let yieldMathLibrary: YieldMath
+  let yieldMath: YieldMathWrapper
 
-  let yieldMath: Contract
+  const ONE64 = BigNumber.from('18446744073709551616') // In 64.64 format
+  const secondsInOneYear = BigNumber.from(60 * 60 * 24 * 365) // Seconds in 4 years
+  const secondsInFourYears = secondsInOneYear.mul(4) // Seconds in 4 years
+  const k = ONE64.div(secondsInFourYears)
 
-  const daiReserves = [
-    // '100000000000000000000000',
-    // '1000000000000000000000000',
-    '10000000000000000000000000',
-    '100000000000000000000000000',
-    '1000000000000000000000000000',
+  const g0 = ONE64 // No fees
+  const g1 = BigNumber.from('950').mul(ONE64).div(BigNumber.from('1000')) // Sell base to the pool
+  const g2 = BigNumber.from('1000').mul(ONE64).div(BigNumber.from('950')) // Sell fyToken to the pool
+
+  const baseReserves = [
+    // BigNumber.from('100000000000000000000000'),
+    // BigNumber.from('1000000000000000000000000'),
+    BigNumber.from('10000000000000000000000000'),
+    BigNumber.from('100000000000000000000000000'),
+    BigNumber.from('1000000000000000000000000000'),
   ]
-  const fyDaiReserveDeltas = [
-    // '10000000000000000000',
-    // '1000000000000000000000',
-    '100000000000000000000000',
-    '10000000000000000000000000',
-    '1000000000000000000000000000',
+  const fyTokenReserveDeltas = [
+    // BigNumber.from('10000000000000000000'),
+    // BigNumber.from('1000000000000000000000'),
+    BigNumber.from('100000000000000000000000'),
+    BigNumber.from('10000000000000000000000000'),
+    BigNumber.from('1000000000000000000000000000'),
   ]
   const tradeSizes = [
-    // '1000000000000000000',
-    // '10000000000000000000',
-    '100000000000000000000',
-    '1000000000000000000000',
-    '10000000000000000000000',
+    // BigNumber.from('1000000000000000000'),
+    // BigNumber.from('10000000000000000000'),
+    BigNumber.from('100000000000000000000'),
+    BigNumber.from('1000000000000000000000'),
+    BigNumber.from('10000000000000000000000'),
   ]
   const timesTillMaturity = [
-    // '4',
-    // '40',
-    '4000',
-    '400000',
-    '40000000',
+    // BigNumber.from('4'),
+    // BigNumber.from('40'),
+    BigNumber.from('4000'),
+    BigNumber.from('400000'),
+    BigNumber.from('40000000'),
   ]
 
   before(async () => {
-    const yieldMathLibrary = await YieldMath.new()
-    await YieldMathWrapper.link(yieldMathLibrary)
-  })
+    const YieldMathFactory = await ethers.getContractFactory('YieldMath')
+    yieldMathLibrary = ((await YieldMathFactory.deploy()) as unknown) as YieldMath // TODO: Why does the Factory return a Contract and not a YieldMath?
+    await yieldMathLibrary.deployed()
 
-  beforeEach(async () => {
-    snapshot = await helper.takeSnapshot()
-    snapshotId = snapshot['result']
+    const YieldMathWrapperFactory = await ethers.getContractFactory('YieldMathWrapper', {
+      libraries: {
+        YieldMath: yieldMathLibrary.address,
+      },
+    })
 
-    // Setup YieldMathWrapper
-    yieldMath = await YieldMathWrapper.new()
-  })
-
-  afterEach(async () => {
-    await helper.revertToSnapshot(snapshotId)
+    yieldMath = ((await YieldMathWrapperFactory.deploy()) as unknown) as YieldMathWrapper // TODO: See above
+    await yieldMath.deployed()
   })
 
   describe('Test scenarios', async () => {
     it('Compare a lattice of on-chain vs off-chain yieldspace trades', async function () {
       this.timeout(0)
 
-      for (var daiReserve of daiReserves) {
-        for (var fyDaiReserveDelta of fyDaiReserveDeltas) {
+      for (var baseReserve of baseReserves) {
+        for (var fyTokenReserveDelta of fyTokenReserveDeltas) {
           for (var tradeSize of tradeSizes) {
             for (var timeTillMaturity of timesTillMaturity) {
-              console.log(`daiReserve, fyDaiReserveDelta, tradeSize, timeTillMaturity`)
-              console.log(`${daiReserve}, ${fyDaiReserveDelta}, ${tradeSize}, ${timeTillMaturity}`)
-              const fyDaiReserve = new BN(daiReserve).add(new BN(fyDaiReserveDelta)).toString()
+              console.log(`baseReserve, fyTokenReserveDelta, tradeSize, timeTillMaturity`)
+              console.log(`${baseReserve}, ${fyTokenReserveDelta}, ${tradeSize}, ${timeTillMaturity}`)
+              const fyTokenReserve = baseReserve.add(fyTokenReserveDelta)
               let offChain, onChain
-              offChain = sellFYDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.daiOutForFYDaiIn(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g2)
-              console.log(`offChain sellFYDai: ${floor(offChain).toFixed()}`)
-              console.log(`onChain sellFYDai: ${onChain}`)
-              almostEqual(onChain, floor(offChain).toFixed(), PRECISION)
+              offChain = sellFYToken(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.daiOutForFYDaiIn(
+                baseReserve,
+                fyTokenReserve,
+                tradeSize,
+                timeTillMaturity,
+                k,
+                g2
+              )
+              console.log(`offChain sellFYToken: ${offChain}`)
+              console.log(`onChain sellFYToken: ${onChain}`)
+              almostEqual(onChain, offChain, PRECISION)
 
-              offChain = sellDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.fyDaiOutForDaiIn(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g1)
-              console.log(`offChain sellDai: ${floor(offChain).toFixed()}`)
-              console.log(`onChain sellDai: ${onChain}`)
-              almostEqual(onChain, floor(offChain).toFixed(), PRECISION)
+              offChain = sellBase(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.fyDaiOutForDaiIn(
+                baseReserve,
+                fyTokenReserve,
+                tradeSize,
+                timeTillMaturity,
+                k,
+                g1
+              )
+              console.log(`offChain sellBase: ${offChain}`)
+              console.log(`onChain sellBase: ${onChain}`)
+              almostEqual(onChain, offChain, PRECISION)
 
-              offChain = buyDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.fyDaiInForDaiOut(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g2)
-              console.log(`offChain buyDai: ${floor(offChain).toFixed()}`)
-              console.log(`onChain buyDai: ${onChain}`)
-              almostEqual(onChain, floor(offChain).toFixed(), PRECISION)
+              offChain = buyBase(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.fyDaiInForDaiOut(
+                baseReserve,
+                fyTokenReserve,
+                tradeSize,
+                timeTillMaturity,
+                k,
+                g2
+              )
+              console.log(`offChain buyBase: ${offChain}`)
+              console.log(`onChain buyBase: ${onChain}`)
+              almostEqual(onChain, offChain, PRECISION)
 
-              offChain = buyFYDai(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.daiInForFYDaiOut(daiReserve, fyDaiReserve, tradeSize, timeTillMaturity, k, g1)
-              console.log(`offChain buyFYDai: ${floor(offChain).toFixed()}`)
-              console.log(`onChain buyFYDai: ${onChain}`)
-              almostEqual(onChain, floor(offChain).toFixed(), PRECISION)
+              offChain = buyFYToken(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              onChain = await yieldMath.daiInForFYDaiOut(
+                baseReserve,
+                fyTokenReserve,
+                tradeSize,
+                timeTillMaturity,
+                k,
+                g1
+              )
+              console.log(`offChain buyFYToken: ${offChain}`)
+              console.log(`onChain buyFYToken: ${onChain}`)
+              almostEqual(onChain, offChain, PRECISION)
 
               console.log()
             }

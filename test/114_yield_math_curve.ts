@@ -1,43 +1,33 @@
-import { artifacts, contract } from 'hardhat'
+import { YieldMathWrapper } from '../typechain/YieldMathWrapper'
+import { YieldMath } from '../typechain/YieldMath'
 
-const YieldMathWrapper = artifacts.require('YieldMathWrapper')
-const YieldMath = artifacts.require('YieldMath')
+import { BigNumber } from 'ethers'
 
-import * as helper from 'ganache-time-traveler'
-// @ts-ignore
-import { BN } from '@openzeppelin/test-helpers'
-import { expect } from 'chai'
-import { Contract } from './shared/fixtures'
+import { ethers } from 'hardhat'
+import { solidity } from 'ethereum-waffle'
+import { expect, use } from 'chai'
+use(solidity)
 
-/**
- * Throws given message unless given condition is true.
- *
- * @param message message to throw unless given condition is true
- * @param condition condition to check
- */
-function assert(message: string, condition: boolean) {
-  if (!condition) throw message
+const PRECISION = BigNumber.from('100000000000000') // 1e14
+
+function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
+  // Check that abs(x - y) < p:
+  const diff = x.gt(y) ? BigNumber.from(x).sub(y) : BigNumber.from(y).sub(x) // Not sure why I have to convert x and y to BigNumber
+  expect(diff.div(p)).to.eq(0) // Hack to avoid silly conversions. BigNumber truncates decimals off.
 }
 
-function toBigNumber(x: any) {
-  if (typeof x == 'object') x = x.toString()
-  if (typeof x == 'number') return new BN(x)
-  else if (typeof x == 'string') {
-    if (x.startsWith('0x') || x.startsWith('0X')) return new BN(x.substring(2), 16)
-    else return new BN(x)
-  }
-}
+describe('YieldMath - Curve', async () => {
+  let yieldMathLibrary: YieldMath
+  let yieldMath: YieldMathWrapper
 
-contract('YieldMath - Curve', async (accounts) => {
-  let snapshot: any
-  let snapshotId: string
+  const ONE64 = BigNumber.from('18446744073709551616') // In 64.64 format
+  const secondsInOneYear = BigNumber.from(60 * 60 * 24 * 365) // Seconds in 4 years
+  const secondsInFourYears = secondsInOneYear.mul(4) // Seconds in 4 years
+  const k = ONE64.div(secondsInFourYears)
 
-  let yieldMath: Contract
-
-  const b = new BN('18446744073709551615')
-  const k = b.div(new BN('126144000'))
-  const g1 = new BN('950').mul(b).div(new BN('1000')) // Sell Dai to the pool
-  const g2 = new BN('1000').mul(b).div(new BN('950')) // Sell fyDai to the pool
+  const g0 = ONE64 // No fees
+  const g1 = BigNumber.from('950').mul(ONE64).div(BigNumber.from('1000')) // Sell base to the pool
+  const g2 = BigNumber.from('1000').mul(ONE64).div(BigNumber.from('950')) // Sell fyToken to the pool
 
   const values = [
     ['10000000000000000000000', '1000000000000000000000', '10000000000000000000', '1000000'],
@@ -47,257 +37,259 @@ contract('YieldMath - Curve', async (accounts) => {
   const timeTillMaturity = ['0', '40', '4000', '400000', '40000000']
 
   before(async () => {
-    const yieldMathLibrary = await YieldMath.new()
-    await YieldMathWrapper.link(yieldMathLibrary)
-  })
+    const YieldMathFactory = await ethers.getContractFactory('YieldMath')
+    yieldMathLibrary = ((await YieldMathFactory.deploy()) as unknown) as YieldMath // TODO: Why does the Factory return a Contract and not a YieldMath?
+    await yieldMathLibrary.deployed()
 
-  beforeEach(async () => {
-    snapshot = await helper.takeSnapshot()
-    snapshotId = snapshot['result']
+    const YieldMathWrapperFactory = await ethers.getContractFactory('YieldMathWrapper', {
+      libraries: {
+        YieldMath: yieldMathLibrary.address,
+      },
+    })
 
-    // Setup YieldMathDAIWrapper
-    yieldMath = await YieldMathWrapper.new()
-  })
-
-  afterEach(async () => {
-    await helper.revertToSnapshot(snapshotId)
+    yieldMath = ((await YieldMathWrapperFactory.deploy()) as unknown) as YieldMathWrapper // TODO: See above
+    await yieldMath.deployed()
   })
 
   describe('Test trading functions', async () => {
-    it('A higher g means more fyDai out with `fyDaiOutForDaiIn`', async () => {
+    it('A higher g means more fyToken out with `fyTokenOutForBaseIn`', async () => {
       for (var i = 0; i < values.length; i++) {
-        var daiReservesValue = values[i][0]
-        var fyDaiReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseReservesValue = values[i][0]
+        var fyTokenReservesValue = values[i][1]
+        var baseAmountValue = values[i][2]
         var timeTillMaturityValue = values[i][3]
 
-        var daiReserves = toBigNumber(daiReservesValue)
-        var fyDaiReserves = toBigNumber(fyDaiReservesValue)
-        var daiAmount = toBigNumber(daiAmountValue)
-        var timeTillMaturity = toBigNumber(timeTillMaturityValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
+        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
+        var timeTillMaturity = BigNumber.from(timeTillMaturityValue)
         var g = [
           ['9', '10'],
           ['95', '100'],
           ['950', '1000'],
         ]
-        var previousResult = new BN('0')
+        var result = BigNumber.from('0')
+        var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
-          var g_ = new BN(g[j][0]).mul(b).div(new BN(g[j][1]))
-          var result = await yieldMath.fyDaiOutForDaiIn(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_)
+          var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
+          result = await yieldMath.fyDaiOutForDaiIn(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
         }
 
-        expect(result).to.be.bignumber.gt(previousResult.toString())
+        expect(result).to.be.gt(previousResult)
         previousResult = result
       }
     })
 
-    it('As we approach maturity, price grows to 1 for `fyDaiOutForDaiIn`', async () => {
+    it('As we approach maturity, price grows to 1 for `fyTokenOutForBaseIn`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
-        var daiReservesValue = values[i][0]
-        var fyDaiReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseReservesValue = values[i][0]
+        var fyTokenReservesValue = values[i][1]
+        var baseAmountValue = values[i][2]
 
-        var daiReserves = toBigNumber(daiReservesValue)
-        var fyDaiReserves = toBigNumber(fyDaiReservesValue)
-        var daiAmount = toBigNumber(daiAmountValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
+        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
 
-        const flatFee = new BN('1000000000000')
-        const maximum = daiAmount.sub(flatFee)
+        const flatFee = BigNumber.from('1000000000000')
+        const maximum = baseAmount.sub(flatFee)
+        var result = maximum
         var previousResult = maximum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
 
-          var result = await yieldMath.fyDaiOutForDaiIn(daiReserves, fyDaiReserves, daiAmount, t, k, g1)
+          result = await yieldMath.fyDaiOutForDaiIn(baseReserves, fyTokenReserves, baseAmount, t, k, g1)
 
           // console.log("      " + result.toString())
           if (j == 0) {
             // Test that when we are very close to maturity, price is very close to 1 minus flat fee.
-            expect(result).to.be.bignumber.lt(maximum.mul(new BN('1000000')).div(new BN('999999')).toString())
-            expect(result).to.be.bignumber.gt(maximum.mul(new BN('999999')).div(new BN('1000000')).toString())
+            almostEqual(result, maximum, PRECISION)
           } else {
             // Easier to test prices diverging from 1
-            expect(result).to.be.bignumber.lt(previousResult.toString())
+            expect(result).to.be.lt(previousResult)
           }
           previousResult = result
         }
       }
     })
 
-    it('A lower g means more Dai out with `daiOutForFYDaiIn`', async () => {
+    it('A lower g means more Base out with `baseOutForFYTokenIn`', async () => {
       for (var i = 0; i < values.length; i++) {
-        var daiReservesValue = values[i][0]
-        var fyDaiReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseReservesValue = values[i][0]
+        var fyTokenReservesValue = values[i][1]
+        var baseAmountValue = values[i][2]
         var timeTillMaturityValue = values[i][3]
 
-        var daiReserves = toBigNumber(daiReservesValue)
-        var fyDaiReserves = toBigNumber(fyDaiReservesValue)
-        var daiAmount = toBigNumber(daiAmountValue)
-        var timeTillMaturity = toBigNumber(timeTillMaturityValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
+        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
+        var timeTillMaturity = BigNumber.from(timeTillMaturityValue)
 
         var g = [
           ['950', '1000'],
           ['95', '100'],
           ['9', '10'],
         ]
-        var previousResult = new BN('0')
+        var result = BigNumber.from('0')
+        var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
-          var g_ = new BN(g[j][0]).mul(b).div(new BN(g[j][1]))
-          var result = await yieldMath.daiOutForFYDaiIn(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_)
+          var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
+          result = await yieldMath.daiOutForFYDaiIn(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
         }
 
-        expect(result).to.be.bignumber.gt(previousResult.toString())
+        expect(result).to.be.gt(previousResult)
         previousResult = result
       }
     })
 
-    it('As we approach maturity, price drops to 1 for `daiOutForFYDaiIn`', async () => {
+    it('As we approach maturity, price drops to 1 for `baseOutForFYTokenIn`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
-        var daiReservesValue = values[i][0]
-        var fyDaiReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseReservesValue = values[i][0]
+        var fyTokenReservesValue = values[i][1]
+        var baseAmountValue = values[i][2]
 
-        var daiReserves = toBigNumber(daiReservesValue)
-        var fyDaiReserves = toBigNumber(fyDaiReservesValue)
-        var daiAmount = toBigNumber(daiAmountValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
+        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
 
-        const flatFee = new BN('1000000000000')
-        const minimum = daiAmount.sub(flatFee)
+        const flatFee = BigNumber.from('1000000000000')
+        const minimum = baseAmount.sub(flatFee)
+        var result = minimum
         var previousResult = minimum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          var result = await yieldMath.daiOutForFYDaiIn(daiReserves, fyDaiReserves, daiAmount, t, k, g2)
+          result = await yieldMath.daiOutForFYDaiIn(baseReserves, fyTokenReserves, baseAmount, t, k, g2)
 
           // console.log("      " + result.toString())
           if (j == 0) {
             // Test that when we are very close to maturity, price is very close to 1 minus flat fee.
-            expect(result).to.be.bignumber.gt(minimum.mul(new BN('999999')).div(new BN('1000000')).toString())
-            expect(result).to.be.bignumber.lt(minimum.mul(new BN('1000000')).div(new BN('999999')).toString())
+            almostEqual(result, minimum, PRECISION)
           } else {
             // Easier to test prices diverging from 1
-            expect(result).to.be.bignumber.gt(previousResult.toString())
+            expect(result).to.be.gt(previousResult)
           }
           previousResult = result
         }
       }
     })
 
-    it('A higher g means more fyDai in with `fyDaiInForDaiOut`', async () => {
+    it('A higher g means more fyToken in with `fyTokenInForBaseOut`', async () => {
       for (var i = 0; i < values.length; i++) {
-        var daiReservesValue = values[i][0]
-        var fyDaiReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseReservesValue = values[i][0]
+        var fyTokenReservesValue = values[i][1]
+        var baseAmountValue = values[i][2]
         var timeTillMaturityValue = values[i][3]
 
-        var daiReserves = toBigNumber(daiReservesValue)
-        var fyDaiReserves = toBigNumber(fyDaiReservesValue)
-        var daiAmount = toBigNumber(daiAmountValue)
-        var timeTillMaturity = toBigNumber(timeTillMaturityValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
+        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
+        var timeTillMaturity = BigNumber.from(timeTillMaturityValue)
 
         var g = [
           ['9', '10'],
           ['95', '100'],
           ['950', '1000'],
         ]
-        var previousResult = new BN('0')
+        var result = BigNumber.from('0')
+        var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
-          var g_ = new BN(g[j][0]).mul(b).div(new BN(g[j][1]))
-          var result = await yieldMath.fyDaiInForDaiOut(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_)
+          var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
+          result = await yieldMath.fyDaiInForDaiOut(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
         }
 
-        expect(result).to.be.bignumber.gt(previousResult.toString())
+        expect(result).to.be.gt(previousResult)
         previousResult = result
       }
     })
 
-    it('As we approach maturity, price grows to 1 for `fyDaiInForDaiOut`', async () => {
+    it('As we approach maturity, price grows to 1 for `fyTokenInForBaseOut`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
-        var daiReservesValue = values[i][0]
-        var fyDaiReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseReservesValue = values[i][0]
+        var fyTokenReservesValue = values[i][1]
+        var baseAmountValue = values[i][2]
 
-        var daiReserves = toBigNumber(daiReservesValue)
-        var fyDaiReserves = toBigNumber(fyDaiReservesValue)
-        var daiAmount = toBigNumber(daiAmountValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
+        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
 
-        const flatFee = new BN('1000000000000')
-        const maximum = daiAmount.add(flatFee)
+        const flatFee = BigNumber.from('1000000000000')
+        const maximum = baseAmount.add(flatFee)
+        var result = maximum
         var previousResult = maximum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          var result = await yieldMath.fyDaiInForDaiOut(daiReserves, fyDaiReserves, daiAmount, t, k, g2)
+          result = await yieldMath.fyDaiInForDaiOut(baseReserves, fyTokenReserves, baseAmount, t, k, g2)
 
           // console.log("      " + result.toString())
           if (j == 0) {
             // Test that when we are very close to maturity, price is very close to 1 plus flat fee.
-            expect(result).to.be.bignumber.lt(maximum.mul(new BN('1000000')).div(new BN('999999')).toString())
-            expect(result).to.be.bignumber.gt(maximum.mul(new BN('999999')).div(new BN('1000000')).toString())
+            almostEqual(result, maximum, PRECISION)
           } else {
             // Easier to test prices diverging from 1
-            expect(result).to.be.bignumber.lt(previousResult.toString())
+            expect(result).to.be.lt(previousResult)
           }
           previousResult = result
         }
       }
     })
 
-    it('A lower g means more Dai in with `daiInForFYDaiOut`', async () => {
+    it('A lower g means more Base in with `baseInForFYTokenOut`', async () => {
       for (var i = 0; i < values.length; i++) {
-        var daiReservesValue = values[i][0]
-        var fyDaiReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseReservesValue = values[i][0]
+        var fyTokenReservesValue = values[i][1]
+        var baseAmountValue = values[i][2]
         var timeTillMaturityValue = values[i][3]
 
-        var daiReserves = toBigNumber(daiReservesValue)
-        var fyDaiReserves = toBigNumber(fyDaiReservesValue)
-        var daiAmount = toBigNumber(daiAmountValue)
-        var timeTillMaturity = toBigNumber(timeTillMaturityValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
+        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
+        var timeTillMaturity = BigNumber.from(timeTillMaturityValue)
 
         var g = [
           ['950', '1000'],
           ['95', '100'],
           ['9', '10'],
         ]
-        var previousResult = new BN('0')
+        var result = BigNumber.from('0')
+        var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
-          var g_ = new BN(g[j][0]).mul(b).div(new BN(g[j][1]))
-          var result = await yieldMath.daiInForFYDaiOut(daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g_)
+          var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
+          result = await yieldMath.daiInForFYDaiOut(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
         }
 
-        expect(result).to.be.bignumber.gt(previousResult.toString())
+        expect(result).to.be.gt(previousResult)
         previousResult = result
       }
     })
 
-    it('As we approach maturity, price drops to 1 for `daiInForFYDaiOut`', async () => {
+    it('As we approach maturity, price drops to 1 for `baseInForFYTokenOut`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
-        var daiReservesValue = values[i][0]
-        var fyDaiReservesValue = values[i][1]
-        var daiAmountValue = values[i][2]
+        var baseReservesValue = values[i][0]
+        var fyTokenReservesValue = values[i][1]
+        var baseAmountValue = values[i][2]
 
-        var daiReserves = toBigNumber(daiReservesValue)
-        var fyDaiReserves = toBigNumber(fyDaiReservesValue)
-        var daiAmount = toBigNumber(daiAmountValue)
+        var baseReserves = BigNumber.from(baseReservesValue)
+        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseAmount = BigNumber.from(baseAmountValue)
 
-        const flatFee = new BN('1000000000000')
-        const minimum = daiAmount.add(flatFee)
+        const flatFee = BigNumber.from('1000000000000')
+        const minimum = baseAmount.add(flatFee)
+        var result = minimum
         var previousResult = minimum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          var result = await yieldMath.daiInForFYDaiOut(daiReserves, fyDaiReserves, daiAmount, t, k, g1)
+          result = await yieldMath.daiInForFYDaiOut(baseReserves, fyTokenReserves, baseAmount, t, k, g1)
 
           // console.log("      " + result.toString())
           if (j == 0) {
             // Test that when we are very close to maturity, price is very close to 1 plus flat fee.
-            expect(result).to.be.bignumber.gt(minimum.mul(new BN('999999')).div(new BN('1000000')).toString())
-            expect(result).to.be.bignumber.lt(minimum.mul(new BN('1000000')).div(new BN('999999')).toString())
+            almostEqual(result, minimum, PRECISION)
           } else {
             // Easier to test prices diverging from 1
-            expect(result).to.be.bignumber.gt(previousResult.toString())
+            expect(result).to.be.gt(previousResult)
           }
           previousResult = result
         }
