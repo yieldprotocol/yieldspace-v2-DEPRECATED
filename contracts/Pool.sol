@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./YieldMath.sol";
-import "./helpers/Delegable.sol";
 import "./helpers/ERC20Permit.sol";
 import "./helpers/SafeERC20Namer.sol";
 import "./interfaces/IFYToken.sol";
@@ -36,7 +35,7 @@ library SafeCast128 {
 
 
 /// @dev The Pool contract exchanges baseToken for fyToken at a price defined by a specific formula.
-contract Pool is IPool, Delegable(), ERC20Permit {
+contract Pool is IPool, ERC20Permit {
     using SafeMath for uint256;
     using SafeCast256 for uint256;
     using SafeCast128 for uint128;
@@ -139,13 +138,11 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
     /// @dev Mint liquidity tokens in exchange for adding baseToken and fyToken
     /// The liquidity provider needs to have called `baseToken.approve` and `fyToken.approve`.
-    /// @param from Wallet providing the baseToken and fyToken. Must have approved the operator with `pool.addDelegate(operator)`.
     /// @param to Wallet receiving the minted liquidity tokens.
     /// @param tokenOffered Amount of `baseToken` being invested, an appropriate amount of `fyToken` to be invested alongside will be calculated and taken by this function from the caller.
     /// @return The amount of liquidity tokens minted.
-    function mint(address from, address to, uint256 tokenOffered)
+    function mint(address to, uint256 tokenOffered)
         external override
-        onlyHolderOrDelegate(from)
         returns (uint256)
     {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
@@ -175,25 +172,23 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             );
         }
 
-        require(baseToken.transferFrom(from, address(this), tokenOffered));
-        require(fyToken.transferFrom(from, address(this), fyTokenRequired));
+        require(baseToken.transferFrom(msg.sender, address(this), tokenOffered));
+        require(fyToken.transferFrom(msg.sender, address(this), fyTokenRequired));
         _mint(to, tokensMinted);
 
 
-        emit Liquidity(maturity, from, to, -(tokenOffered.i256()), -(fyTokenRequired.i256()), tokensMinted.i256());
+        emit Liquidity(maturity, msg.sender, to, -(tokenOffered.i256()), -(fyTokenRequired.i256()), tokensMinted.i256());
 
         return tokensMinted;
     }
 
     /// @dev Mint liquidity tokens in exchange for adding only baseToken
     /// The liquidity provider needs to have called `baseToken.approve`.
-    /// @param from Wallet providing the baseToken and fyToken. Must have approved the operator with `pool.addDelegate(operator)`.
     /// @param to Wallet receiving the minted liquidity tokens.
     /// @param fyTokenToBuy Amount of `fyToken` being bought in the Pool, from this we calculate how much baseToken it will be taken in.
     /// @return The amount of liquidity tokens minted.
-    function mintWithToken(address from, address to, uint256 fyTokenToBuy) // TODO: Rename to mintWithBaseToken
+    function mintWithToken(address to, uint256 fyTokenToBuy) // TODO: Rename to mintWithBaseToken
         external
-        onlyHolderOrDelegate(from)
         returns (uint256, uint256)
     {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
@@ -218,7 +213,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         uint256 newBaseTokenReserves = baseTokenReserves.add(baseTokenIn);
         require(newBaseTokenReserves <= type(uint128).max/*, "Pool: Too much baseToken"*/);
 
-        require(baseToken.transferFrom(from, address(this), baseTokenIn)/*, "Pool: baseToken transfer failed"*/);
+        require(baseToken.transferFrom(msg.sender, address(this), baseTokenIn)/*, "Pool: baseToken transfer failed"*/);
         _mint(to, tokensMinted);
 
         _update(
@@ -228,20 +223,18 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        emit Liquidity(maturity, from, to, -(baseTokenIn.i256()), 0, tokensMinted.i256());
+        emit Liquidity(maturity, msg.sender, to, -(baseTokenIn.i256()), 0, tokensMinted.i256());
 
         return (baseTokenIn, tokensMinted);
     }
 
     /// @dev Burn liquidity tokens in exchange for baseToken and fyToken.
     /// The liquidity provider needs to have called `pool.approve`.
-    /// @param from Wallet providing the liquidity tokens. Must have approved the operator with `pool.addDelegate(operator)`.
     /// @param to Wallet receiving the baseToken and fyToken.
     /// @param tokensBurned Amount of liquidity tokens being burned.
     /// @return The amount of reserve tokens returned (baseTokens, fyTokenTokens).
-    function burn(address from, address to, uint256 tokensBurned)
+    function burn(address to, uint256 tokensBurned)
         external override
-        onlyHolderOrDelegate(from)
         returns (uint256, uint256)
     {
         uint256 supply = totalSupply();
@@ -267,24 +260,22 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             );
         }
 
-        _burn(from, tokensBurned); // TODO: Fix to check allowance
+        _burn(msg.sender, tokensBurned); // TODO: Fix to check allowance
         baseToken.transfer(to, tokenOut);
         fyToken.transfer(to, fyTokenOut);
 
-        emit Liquidity(maturity, from, to, tokenOut.i256(), fyTokenOut.i256(), -(tokensBurned.i256()));
+        emit Liquidity(maturity, msg.sender, to, tokenOut.i256(), fyTokenOut.i256(), -(tokensBurned.i256()));
 
         return (tokenOut, fyTokenOut);
     }
 
     /// @dev Burn liquidity tokens in exchange for baseToken.
     /// The liquidity provider needs to have called `pool.approve`.
-    /// @param from Wallet providing the liquidity tokens. Must have approved the operator with `pool.addDelegate(operator)`.
     /// @param to Wallet receiving the baseToken and fyToken.
     /// @param tokensBurned Amount of liquidity tokens being burned.
     /// @return The amount of base tokens returned.
-    function burnForBaseToken(address from, address to, uint256 tokensBurned)
+    function burnForBaseToken(address to, uint256 tokensBurned)
         external
-        onlyHolderOrDelegate(from)
         returns (uint256)
     {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
@@ -318,23 +309,21 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             );
         }
 
-        _burn(from, tokensBurned); // TODO: Fix to check allowance
+        _burn(msg.sender, tokensBurned); // TODO: Fix to check allowance
         baseToken.transfer(to, tokenOut);
 
-        emit Liquidity(maturity, from, to, tokenOut.i256(), 0, -(tokensBurned.i256()));
+        emit Liquidity(maturity, msg.sender, to, tokenOut.i256(), 0, -(tokensBurned.i256()));
 
         return tokenOut;
     }
 
     /// @dev Sell baseToken for fyToken
     /// The trader needs to have called `baseToken.approve`
-    /// @param from Wallet providing the baseToken being sold. Must have approved the operator with `pool.addDelegate(operator)`.
     /// @param to Wallet receiving the fyToken being bought
     /// @param baseTokenIn Amount of baseToken being sold that will be taken from the user's wallet
     /// @return Amount of fyToken that will be deposited on `to` wallet
-    function sellBaseToken(address from, address to, uint128 baseTokenIn)
+    function sellBaseToken(address to, uint128 baseTokenIn)
         external override
-        onlyHolderOrDelegate(from)
         returns(uint128)
     {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
@@ -346,7 +335,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        baseToken.transferFrom(from, address(this), baseTokenIn);
+        baseToken.transferFrom(msg.sender, address(this), baseTokenIn);
         fyToken.transfer(to, fyTokenOut);
 
         _update(
@@ -356,7 +345,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        emit Trade(maturity, from, to, -(baseTokenIn.i128()), fyTokenOut.i128());
+        emit Trade(maturity, msg.sender, to, -(baseTokenIn.i128()), fyTokenOut.i128());
 
         return fyTokenOut;
     }
@@ -403,13 +392,11 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
     /// @dev Buy baseToken for fyToken
     /// The trader needs to have called `fyToken.approve`
-    /// @param from Wallet providing the fyToken being sold. Must have approved the operator with `pool.addDelegate(operator)`.
     /// @param to Wallet receiving the baseToken being bought
     /// @param tokenOut Amount of baseToken being bought that will be deposited in `to` wallet
-    /// @return Amount of fyToken that will be taken from `from` wallet
-    function buyBaseToken(address from, address to, uint128 tokenOut)
+    /// @return Amount of fyToken that will be taken from caller
+    function buyBaseToken(address to, uint128 tokenOut)
         external override
-        onlyHolderOrDelegate(from)
         returns(uint128)
     {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
@@ -417,7 +404,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         uint128 fyTokenIn = _buyBaseTokenPreview(tokenOut, _storedBaseTokenReserve, _storedFYTokenReserve);
 
-        fyToken.transferFrom(from, address(this), fyTokenIn);
+        fyToken.transferFrom(msg.sender, address(this), fyTokenIn);
         baseToken.transfer(to, tokenOut);
 
         _update(
@@ -427,7 +414,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        emit Trade(maturity, from, to, tokenOut.i128(), -(fyTokenIn.i128()));
+        emit Trade(maturity, msg.sender, to, tokenOut.i128(), -(fyTokenIn.i128()));
 
         return fyTokenIn;
     }
@@ -467,13 +454,11 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
     /// @dev Sell fyToken for baseToken
     /// The trader needs to have called `fyToken.approve`
-    /// @param from Wallet providing the fyToken being sold. Must have approved the operator with `pool.addDelegate(operator)`.
     /// @param to Wallet receiving the baseToken being bought
     /// @param fyTokenIn Amount of fyToken being sold that will be taken from the user's wallet
     /// @return Amount of baseToken that will be deposited on `to` wallet
-    function sellFYToken(address from, address to, uint128 fyTokenIn)
+    function sellFYToken(address to, uint128 fyTokenIn)
         external override
-        onlyHolderOrDelegate(from)
         returns(uint128)
     {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
@@ -485,7 +470,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        fyToken.transferFrom(from, address(this), fyTokenIn);
+        fyToken.transferFrom(msg.sender, address(this), fyTokenIn);
         baseToken.transfer(to, tokenOut);
 
         _update(
@@ -495,7 +480,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        emit Trade(maturity, from, to, tokenOut.i128(), -(fyTokenIn.i128()));
+        emit Trade(maturity, msg.sender, to, tokenOut.i128(), -(fyTokenIn.i128()));
 
         return tokenOut;
     }
@@ -535,13 +520,11 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
     /// @dev Buy fyToken for baseToken
     /// The trader needs to have called `baseToken.approve`
-    /// @param from Wallet providing the baseToken being sold. Must have approved the operator with `pool.addDelegate(operator)`.
     /// @param to Wallet receiving the fyToken being bought
     /// @param fyTokenOut Amount of fyToken being bought that will be deposited in `to` wallet
-    /// @return Amount of baseToken that will be taken from `from` wallet
-    function buyFYToken(address from, address to, uint128 fyTokenOut)
+    /// @return Amount of baseToken that will be taken from caller's wallet
+    function buyFYToken(address to, uint128 fyTokenOut)
         external override
-        onlyHolderOrDelegate(from)
         returns(uint128)
     {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
@@ -553,7 +536,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        baseToken.transferFrom(from, address(this), baseTokenIn);
+        baseToken.transferFrom(msg.sender, address(this), baseTokenIn);
         fyToken.transfer(to, fyTokenOut);
 
         _update(
@@ -563,7 +546,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        emit Trade(maturity, from, to, -(baseTokenIn.i128()), fyTokenOut.i128());
+        emit Trade(maturity, msg.sender, to, -(baseTokenIn.i128()), fyTokenOut.i128());
 
         return baseTokenIn;
     }
@@ -622,24 +605,17 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         return (storedBaseTokenReserve, storedFYTokenReserve, blockTimestampLast);
     }
 
-    /// @dev Sell fyTokens in exchange for fyTokens from a different pool. Both pools must have the same base token.
-    /// User must have approved the pool2 to operate for him in pool1 with `pool1.addDelegate(pool2.address)`.
-    /// User must have approved the pool1 to take from him fyToken1 with `fyToken1.approve(pool1.address, fyTokenIn)`.
-    /// @param from Wallet providing the LP tokens.
-    /// @param to Wallet receiving the minted liquidity tokens.
-    /// @param pool Origin pool for the fyToken being rolled.
-    /// @param fyTokenIn Amount of `fyToken` that will be rolled.
-    // @return The amount of `fyToken` obtained.
-    function rollFYToken(address from, address to, IPool pool, uint128 fyTokenIn)
+    // TODO: Refactor using some multicall
+    /*
+    function rollFYToken(address to, uint128 fyTokenIn)
         external
-        onlyHolderOrDelegate(from)
         returns (uint256)
     {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
 
         // TODO: Either whitelist the pools, or check balances before and after
-        uint128 baseTokenIn = pool.sellFYToken(from, address(this), fyTokenIn);
+        uint128 baseTokenIn = pool.sellFYToken(msg.sender, address(this), fyTokenIn);
 
         uint128 fyTokenOut = YieldMath.fyTokenOutForBaseIn(
             _storedBaseTokenReserve,
@@ -664,10 +640,11 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        emit Trade(maturity, from, to, -(baseTokenIn.i128()), -(fyTokenOut.i128()));
+        emit Trade(maturity, msg.sender, to, -(baseTokenIn.i128()), -(fyTokenOut.i128()));
 
         return fyTokenOut;
     }
+    */
 
     /// @dev Returns the "virtual" fyToken reserves
     function getFYTokenReserves()
