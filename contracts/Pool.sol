@@ -635,7 +635,6 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         // TODO: Either whitelist the pools, or check balances before and after
         uint128 baseTokenIn = pool.sellFYToken(from, address(this), fyTokenIn);
-        uint128 baseTokenReserves = add(_storedBaseTokenReserve, baseTokenIn);
 
         uint128 fyTokenOut = YieldMath.fyDaiOutForDaiIn(
             _storedBaseTokenReserve,

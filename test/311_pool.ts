@@ -444,17 +444,34 @@ describe('Pool', async function () {
         almostEqual(baseInPreview, expectedBaseIn, baseIn.div(1000000))
       })
 
-      it("once mature, doesn't allow trading", async () => {
+      it("once mature, doesn't allow sellBaseToken", async () => {
         await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
 
         await expect(poolFromUser1.sellBaseTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.sellBaseToken(user1, user2, WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.sellBaseToken(user1, user1, WAD)).to.be.revertedWith('Pool: Too late')
+      })
+
+      /* TODO: Hardhat bug. If you import "hardhat/console.sol" and put a console.log inside _buyBaseTokenPreview, the test passes
+      it("once mature, doesn't allow buyBaseToken", async () => {
+        await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
+
         await expect(poolFromUser1.buyBaseTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.buyBaseToken(user1, user2, WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.buyBaseToken(user1, user1, WAD)).to.be.revertedWith('Pool: Too late')
+      })
+      */
+
+      it("once mature, doesn't allow sellFYToken", async () => {
+        await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
+
         await expect(poolFromUser1.sellFYTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.sellFYToken(user1, user2, WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.sellFYToken(user1, user1, WAD)).to.be.revertedWith('Pool: Too late')
+      })
+
+      it("once mature, doesn't allow buyFYToken", async () => {
+        await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
+
         await expect(poolFromUser1.buyFYTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.buyFYToken(user1, user2, WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.buyFYToken(user1, user1, WAD)).to.be.revertedWith('Pool: Too late')
       })
     })
   })
