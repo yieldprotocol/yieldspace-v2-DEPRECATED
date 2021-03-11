@@ -72,7 +72,7 @@ describe('YieldMath - Curve', async () => {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.fyDaiOutForDaiIn(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.fyTokenOutForBaseIn(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.gt(previousResult)
@@ -98,7 +98,7 @@ describe('YieldMath - Curve', async () => {
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
 
-          result = await yieldMath.fyDaiOutForDaiIn(baseReserves, fyTokenReserves, baseAmount, t, k, g1)
+          result = await yieldMath.fyTokenOutForBaseIn(baseReserves, fyTokenReserves, baseAmount, t, k, g1)
 
           // console.log("      " + result.toString())
           if (j == 0) {
@@ -134,7 +134,7 @@ describe('YieldMath - Curve', async () => {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.daiOutForFYDaiIn(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.baseOutForFYTokenIn(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.gt(previousResult)
@@ -159,7 +159,7 @@ describe('YieldMath - Curve', async () => {
         var previousResult = minimum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          result = await yieldMath.daiOutForFYDaiIn(baseReserves, fyTokenReserves, baseAmount, t, k, g2)
+          result = await yieldMath.baseOutForFYTokenIn(baseReserves, fyTokenReserves, baseAmount, t, k, g2)
 
           // console.log("      " + result.toString())
           if (j == 0) {
@@ -195,7 +195,7 @@ describe('YieldMath - Curve', async () => {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.fyDaiInForDaiOut(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.fyTokenInForBaseOut(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.gt(previousResult)
@@ -220,7 +220,7 @@ describe('YieldMath - Curve', async () => {
         var previousResult = maximum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          result = await yieldMath.fyDaiInForDaiOut(baseReserves, fyTokenReserves, baseAmount, t, k, g2)
+          result = await yieldMath.fyTokenInForBaseOut(baseReserves, fyTokenReserves, baseAmount, t, k, g2)
 
           // console.log("      " + result.toString())
           if (j == 0) {
@@ -256,7 +256,7 @@ describe('YieldMath - Curve', async () => {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.daiInForFYDaiOut(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.baseInForFYTokenOut(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.gt(previousResult)
@@ -281,7 +281,7 @@ describe('YieldMath - Curve', async () => {
         var previousResult = minimum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          result = await yieldMath.daiInForFYDaiOut(baseReserves, fyTokenReserves, baseAmount, t, k, g1)
+          result = await yieldMath.baseInForFYTokenOut(baseReserves, fyTokenReserves, baseAmount, t, k, g1)
 
           // console.log("      " + result.toString())
           if (j == 0) {

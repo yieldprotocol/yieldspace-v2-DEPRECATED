@@ -86,7 +86,7 @@ describe('YieldMath - Surface', async () => {
               const fyTokenReserve = baseReserve.add(fyTokenReserveDelta)
               let offChain, onChain
               offChain = sellFYToken(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.daiOutForFYDaiIn(
+              onChain = await yieldMath.baseOutForFYTokenIn(
                 baseReserve,
                 fyTokenReserve,
                 tradeSize,
@@ -99,7 +99,7 @@ describe('YieldMath - Surface', async () => {
               almostEqual(onChain, offChain, PRECISION)
 
               offChain = sellBase(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.fyDaiOutForDaiIn(
+              onChain = await yieldMath.fyTokenOutForBaseIn(
                 baseReserve,
                 fyTokenReserve,
                 tradeSize,
@@ -112,7 +112,7 @@ describe('YieldMath - Surface', async () => {
               almostEqual(onChain, offChain, PRECISION)
 
               offChain = buyBase(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.fyDaiInForDaiOut(
+              onChain = await yieldMath.fyTokenInForBaseOut(
                 baseReserve,
                 fyTokenReserve,
                 tradeSize,
@@ -125,7 +125,7 @@ describe('YieldMath - Surface', async () => {
               almostEqual(onChain, offChain, PRECISION)
 
               offChain = buyFYToken(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
-              onChain = await yieldMath.daiInForFYDaiOut(
+              onChain = await yieldMath.baseInForFYTokenOut(
                 baseReserve,
                 fyTokenReserve,
                 tradeSize,

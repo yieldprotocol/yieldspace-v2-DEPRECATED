@@ -8,84 +8,84 @@ import "../YieldMath.sol";
  */
 contract YieldMathWrapper {
   /**
-   * Calculate the amount of fyDai a user would get for given amount of Dai.
+   * Calculate the amount of fyToken a user would get for given amount of Base.
    *
-   * @param daiReserves Dai reserves amount
-   * @param fyDaiReserves fyDai reserves amount
-   * @param daiAmount Dai amount to be traded
+   * @param baseReserves Base reserves amount
+   * @param fyTokenReserves fyToken reserves amount
+   * @param baseAmount Base amount to be traded
    * @param timeTillMaturity time till maturity in seconds
    * @param k time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
-   * @return the amount of fyDai a user would get for given amount of Dai
+   * @return the amount of fyToken a user would get for given amount of Base
    */
-  function fyDaiOutForDaiIn(
-    uint128 daiReserves, uint128 fyDaiReserves, uint128 daiAmount,
+  function fyTokenOutForBaseIn(
+    uint128 baseReserves, uint128 fyTokenReserves, uint128 baseAmount,
     uint128 timeTillMaturity, int128 k, int128 g)
   public pure returns(uint128) {
-    return YieldMath.fyDaiOutForDaiIn(
-      daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g
+    return YieldMath.fyTokenOutForBaseIn(
+      baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g
     );
   }
 
   /**
-   * Calculate the amount of Dai a user would get for certain amount of fyDai.
+   * Calculate the amount of Base a user would get for certain amount of fyToken.
    *
-   * @param daiReserves Dai reserves amount
-   * @param fyDaiReserves fyDai reserves amount
-   * @param fyDaiAmount fyDai amount to be traded
+   * @param baseReserves Base reserves amount
+   * @param fyTokenReserves fyToken reserves amount
+   * @param fyTokenAmount fyToken amount to be traded
    * @param timeTillMaturity time till maturity in seconds
    * @param k time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
-   * @return the amount of Dai a user would get for given amount of fyDai
+   * @return the amount of Base a user would get for given amount of fyToken
    */
-  function daiOutForFYDaiIn(
-    uint128 daiReserves, uint128 fyDaiReserves, uint128 fyDaiAmount,
+  function baseOutForFYTokenIn(
+    uint128 baseReserves, uint128 fyTokenReserves, uint128 fyTokenAmount,
     uint128 timeTillMaturity, int128 k, int128 g)
   public pure returns(uint128) {
-    return YieldMath.daiOutForFYDaiIn(
-      daiReserves, fyDaiReserves, fyDaiAmount, timeTillMaturity, k, g
+    return YieldMath.baseOutForFYTokenIn(
+      baseReserves, fyTokenReserves, fyTokenAmount, timeTillMaturity, k, g
     );
   }
 
   /**
-   * Calculate the amount of fyDai a user could sell for given amount of Dai.
+   * Calculate the amount of fyToken a user could sell for given amount of Base.
    *
-   * @param daiReserves Dai reserves amount
-   * @param fyDaiReserves fyDai reserves amount
-   * @param daiAmount Dai amount to be traded
+   * @param baseReserves Base reserves amount
+   * @param fyTokenReserves fyToken reserves amount
+   * @param baseAmount Base amount to be traded
    * @param timeTillMaturity time till maturity in seconds
    * @param k time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
-   * @return the amount of fyDai a user could sell for given amount of Dai
+   * @return the amount of fyToken a user could sell for given amount of Base
    */
-  function fyDaiInForDaiOut(
-    uint128 daiReserves, uint128 fyDaiReserves, uint128 daiAmount,
+  function fyTokenInForBaseOut(
+    uint128 baseReserves, uint128 fyTokenReserves, uint128 baseAmount,
     uint128 timeTillMaturity, int128 k, int128 g)
   public pure returns(uint128) {
-    return YieldMath.fyDaiInForDaiOut(
-      daiReserves, fyDaiReserves, daiAmount, timeTillMaturity, k, g
+    return YieldMath.fyTokenInForBaseOut(
+      baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g
     );
   }
 
   /**
-   * Calculate the amount of Dai a user would have to pay for certain amount of
-   * fyDai.
+   * Calculate the amount of Base a user would have to pay for certain amount of
+   * fyToken.
    *
-   * @param daiReserves Dai reserves amount
-   * @param fyDaiReserves fyDai reserves amount
-   * @param fyDaiAmount fyDai amount to be traded
+   * @param baseReserves Base reserves amount
+   * @param fyTokenReserves fyToken reserves amount
+   * @param fyTokenAmount fyToken amount to be traded
    * @param timeTillMaturity time till maturity in seconds
    * @param k time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
-   * @return the amount of Dai a user would have to pay for given amount of
-   *         fyDai
+   * @return the amount of Base a user would have to pay for given amount of
+   *         fyToken
    */
-  function daiInForFYDaiOut(
-    uint128 daiReserves, uint128 fyDaiReserves, uint128 fyDaiAmount,
+  function baseInForFYTokenOut(
+    uint128 baseReserves, uint128 fyTokenReserves, uint128 fyTokenAmount,
     uint128 timeTillMaturity, int128 k, int128 g)
   public pure returns(uint128) {
-    return YieldMath.daiInForFYDaiOut(
-      daiReserves, fyDaiReserves, fyDaiAmount, timeTillMaturity, k, g
+    return YieldMath.baseInForFYTokenOut(
+      baseReserves, fyTokenReserves, fyTokenAmount, timeTillMaturity, k, g
     );
   }
 

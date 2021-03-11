@@ -17,8 +17,8 @@ contract PoolFactory is IPoolFactory {
   address private _nextFYToken;
 
   /// @dev Calculate the deterministic addreess of a pool, based on the base token & fy token.
-  /// @param baseToken Address of the base token (such as Dai).
-  /// @param fyToken Address of the fixed yield token (such as fyDai).
+  /// @param baseToken Address of the base token (such as Base).
+  /// @param fyToken Address of the fixed yield token (such as fyToken).
   /// @return The calculated pool address.
   function calculatePoolAddress(address baseToken, address fyToken) external view override returns (address) {
     return _calculatePoolAddress(baseToken, fyToken);
@@ -37,8 +37,8 @@ contract PoolFactory is IPoolFactory {
   }
 
   /// @dev Calculate the addreess of a pool, and return address(0) if not deployed.
-  /// @param baseToken Address of the base token (such as Dai).
-  /// @param fyToken Address of the fixed yield token (such as fyDai).
+  /// @param baseToken Address of the base token (such as Base).
+  /// @param fyToken Address of the fixed yield token (such as fyToken).
   /// @return pool The deployed pool address.
   function getPool(address baseToken, address fyToken) external view override returns (address pool) {
     pool = _calculatePoolAddress(baseToken, fyToken);
@@ -52,8 +52,8 @@ contract PoolFactory is IPoolFactory {
   /// baseToken & fyToken are written to temporary storage slots to allow for simpler
   /// address calculation, while still allowing the Pool contract to store the values as
   /// immutable.
-  /// @param baseToken Address of the base token (such as Dai).
-  /// @param fyToken Address of the fixed yield token (such as fyDai).
+  /// @param baseToken Address of the base token (such as Base).
+  /// @param fyToken Address of the fixed yield token (such as fyToken).
   /// @return pool The pool address.
   function createPool(address baseToken, address fyToken) external override returns (address pool) {
       _nextBaseToken = baseToken;

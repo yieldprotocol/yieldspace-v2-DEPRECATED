@@ -328,41 +328,41 @@ library YieldMath {
   uint256 public constant MAX = type(uint128).max;   // Used for overflow checks
 
   /**
-   * Calculate the amount of fyDai a user would get for given amount of Dai.
+   * Calculate the amount of fyToken a user would get for given amount of Base.
    * https://www.desmos.com/calculator/5nf2xuy6yb
-   * @param daiReserves dai reserves amount
-   * @param fyDaiReserves fyDai reserves amount
-   * @param daiAmount dai amount to be traded
+   * @param baseReserves base reserves amount
+   * @param fyTokenReserves fyToken reserves amount
+   * @param baseAmount base amount to be traded
    * @param timeTillMaturity time till maturity in seconds
    * @param k time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
-   * @return the amount of fyDai a user would get for given amount of Dai
+   * @return the amount of fyToken a user would get for given amount of Base
    */
-  function fyDaiOutForDaiIn(
-    uint128 daiReserves, uint128 fyDaiReserves, uint128 daiAmount,
+  function fyTokenOutForBaseIn(
+    uint128 baseReserves, uint128 fyTokenReserves, uint128 baseAmount,
     uint128 timeTillMaturity, int128 k, int128 g)
   public pure returns(uint128) {
     uint128 a = _computeA(timeTillMaturity, k, g);
 
-    // za = daiReserves ** a
-    uint256 za = daiReserves.pow(a, ONE);
+    // za = baseReserves ** a
+    uint256 za = baseReserves.pow(a, ONE);
 
-    // ya = fyDaiReserves ** a
-    uint256 ya = fyDaiReserves.pow(a, ONE);
+    // ya = fyTokenReserves ** a
+    uint256 ya = fyTokenReserves.pow(a, ONE);
 
-    // zx = daiReserves + daiAmount
-    uint256 zx = uint256(daiReserves) + uint256(daiAmount);
-    require(zx <= MAX, "YieldMath: Too much dai in");
+    // zx = baseReserves + baseAmount
+    uint256 zx = uint256(baseReserves) + uint256(baseAmount);
+    require(zx <= MAX, "YieldMath: Too much base in");
 
     // zxa = zx ** a
     uint256 zxa = uint128(zx).pow(a, ONE);
 
     // sum = za + ya - zxa
     uint256 sum = za + ya - zxa; // z < MAX, y < MAX, a < 1. It can only underflow, not overflow.
-    require(sum <= MAX, "YieldMath: Insufficient fyDai reserves");
+    require(sum <= MAX, "YieldMath: Insufficient fyToken reserves");
 
-    // result = fyDaiReserves - (sum ** (1/a))
-    uint256 result = uint256(fyDaiReserves) - uint256(uint128(sum).pow(ONE, a));
+    // result = fyTokenReserves - (sum ** (1/a))
+    uint256 result = uint256(fyTokenReserves) - uint256(uint128(sum).pow(ONE, a));
     require(result <= MAX, "YieldMath: Rounding induced error");
 
     result = result > 1e12 ? result - 1e12 : 0; // Subtract error guard, flooring the result at zero
@@ -371,41 +371,41 @@ library YieldMath {
   }
 
   /**
-   * Calculate the amount of dai a user would get for certain amount of fyDai.
+   * Calculate the amount of base a user would get for certain amount of fyToken.
    * https://www.desmos.com/calculator/6jlrre7ybt
-   * @param daiReserves dai reserves amount
-   * @param fyDaiReserves fyDai reserves amount
-   * @param fyDaiAmount fyDai amount to be traded
+   * @param baseReserves base reserves amount
+   * @param fyTokenReserves fyToken reserves amount
+   * @param fyTokenAmount fyToken amount to be traded
    * @param timeTillMaturity time till maturity in seconds
    * @param k time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
-   * @return the amount of Dai a user would get for given amount of fyDai
+   * @return the amount of Base a user would get for given amount of fyToken
    */
-  function daiOutForFYDaiIn(
-    uint128 daiReserves, uint128 fyDaiReserves, uint128 fyDaiAmount,
+  function baseOutForFYTokenIn(
+    uint128 baseReserves, uint128 fyTokenReserves, uint128 fyTokenAmount,
     uint128 timeTillMaturity, int128 k, int128 g)
   public pure returns(uint128) {
     uint128 a = _computeA(timeTillMaturity, k, g);
 
-    // za = daiReserves ** a
-    uint256 za = daiReserves.pow(a, ONE);
+    // za = baseReserves ** a
+    uint256 za = baseReserves.pow(a, ONE);
 
-    // ya = fyDaiReserves ** a
-    uint256 ya = fyDaiReserves.pow(a, ONE);
+    // ya = fyTokenReserves ** a
+    uint256 ya = fyTokenReserves.pow(a, ONE);
 
-    // yx = fyDayReserves + fyDaiAmount
-    uint256 yx = uint256(fyDaiReserves) + uint256(fyDaiAmount);
-    require(yx <= MAX, "YieldMath: Too much fyDai in");
+    // yx = fyDayReserves + fyTokenAmount
+    uint256 yx = uint256(fyTokenReserves) + uint256(fyTokenAmount);
+    require(yx <= MAX, "YieldMath: Too much fyToken in");
 
     // yxa = yx ** a
     uint256 yxa = uint128(yx).pow(a, ONE);
 
     // sum = za + ya - yxa
     uint256 sum = za + ya - yxa; // z < MAX, y < MAX, a < 1. It can only underflow, not overflow.
-    require(sum <= MAX, "YieldMath: Insufficient dai reserves");
+    require(sum <= MAX, "YieldMath: Insufficient base reserves");
 
-    // result = daiReserves - (sum ** (1/a))
-    uint256 result = uint256(daiReserves) - uint256(uint128(sum).pow(ONE, a));
+    // result = baseReserves - (sum ** (1/a))
+    uint256 result = uint256(baseReserves) - uint256(uint128(sum).pow(ONE, a));
     require(result <= MAX, "YieldMath: Rounding induced error");
 
     result = result > 1e12 ? result - 1e12 : 0; // Subtract error guard, flooring the result at zero
@@ -414,41 +414,41 @@ library YieldMath {
   }
 
   /**
-   * Calculate the amount of fyDai a user could sell for given amount of Dai.
+   * Calculate the amount of fyToken a user could sell for given amount of Base.
    * https://www.desmos.com/calculator/0rgnmtckvy
-   * @param daiReserves dai reserves amount
-   * @param fyDaiReserves fyDai reserves amount
-   * @param daiAmount Dai amount to be traded
+   * @param baseReserves base reserves amount
+   * @param fyTokenReserves fyToken reserves amount
+   * @param baseAmount Base amount to be traded
    * @param timeTillMaturity time till maturity in seconds
    * @param k time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
-   * @return the amount of fyDai a user could sell for given amount of Dai
+   * @return the amount of fyToken a user could sell for given amount of Base
    */
-  function fyDaiInForDaiOut(
-    uint128 daiReserves, uint128 fyDaiReserves, uint128 daiAmount,
+  function fyTokenInForBaseOut(
+    uint128 baseReserves, uint128 fyTokenReserves, uint128 baseAmount,
     uint128 timeTillMaturity, int128 k, int128 g)
   public pure returns(uint128) {
     uint128 a = _computeA(timeTillMaturity, k, g);
 
-    // za = daiReserves ** a
-    uint256 za = daiReserves.pow(a, ONE);
+    // za = baseReserves ** a
+    uint256 za = baseReserves.pow(a, ONE);
 
-    // ya = fyDaiReserves ** a
-    uint256 ya = fyDaiReserves.pow(a, ONE);
+    // ya = fyTokenReserves ** a
+    uint256 ya = fyTokenReserves.pow(a, ONE);
 
-    // zx = daiReserves - daiAmount
-    uint256 zx = uint256(daiReserves) - uint256(daiAmount);
-    require(zx <= MAX, "YieldMath: Too much dai out");
+    // zx = baseReserves - baseAmount
+    uint256 zx = uint256(baseReserves) - uint256(baseAmount);
+    require(zx <= MAX, "YieldMath: Too much base out");
 
     // zxa = zx ** a
     uint256 zxa = uint128(zx).pow(a, ONE);
 
     // sum = za + ya - zxa
     uint256 sum = za + ya - zxa; // z < MAX, y < MAX, a < 1. It can only underflow, not overflow.
-    require(sum <= MAX, "YieldMath: Resulting fyDai reserves too high");
+    require(sum <= MAX, "YieldMath: Resulting fyToken reserves too high");
 
-    // result = (sum ** (1/a)) - fyDaiReserves
-    uint256 result = uint256(uint128(sum).pow(ONE, a)) - uint256(fyDaiReserves);
+    // result = (sum ** (1/a)) - fyTokenReserves
+    uint256 result = uint256(uint128(sum).pow(ONE, a)) - uint256(fyTokenReserves);
     require(result <= MAX, "YieldMath: Rounding induced error");
 
     result = result < MAX - 1e12 ? result + 1e12 : MAX; // Add error guard, ceiling the result at max
@@ -457,42 +457,42 @@ library YieldMath {
   }
 
   /**
-   * Calculate the amount of dai a user would have to pay for certain amount of fyDai.
+   * Calculate the amount of base a user would have to pay for certain amount of fyToken.
    * https://www.desmos.com/calculator/ws5oqj8x5i
-   * @param daiReserves Dai reserves amount
-   * @param fyDaiReserves fyDai reserves amount
-   * @param fyDaiAmount fyDai amount to be traded
+   * @param baseReserves Base reserves amount
+   * @param fyTokenReserves fyToken reserves amount
+   * @param fyTokenAmount fyToken amount to be traded
    * @param timeTillMaturity time till maturity in seconds
    * @param k time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
-   * @return the amount of dai a user would have to pay for given amount of
-   *         fyDai
+   * @return the amount of base a user would have to pay for given amount of
+   *         fyToken
    */
-  function daiInForFYDaiOut(
-    uint128 daiReserves, uint128 fyDaiReserves, uint128 fyDaiAmount,
+  function baseInForFYTokenOut(
+    uint128 baseReserves, uint128 fyTokenReserves, uint128 fyTokenAmount,
     uint128 timeTillMaturity, int128 k, int128 g)
   public pure returns(uint128) {
     uint128 a = _computeA(timeTillMaturity, k, g);
 
-    // za = daiReserves ** a
-    uint256 za = daiReserves.pow(a, ONE);
+    // za = baseReserves ** a
+    uint256 za = baseReserves.pow(a, ONE);
 
-    // ya = fyDaiReserves ** a
-    uint256 ya = fyDaiReserves.pow(a, ONE);
+    // ya = fyTokenReserves ** a
+    uint256 ya = fyTokenReserves.pow(a, ONE);
 
-    // yx = daiReserves - daiAmount
-    uint256 yx = uint256(fyDaiReserves) - uint256(fyDaiAmount);
-    require(yx <= MAX, "YieldMath: Too much fyDai out");
+    // yx = baseReserves - baseAmount
+    uint256 yx = uint256(fyTokenReserves) - uint256(fyTokenAmount);
+    require(yx <= MAX, "YieldMath: Too much fyToken out");
 
     // yxa = yx ** a
     uint256 yxa = uint128(yx).pow(a, ONE);
 
     // sum = za + ya - yxa
     uint256 sum = za + ya - yxa; // z < MAX, y < MAX, a < 1. It can only underflow, not overflow.
-    require(sum <= MAX, "YieldMath: Resulting dai reserves too high");
+    require(sum <= MAX, "YieldMath: Resulting base reserves too high");
 
-    // result = (sum ** (1/a)) - daiReserves
-    uint256 result = uint256(uint128(sum).pow(ONE, a)) - uint256(daiReserves);
+    // result = (sum ** (1/a)) - baseReserves
+    uint256 result = uint256(uint128(sum).pow(ONE, a)) - uint256(baseReserves);
     require(result <= MAX, "YieldMath: Rounding induced error");
 
     result = result < MAX - 1e12 ? result + 1e12 : MAX; // Add error guard, ceiling the result at max
@@ -514,29 +514,29 @@ library YieldMath {
   }
 
   /**
-   * Estimate in Dai the value of reserves at protocol initialization time.
+   * Estimate in Base the value of reserves at protocol initialization time.
    *
-   * @param daiReserves dai reserves amount
-   * @param fyDaiReserves fyDai reserves amount
+   * @param baseReserves base reserves amount
+   * @param fyTokenReserves fyToken reserves amount
    * @param timeTillMaturity time till maturity in seconds
    * @param k time till maturity coefficient, multiplied by 2^64
-   * @param c0 price of dai in terms of Dai, multiplied by 2^64
+   * @param c0 price of base in terms of Base, multiplied by 2^64
    * @return estimated value of reserves
    */
   function initialReservesValue(
-    uint128 daiReserves, uint128 fyDaiReserves, uint128 timeTillMaturity,
+    uint128 baseReserves, uint128 fyTokenReserves, uint128 timeTillMaturity,
     int128 k, int128 c0)
   external pure returns(uint128) {
-    uint256 normalizedDaiReserves = c0.mulu(daiReserves);
-    require(normalizedDaiReserves <= MAX);
+    uint256 normalizedBaseReserves = c0.mulu(baseReserves);
+    require(normalizedBaseReserves <= MAX);
 
     // a = (1 - k * timeTillMaturity)
     int128 a = int128(ONE).sub(k.mul(timeTillMaturity.fromUInt()));
     require(a > 0);
 
     uint256 sum =
-      uint256(uint128(normalizedDaiReserves).pow(uint128(a), ONE)) +
-      uint256(fyDaiReserves.pow(uint128(a), ONE)) >> 1;
+      uint256(uint128(normalizedBaseReserves).pow(uint128(a), ONE)) +
+      uint256(fyTokenReserves.pow(uint128(a), ONE)) >> 1;
     require(sum <= MAX);
 
     uint256 result = uint256(uint128(sum).pow(ONE, uint128(a))) << 1;
