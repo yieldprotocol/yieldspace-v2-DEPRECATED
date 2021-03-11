@@ -11,9 +11,9 @@ import { BigNumber } from 'ethers'
 import { expect } from 'chai'
 const { loadFixture } = waffle
 
-describe('PoolFactory', async function() {
+describe('PoolFactory', async function () {
   this.timeout(0)
-  
+
   let ownerAcc: SignerWithAddress
   let yieldSpace: YieldSpaceEnvironment
   let factory: PoolFactory

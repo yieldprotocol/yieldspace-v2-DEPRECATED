@@ -72,7 +72,14 @@ describe('YieldMath - Curve', async () => {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.fyTokenOutForBaseIn(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.fyTokenOutForBaseIn(
+            baseReserves,
+            fyTokenReserves,
+            baseAmount,
+            timeTillMaturity,
+            k,
+            g_
+          )
         }
 
         expect(result).to.be.gt(previousResult)
@@ -134,7 +141,14 @@ describe('YieldMath - Curve', async () => {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.baseOutForFYTokenIn(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.baseOutForFYTokenIn(
+            baseReserves,
+            fyTokenReserves,
+            baseAmount,
+            timeTillMaturity,
+            k,
+            g_
+          )
         }
 
         expect(result).to.be.gt(previousResult)
@@ -195,7 +209,14 @@ describe('YieldMath - Curve', async () => {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.fyTokenInForBaseOut(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.fyTokenInForBaseOut(
+            baseReserves,
+            fyTokenReserves,
+            baseAmount,
+            timeTillMaturity,
+            k,
+            g_
+          )
         }
 
         expect(result).to.be.gt(previousResult)
@@ -256,7 +277,14 @@ describe('YieldMath - Curve', async () => {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.baseInForFYTokenOut(baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.baseInForFYTokenOut(
+            baseReserves,
+            fyTokenReserves,
+            baseAmount,
+            timeTillMaturity,
+            k,
+            g_
+          )
         }
 
         expect(result).to.be.gt(previousResult)
