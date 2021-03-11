@@ -1,17 +1,14 @@
-
 const func = async function ({ deployments, getNamedAccounts, getChainId }) {
-  const { deploy, get, read, execute } = deployments;
+  const { deploy, execute, get, read } = deployments;
   const { deployer } = await getNamedAccounts();
   const chainId = await getChainId()
 
-  const daiMock = await deploy('DaiMock', {
+  const safeERC20Namer = await deploy('SafeERC20Namer', {
     from: deployer,
     deterministicDeployment: true,
-    args: []
   })
-
-  console.log(`Deployed DaiMock to ${daiMock.address}`);
-}
+  console.log(`Deployed SafeERC20Namer to ${safeERC20Namer.address}`);
+};
 
 module.exports = func;
-module.exports.tags = ["DaiMock"];
+module.exports.tags = ["SafeERC20Namer"];

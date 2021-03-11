@@ -4,7 +4,7 @@ pragma solidity ^0.7.5;
 import "../helpers/ERC20Permit.sol";
 
 
-contract DaiMock is ERC20Permit("Dai", "DAI") {
+contract BaseMock is ERC20Permit("Base", "BASE") {
   function mint(address to, uint256 amount) public {
     _mint(to, amount);
   }
