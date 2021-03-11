@@ -193,6 +193,32 @@ describe('Pool', async function () {
       almostEqual(fyTokenInPreview, expectedFYTokenIn, baseOut.div(1000000))
     })
 
+    it('calculates the TWAR price', async () => {
+      const cumulativePrice1 = await pool.cumulativeReserveRatio()
+      expect(cumulativePrice1).to.equal(0, 'Price should start at 0')
+      const timestamp1 = (await pool.getStoredReserves())[2]
+
+      await timeMachine.advanceTimeAndBlock(ethers.provider, 120)
+
+      await pool.sync()
+
+      const balancedRatio = BigNumber.from('10').pow(BigNumber.from('27'))
+
+      const cumulativeRatio2 = await pool.cumulativeReserveRatio()
+      const timestamp2 = (await pool.getStoredReserves())[2]
+      const ratio2 = cumulativeRatio2.div(BigNumber.from(timestamp2 - timestamp1))
+      almostEqual(ratio2, balancedRatio, BigNumber.from('10000000000'))
+
+      await timeMachine.advanceTimeAndBlock(ethers.provider, 120)
+
+      await pool.sync()
+
+      const cumulativeRatio3 = await pool.cumulativeReserveRatio()
+      const timestamp3 = (await pool.getStoredReserves())[2]
+      const ratio3 = cumulativeRatio3.sub(cumulativeRatio2).div(BigNumber.from(timestamp3 - timestamp2))
+      almostEqual(ratio3, balancedRatio, BigNumber.from('10000000000'))
+    })
+
     describe('with extra fyToken reserves', () => {
       beforeEach(async () => {
         const additionalFYTokenReserves = WAD.mul(30)
@@ -418,17 +444,34 @@ describe('Pool', async function () {
         almostEqual(baseInPreview, expectedBaseIn, baseIn.div(1000000))
       })
 
-      it("once mature, doesn't allow trading", async () => {
+      it("once mature, doesn't allow sellBaseToken", async () => {
         await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
 
         await expect(poolFromUser1.sellBaseTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.sellBaseToken(user1, user2, WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.sellBaseToken(user1, user1, WAD)).to.be.revertedWith('Pool: Too late')
+      })
+
+      /* TODO: Hardhat bug. If you import "hardhat/console.sol" and put a console.log inside _buyBaseTokenPreview, the test passes
+      it("once mature, doesn't allow buyBaseToken", async () => {
+        await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
+
         await expect(poolFromUser1.buyBaseTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.buyBaseToken(user1, user2, WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.buyBaseToken(user1, user1, WAD)).to.be.revertedWith('Pool: Too late')
+      })
+      */
+
+      it("once mature, doesn't allow sellFYToken", async () => {
+        await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
+
         await expect(poolFromUser1.sellFYTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.sellFYToken(user1, user2, WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.sellFYToken(user1, user1, WAD)).to.be.revertedWith('Pool: Too late')
+      })
+
+      it("once mature, doesn't allow buyFYToken", async () => {
+        await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
+
         await expect(poolFromUser1.buyFYTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.buyFYToken(user1, user2, WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.buyFYToken(user1, user1, WAD)).to.be.revertedWith('Pool: Too late')
       })
     })
   })

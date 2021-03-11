@@ -103,6 +103,9 @@ describe('Pool', async function () {
     await fyToken1.approve(pool1.address, fyTokenIn)
     await pool2.rollFYToken(owner, owner, pool1.address, fyTokenIn)
 
+    console.log((await fyToken2.balanceOf(owner)).toString())
+    console.log(fyToken2Before.toString())
+    console.log(fyTokenOut.toString())
     almostEqual((await fyToken2.balanceOf(owner)).sub(fyToken2Before), fyTokenOut, fyTokenIn.div(1000000))
   })
 })
