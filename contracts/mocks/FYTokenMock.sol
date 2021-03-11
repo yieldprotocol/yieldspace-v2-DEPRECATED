@@ -6,9 +6,9 @@ import "../helpers/ERC20Permit.sol";
 
 contract FYTokenMock is ERC20Permit {
     BaseMock public base;
-    uint256 public maturity;
+    uint32 public maturity;
 
-    constructor (BaseMock base_, uint256 maturity_) ERC20Permit("Test", "TST") {
+    constructor (BaseMock base_, uint32 maturity_) ERC20Permit("Test", "TST") {
         base = base_;
         maturity = maturity_;
     }

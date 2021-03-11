@@ -102,7 +102,7 @@ describe('Pool', async function () {
     poolFromUser1 = pool.connect(user1Acc)
     poolFromOwner = pool.connect(ownerAcc)
 
-    maturity1 = await fyToken1.maturity()
+    maturity1 = BigNumber.from(await fyToken1.maturity())
   })
 
   it('should setup pool', async () => {
