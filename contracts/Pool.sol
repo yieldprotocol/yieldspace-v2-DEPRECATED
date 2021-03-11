@@ -635,10 +635,10 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         // TODO: Either whitelist the pools, or check balances before and after
         uint128 baseTokenIn = pool.sellFYToken(from, address(this), fyTokenIn);
-        uint128 baseTokenReserves = sub(_storedBaseTokenReserve, baseTokenIn);
+        uint128 baseTokenReserves = add(_storedBaseTokenReserve, baseTokenIn);
 
         uint128 fyTokenOut = YieldMath.fyDaiOutForDaiIn(
-            baseTokenReserves,
+            _storedBaseTokenReserve,
             _storedFYTokenReserve,
             baseTokenIn,
             uint128(maturity - block.timestamp), // This can't be called after maturity
@@ -647,7 +647,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         );
 
         require(
-            sub(_storedFYTokenReserve, fyTokenOut) >= add(baseTokenReserves, baseTokenIn),
+            sub(_storedFYTokenReserve, fyTokenOut) >= add(_storedBaseTokenReserve, baseTokenIn),
             "Pool: fyToken reserves too low"
         );
 
