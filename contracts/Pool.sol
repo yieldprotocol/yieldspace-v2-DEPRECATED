@@ -9,7 +9,7 @@ import "./helpers/Delegable.sol";
 import "./helpers/SafeCast.sol";
 import "./helpers/ERC20Permit.sol";
 import "./helpers/SafeERC20Namer.sol";
-import "./interfaces/IFYDai.sol";
+import "./interfaces/IFYToken.sol";
 import "./interfaces/IPool.sol";
 import "./interfaces/IPoolFactory.sol";
 
@@ -18,8 +18,8 @@ import "./interfaces/IPoolFactory.sol";
 contract Pool is IPool, Delegable(), ERC20Permit {
     using SafeMath for uint256;
 
-    event Trade(uint256 maturity, address indexed from, address indexed to, int256 daiTokens, int256 fyDaiTokens);
-    event Liquidity(uint256 maturity, address indexed from, address indexed to, int256 daiTokens, int256 fyDaiTokens, int256 poolTokens);
+    event Trade(uint256 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens);
+    event Liquidity(uint256 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens, int256 poolTokens);
     event Sync(uint112 baseTokenReserve, uint112 storedFYTokenReserve, uint256 cumulativeReserveRatio);
 
     int128 constant public k = int128(uint256((1 << 64)) / 126144000); // 1 / Seconds in 4 years, in 64.64
@@ -28,7 +28,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     uint128 immutable public maturity;
 
     IERC20 public immutable override baseToken;
-    IFYDai public immutable override fyToken;
+    IFYToken public immutable override fyToken;
 
     uint112 private storedBaseTokenReserve;           // uses single storage slot, accessible via getReserves
     uint112 private storedFYTokenReserve;           // uses single storage slot, accessible via getReserves
@@ -42,7 +42,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             string(abi.encodePacked(SafeERC20Namer.tokenSymbol(IPoolFactory(msg.sender).nextFYToken()), "LP"))
         )
     {
-        IFYDai _fyToken = IFYDai(IPoolFactory(msg.sender).nextFYToken());
+        IFYToken _fyToken = IFYToken(IPoolFactory(msg.sender).nextFYToken());
         fyToken = _fyToken;
         baseToken = IERC20(IPoolFactory(msg.sender).nextToken());
 
@@ -164,7 +164,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
             _update(
                 toUint128(newBaseTokenReserves),
-                toUint128(newFYTokenReserves.add(tokensMinted)), // Account for the "virtual" fyDai from the new minted LP tokens
+                toUint128(newFYTokenReserves.add(tokensMinted)), // Account for the "virtual" fyToken from the new minted LP tokens
                 _storedBaseTokenReserve,
                 _storedFYTokenReserve
             );
@@ -206,7 +206,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         ); // This is a virtual buy
 
-        require(fyTokenReserves >= fyTokenToBuy, "Pool: Not enough fyDai");
+        require(fyTokenReserves >= fyTokenToBuy, "Pool: Not enough fyToken");
         uint256 tokensMinted = supply.mul(fyTokenToBuy).div(fyTokenReserves.sub(fyTokenToBuy));
         baseTokenIn = baseTokenReserves.add(baseTokenIn).mul(tokensMinted).div(supply);
 
@@ -233,7 +233,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     /// @param from Wallet providing the liquidity tokens. Must have approved the operator with `pool.addDelegate(operator)`.
     /// @param to Wallet receiving the baseToken and fyToken.
     /// @param tokensBurned Amount of liquidity tokens being burned.
-    /// @return The amount of reserve tokens returned (daiTokens, fyDaiTokens).
+    /// @return The amount of reserve tokens returned (baseTokens, fyTokenTokens).
     function burn(address from, address to, uint256 tokensBurned)
         external override
         onlyHolderOrDelegate(from)
@@ -295,7 +295,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             fyTokenObtained = tokensBurned.mul(fyTokenReserves).div(supply);
 
             tokenOut = tokenOut.add(
-                YieldMath.daiOutForFYDaiIn(                            // This is a virtual sell
+                YieldMath.baseOutForFYTokenIn(                            // This is a virtual sell
                     toUint128(uint256(_storedBaseTokenReserve).sub(tokenOut)),                // Real reserves, minus virtual burn
                     sub(_storedFYTokenReserve, toUint128(fyTokenObtained)), // Virtual reserves, minus virtual burn
                     toUint128(fyTokenObtained),                          // Sell the virtual fyToken obtained
@@ -379,7 +379,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         beforeMaturity
         returns(uint128)
     {
-        uint128 fyTokenOut = YieldMath.fyDaiOutForDaiIn(
+        uint128 fyTokenOut = YieldMath.fyTokenOutForBaseIn(
             baseTokenReserves,
             fyTokenReserves,
             baseTokenIn,
@@ -450,7 +450,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         beforeMaturity
         returns(uint128)
     {
-        return YieldMath.fyDaiInForDaiOut(
+        return YieldMath.fyTokenInForBaseOut(
             baseTokenReserves,
             fyTokenReserves,
             tokenOut,
@@ -518,7 +518,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         beforeMaturity
         returns(uint128)
     {
-        return YieldMath.daiOutForFYDaiIn(
+        return YieldMath.baseOutForFYTokenIn(
             baseTokenReserves,
             fyTokenReserves,
             fyTokenIn,
@@ -587,7 +587,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         beforeMaturity
         returns(uint128)
     {
-        uint128 baseTokenIn = YieldMath.daiInForFYDaiOut(
+        uint128 baseTokenIn = YieldMath.baseInForFYTokenOut(
             baseTokenReserves,
             fyTokenReserves,
             fyTokenOut,
@@ -636,7 +636,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         // TODO: Either whitelist the pools, or check balances before and after
         uint128 baseTokenIn = pool.sellFYToken(from, address(this), fyTokenIn);
 
-        uint128 fyTokenOut = YieldMath.fyDaiOutForDaiIn(
+        uint128 fyTokenOut = YieldMath.fyTokenOutForBaseIn(
             _storedBaseTokenReserve,
             _storedFYTokenReserve,
             baseTokenIn,
