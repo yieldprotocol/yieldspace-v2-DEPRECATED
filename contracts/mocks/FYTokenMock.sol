@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity ^0.7.5;
+pragma solidity ^0.8.1;
 
 import "./BaseMock.sol";
-import "../helpers/ERC20Permit.sol";
+import "@yield-protocol/utils/contracts/token/ERC20Permit.sol";
 
 contract FYTokenMock is ERC20Permit {
     BaseMock public base;

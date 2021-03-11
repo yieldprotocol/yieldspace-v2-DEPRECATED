@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity ^0.7.5;
+pragma solidity ^0.8.1;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./IERC2612.sol";
+import "@yield-protocol/utils/contracts/token/IERC20.sol";
+import "@yield-protocol/utils/contracts/token/IERC2612.sol";
 import "./IFYToken.sol";
 
 interface IPool is IERC20, IERC2612 {
