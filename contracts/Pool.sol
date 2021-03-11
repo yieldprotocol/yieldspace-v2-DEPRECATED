@@ -41,14 +41,14 @@ contract Pool is IPool, Delegable(), ERC20Permit {
     using SafeCast256 for uint256;
     using SafeCast128 for uint128;
 
-    event Trade(uint256 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens);
-    event Liquidity(uint256 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens, int256 poolTokens);
+    event Trade(uint32 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens);
+    event Liquidity(uint32 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens, int256 poolTokens);
     event Sync(uint112 baseTokenReserve, uint112 storedFYTokenReserve, uint256 cumulativeReserveRatio);
 
     int128 constant public k = int128(uint256((1 << 64)) / 126144000); // 1 / Seconds in 4 years, in 64.64
     int128 constant public g1 = int128(uint256((950 << 64)) / 1000); // To be used when selling baseToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
     int128 constant public g2 = int128(uint256((1000 << 64)) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
-    uint128 immutable public maturity;
+    uint32 immutable public maturity;
 
     IERC20 public immutable override baseToken;
     IFYToken public immutable override fyToken;
@@ -69,7 +69,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         fyToken = _fyToken;
         baseToken = IERC20(IPoolFactory(msg.sender).nextToken());
 
-        maturity = _fyToken.maturity().u128();
+        maturity = _fyToken.maturity();
     }
 
     /// @dev Trading can only be done before maturity
@@ -304,7 +304,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
                     uint256(_storedBaseTokenReserve).sub(tokenOut).u128(),                // Real reserves, minus virtual burn
                     sub(_storedFYTokenReserve, fyTokenObtained.u128()), // Virtual reserves, minus virtual burn
                     fyTokenObtained.u128(),                          // Sell the virtual fyToken obtained
-                    (maturity - block.timestamp).u128(),             // This can't be called after maturity
+                    maturity - uint32(block.timestamp),             // This can't be called after maturity
                     k,
                     g2
                 )
@@ -388,7 +388,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             baseTokenReserves,
             fyTokenReserves,
             baseTokenIn,
-            (maturity - block.timestamp).u128(), // This can't be called after maturity
+            maturity - uint32(block.timestamp),             // This can't be called after maturity
             k,
             g1
         );
@@ -459,7 +459,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             baseTokenReserves,
             fyTokenReserves,
             tokenOut,
-            (maturity - block.timestamp).u128(), // This can't be called after maturity
+            maturity - uint32(block.timestamp),             // This can't be called after maturity
             k,
             g2
         );
@@ -527,7 +527,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             baseTokenReserves,
             fyTokenReserves,
             fyTokenIn,
-            (maturity - block.timestamp).u128(), // This can't be called after maturity
+            maturity - uint32(block.timestamp),             // This can't be called after maturity
             k,
             g2
         );
@@ -596,7 +596,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             baseTokenReserves,
             fyTokenReserves,
             fyTokenOut,
-            (maturity - block.timestamp).u128(), // This can't be called after maturity
+            maturity - uint32(block.timestamp),             // This can't be called after maturity
             k,
             g1
         );
@@ -645,7 +645,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedBaseTokenReserve,
             _storedFYTokenReserve,
             baseTokenIn,
-            (maturity - block.timestamp).u128(), // This can't be called after maturity
+            maturity - uint32(block.timestamp),             // This can't be called after maturity
             k,
             g1
         );

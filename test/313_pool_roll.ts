@@ -77,8 +77,8 @@ describe('Pool', async function () {
     pool1 = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyToken1Id) as Pool
     pool2 = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyToken2Id) as Pool
 
-    maturity1 = await fyToken1.maturity()
-    maturity2 = await fyToken2.maturity()
+    maturity1 = BigNumber.from(await fyToken1.maturity())
+    maturity2 = BigNumber.from(await fyToken2.maturity())
   })
 
   it('Rolls fyToken', async () => {

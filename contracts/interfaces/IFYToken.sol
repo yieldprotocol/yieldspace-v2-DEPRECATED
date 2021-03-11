@@ -6,7 +6,7 @@ import "./IERC2612.sol";
 
 interface IFYToken is IERC20, IERC2612 {
     function isMature() external view returns(bool);
-    function maturity() external view returns(uint);
+    function maturity() external view returns(uint32);
     function chi0() external view returns(uint);
     function rate0() external view returns(uint);
     function chiGrowth() external view returns(uint);
