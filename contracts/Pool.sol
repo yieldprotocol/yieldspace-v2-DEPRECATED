@@ -19,20 +19,14 @@ library SafeCast256 {
         y = uint128(x);
     }
 
-    /// @dev Safely cast an uint128 to an int128
-    /* function i128(uint128 x) internal pure returns (int128 y) {
-        require (x <= uint128(type(int128).max), "Cast overflow");
-        y = int128(x);
-    }*/
+    /// @dev Safe casting from uint256 to int256
+    function i256(uint256 x) internal pure returns(int256) {
+        require(x <= uint256(type(int256).max), "Cast overflow");
+        return int256(x);
+    }
 }
 
-library Safe128 {
-    /// @dev Safely cast an int128 to an uint128
-    function u128(int128 x) internal pure returns (uint128 y) {
-        require (x >= 0, "Cast overflow");
-        y = uint128(x);
-    }
-
+library SafeCast128 {
     /// @dev Safely cast an uint128 to an int128
     function i128(uint128 x) internal pure returns (int128 y) {
         require (x <= uint128(type(int128).max), "Cast overflow");
@@ -45,6 +39,7 @@ library Safe128 {
 contract Pool is IPool, Delegable(), ERC20Permit {
     using SafeMath for uint256;
     using SafeCast256 for uint256;
+    using SafeCast128 for uint128;
 
     event Trade(uint256 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens);
     event Liquidity(uint256 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens, int256 poolTokens);
@@ -104,15 +99,6 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         return c;
     }
 
-    /// @dev Safe casting from uint256 to int256
-    function toInt256(uint256 x) internal pure returns(int256) {
-        require(
-            x <= uint256(type(int256).max),
-            "Pool: Cast overflow"
-        );
-        return int256(x);
-    }
-
     /// @dev Mint initial liquidity tokens.
     /// The liquidity provider needs to have called `baseToken.approve`
     /// @param baseTokenIn The initial baseToken liquidity to provide.
@@ -131,7 +117,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
 
         _update(getBaseTokenReserves(), getFYTokenReserves(), 0, 0);
 
-        emit Liquidity(maturity, msg.sender, msg.sender, -toInt256(baseTokenIn), 0, toInt256(baseTokenIn));
+        emit Liquidity(maturity, msg.sender, msg.sender, -(baseTokenIn.i256()), 0, baseTokenIn.i256());
 
         return baseTokenIn;
     }
@@ -194,7 +180,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         _mint(to, tokensMinted);
 
 
-        emit Liquidity(maturity, from, to, -toInt256(tokenOffered), -toInt256(fyTokenRequired), toInt256(tokensMinted));
+        emit Liquidity(maturity, from, to, -(tokenOffered.i256()), -(fyTokenRequired.i256()), tokensMinted.i256());
 
         return tokensMinted;
     }
@@ -242,7 +228,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        emit Liquidity(maturity, from, to, -toInt256(baseTokenIn), 0, toInt256(tokensMinted));
+        emit Liquidity(maturity, from, to, -(baseTokenIn.i256()), 0, tokensMinted.i256());
 
         return (baseTokenIn, tokensMinted);
     }
@@ -285,7 +271,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         baseToken.transfer(to, tokenOut);
         fyToken.transfer(to, fyTokenOut);
 
-        emit Liquidity(maturity, from, to, toInt256(tokenOut), toInt256(fyTokenOut), -toInt256(tokensBurned));
+        emit Liquidity(maturity, from, to, tokenOut.i256(), fyTokenOut.i256(), -(tokensBurned.i256()));
 
         return (tokenOut, fyTokenOut);
     }
@@ -335,7 +321,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
         _burn(from, tokensBurned); // TODO: Fix to check allowance
         baseToken.transfer(to, tokenOut);
 
-        emit Liquidity(maturity, from, to, toInt256(tokenOut), 0, -toInt256(tokensBurned));
+        emit Liquidity(maturity, from, to, tokenOut.i256(), 0, -(tokensBurned.i256()));
 
         return tokenOut;
     }
@@ -370,7 +356,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        emit Trade(maturity, from, to, -toInt256(baseTokenIn), toInt256(fyTokenOut));
+        emit Trade(maturity, from, to, -(baseTokenIn.i128()), fyTokenOut.i128());
 
         return fyTokenOut;
     }
@@ -441,7 +427,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        emit Trade(maturity, from, to, toInt256(tokenOut), -toInt256(fyTokenIn));
+        emit Trade(maturity, from, to, tokenOut.i128(), -(fyTokenIn.i128()));
 
         return fyTokenIn;
     }
@@ -509,7 +495,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        emit Trade(maturity, from, to, toInt256(tokenOut), -toInt256(fyTokenIn));
+        emit Trade(maturity, from, to, tokenOut.i128(), -(fyTokenIn.i128()));
 
         return tokenOut;
     }
@@ -577,7 +563,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        emit Trade(maturity, from, to, -toInt256(baseTokenIn), toInt256(fyTokenOut));
+        emit Trade(maturity, from, to, -(baseTokenIn.i128()), fyTokenOut.i128());
 
         return baseTokenIn;
     }
@@ -678,7 +664,7 @@ contract Pool is IPool, Delegable(), ERC20Permit {
             _storedFYTokenReserve
         );
 
-        emit Trade(maturity, from, to, -toInt256(baseTokenIn), -toInt256(fyTokenOut));
+        emit Trade(maturity, from, to, -(baseTokenIn.i128()), -(fyTokenOut.i128()));
 
         return fyTokenOut;
     }
