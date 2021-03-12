@@ -30,6 +30,12 @@ library SafeCast128 {
         require (x <= uint128(type(int128).max), "Cast overflow");
         y = int128(x);
     }
+
+    /// @dev Safely cast an uint128 to an uint112
+    function u112(uint128 x) internal pure returns (uint112 y) {
+        require (x <= uint128(type(uint112).max), "Cast overflow");
+        y = uint112(x);
+    }
 }
 
 
@@ -103,15 +109,14 @@ contract Pool is IPool, ERC20Permit {
 
     /// @dev Update reserves and, on the first call per block, ratio accumulators
     function _update(uint128 baseBalance, uint128 fyBalance, uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) private {
-        require(baseBalance <= type(uint112).max && fyBalance <= type(uint112).max, 'OVERFLOW');
         uint32 blockTimestamp = uint32(block.timestamp);
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && _storedBaseTokenReserve != 0 && _storedFYTokenReserve != 0) {
             uint256 scaledFYReserve = uint256(_storedFYTokenReserve) * 1e27;
             cumulativeReserveRatio += scaledFYReserve / _storedBaseTokenReserve * timeElapsed;
         }
-        storedBaseTokenReserve = uint112(baseBalance);
-        storedFYTokenReserve = uint112(fyBalance);
+        storedBaseTokenReserve = baseBalance.u112();
+        storedFYTokenReserve = fyBalance.u112();
         blockTimestampLast = blockTimestamp;
         emit Sync(storedBaseTokenReserve, storedFYTokenReserve, cumulativeReserveRatio);
     }
@@ -141,9 +146,6 @@ contract Pool is IPool, ERC20Permit {
             uint256 newBaseTokenReserves = baseTokenReserves + tokenOffered;
             uint256 newFYTokenReserves = supply + fyTokenReserves + fyTokenRequired;
 
-            require(newBaseTokenReserves <= type(uint128).max); // fyTokenReserves can't go over type(uint128).max
-            require(newFYTokenReserves <= type(uint128).max); // fyTokenReserves can't go over type(uint128).max
-
             _update(
                 newBaseTokenReserves.u128(),
                 (newFYTokenReserves + tokensMinted).u128(), // Account for the "virtual" fyToken from the new minted LP tokens
@@ -155,7 +157,6 @@ contract Pool is IPool, ERC20Permit {
         require(baseToken.transferFrom(msg.sender, address(this), tokenOffered));
         require(fyToken.transferFrom(msg.sender, address(this), fyTokenRequired));
         _mint(to, tokensMinted);
-
 
         emit Liquidity(maturity, msg.sender, to, -(tokenOffered.i256()), -(fyTokenRequired.i256()), tokensMinted.i256());
 
@@ -189,9 +190,7 @@ contract Pool is IPool, ERC20Permit {
         require(fyTokenReserves >= fyTokenToBuy, "Pool: Not enough fyToken");
         uint256 tokensMinted = (supply * fyTokenToBuy) / (fyTokenReserves - fyTokenToBuy);
         baseTokenIn = ((baseTokenReserves + baseTokenIn) * tokensMinted) / supply;
-
         uint256 newBaseTokenReserves = baseTokenReserves + baseTokenIn;
-        require(newBaseTokenReserves <= type(uint128).max/*, "Pool: Too much baseToken"*/);
 
         require(baseToken.transferFrom(msg.sender, address(this), baseTokenIn)/*, "Pool: baseToken transfer failed"*/);
         _mint(to, tokensMinted);
@@ -271,7 +270,7 @@ contract Pool is IPool, ERC20Permit {
             fyTokenObtained = (tokensBurned * fyTokenReserves) / supply;
 
             tokenOut += YieldMath.baseOutForFYTokenIn(                            // This is a virtual sell
-                (uint256(_storedBaseTokenReserve) - tokenOut).u128(),                // Real reserves, minus virtual burn
+                _storedBaseTokenReserve - tokenOut.u128(),                // Real reserves, minus virtual burn
                 _storedFYTokenReserve - fyTokenObtained.u128(), // Virtual reserves, minus virtual burn
                 fyTokenObtained.u128(),                          // Sell the virtual fyToken obtained
                 maturity - uint32(block.timestamp),             // This can't be called after maturity
