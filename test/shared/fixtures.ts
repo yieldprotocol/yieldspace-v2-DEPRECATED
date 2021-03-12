@@ -98,6 +98,7 @@ export class YieldSpaceEnvironment {
         // skew pool to 5% interest rate
         await fyToken.mint(ownerAdd, initialFYToken)
         await fyToken.approve(pool.address, initialFYToken)
+        await fyToken.transfer(pool.address, initialFYToken)
         await pool.sellFYToken(ownerAdd, initialFYToken)
       }
     }

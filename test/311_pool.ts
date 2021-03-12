@@ -149,7 +149,7 @@ describe('Pool', async function () {
       const expectedBaseOut = sellFYToken(baseReserves, fyTokenReserves, fyTokenIn, timeTillMaturity)
 
       await fyToken1FromUser1.mint(user1, fyTokenIn)
-      await fyToken1FromUser1.approve(pool.address, fyTokenIn)
+      await fyToken1FromUser1.transfer(pool.address, fyTokenIn)
       await expect(poolFromUser1.sellFYToken(user2, fyTokenIn))
         .to.emit(pool, 'Trade')
         .withArgs(maturity1, user1, user2, await baseFromUser1.balanceOf(user2), fyTokenIn.mul(-1))
@@ -160,6 +160,11 @@ describe('Pool', async function () {
 
       almostEqual(baseOut, expectedBaseOut, fyTokenIn.div(1000000))
       almostEqual(baseOutPreview, expectedBaseOut, fyTokenIn.div(1000000))
+    })
+
+    it('doesn\'t sell if the fyToken wasn\'t received', async () => {
+      await expect(poolFromUser1.sellFYToken(user2, WAD))
+        .to.be.revertedWith('Pool: Not enough fyToken in')
     })
 
     it('buys base', async () => {
@@ -223,7 +228,7 @@ describe('Pool', async function () {
       beforeEach(async () => {
         const additionalFYTokenReserves = WAD.mul(30)
         await fyToken1FromOwner.mint(owner, additionalFYTokenReserves)
-        await fyToken1FromOwner.approve(pool.address, additionalFYTokenReserves)
+        await fyToken1FromOwner.transfer(pool.address, additionalFYTokenReserves)
         await poolFromOwner.sellFYToken(owner, additionalFYTokenReserves)
       })
 
@@ -388,7 +393,7 @@ describe('Pool', async function () {
         const expectedFYTokenOut = sellBase(baseReserves, fyTokenReserves, baseIn, timeTillMaturity)
 
         await baseFromOwner.mint(user1, baseIn)
-        await baseFromUser1.approve(pool.address, baseIn)
+        await baseFromUser1.transfer(pool.address, baseIn)
 
         await expect(poolFromUser1.sellBaseToken(user2, baseIn, OVERRIDES))
           .to.emit(pool, 'Trade')
@@ -400,6 +405,11 @@ describe('Pool', async function () {
 
         almostEqual(fyTokenOut, expectedFYTokenOut, baseIn.div(1000000))
         almostEqual(fyTokenOutPreview, expectedFYTokenOut, baseIn.div(1000000))
+      })
+
+      it('doesn\'t sell if the base wasn\'t received', async () => {
+        await expect(poolFromUser1.sellBaseToken(user2, WAD))
+          .to.be.revertedWith('Pool: Not enough base token in')
       })
 
       it('buys fyToken', async () => {

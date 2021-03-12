@@ -296,9 +296,9 @@ contract Pool is IPool, ERC20Permit {
     }
 
     /// @dev Sell baseToken for fyToken
-    /// The trader needs to have called `baseToken.approve`
+    /// The trader needs to have transferred `baseTokenIn` to the pool
     /// @param to Wallet receiving the fyToken being bought
-    /// @param baseTokenIn Amount of baseToken being sold that will be taken from the user's wallet
+    /// @param baseTokenIn Amount of baseToken being sold
     /// @return Amount of fyToken that will be deposited on `to` wallet
     function sellBaseToken(address to, uint128 baseTokenIn)
         external override
@@ -313,11 +313,13 @@ contract Pool is IPool, ERC20Permit {
             _storedFYTokenReserve
         );
 
-        baseToken.transferFrom(msg.sender, address(this), baseTokenIn);
+        uint128 _baseTokenReserves = getBaseTokenReserves();
+        require(_baseTokenReserves - _storedBaseTokenReserve >= baseTokenIn, "Pool: Not enough base token in");
+
         fyToken.transfer(to, fyTokenOut);
 
         _update(
-            getBaseTokenReserves(),
+            _baseTokenReserves,
             getFYTokenReserves(),
             _storedBaseTokenReserve,
             _storedFYTokenReserve
@@ -431,9 +433,9 @@ contract Pool is IPool, ERC20Permit {
     }
 
     /// @dev Sell fyToken for baseToken
-    /// The trader needs to have called `fyToken.approve`
+    /// The trader needs to have transferred `fyTokenIn` to the pool
     /// @param to Wallet receiving the baseToken being bought
-    /// @param fyTokenIn Amount of fyToken being sold that will be taken from the user's wallet
+    /// @param fyTokenIn Amount of fyToken being sold
     /// @return Amount of baseToken that will be deposited on `to` wallet
     function sellFYToken(address to, uint128 fyTokenIn)
         external override
@@ -448,12 +450,14 @@ contract Pool is IPool, ERC20Permit {
             _storedFYTokenReserve
         );
 
-        fyToken.transferFrom(msg.sender, address(this), fyTokenIn);
+        uint128 _fyTokenReserves = getFYTokenReserves();
+        require(_fyTokenReserves - _storedFYTokenReserve >= fyTokenIn, "Pool: Not enough fyToken in");
+
         baseToken.transfer(to, tokenOut);
 
         _update(
             getBaseTokenReserves(),
-            getFYTokenReserves(),
+            _fyTokenReserves,
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
