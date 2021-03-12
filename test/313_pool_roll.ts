@@ -81,7 +81,6 @@ describe('Pool', async function () {
     maturity2 = BigNumber.from(await fyToken2.maturity())
   })
 
-  /*
   it('Rolls fyToken', async () => {
     const fyTokenIn = WAD.mul(10)
     await fyToken1.mint(owner, fyTokenIn)
@@ -100,14 +99,12 @@ describe('Pool', async function () {
     )
 
     const fyToken2Before = await fyToken2.balanceOf(owner)
-    await pool1.addDelegate(pool2.address)
-    await fyToken1.approve(pool1.address, fyTokenIn)
-    await pool2.rollFYToken(owner, owner, pool1.address, fyTokenIn)
+    const baseTokenPool2Before = await base.balanceOf(pool2.address)
+    await fyToken1.transfer(pool1.address, fyTokenIn)
+    await pool1.sellFYToken(pool2.address, fyTokenIn)
+    const exactBaseIn = (await base.balanceOf(pool2.address)).sub(baseTokenPool2Before)
+    await pool2.sellBaseToken(owner, exactBaseIn)
 
-    console.log((await fyToken2.balanceOf(owner)).toString())
-    console.log(fyToken2Before.toString())
-    console.log(fyTokenOut.toString())
     almostEqual((await fyToken2.balanceOf(owner)).sub(fyToken2Before), fyTokenOut, fyTokenIn.div(1000000))
   })
-  */
 })

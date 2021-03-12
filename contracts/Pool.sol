@@ -278,7 +278,6 @@ contract Pool is IPool, ERC20Permit {
                 g2
             );
 
-
             _update(
                 (baseToken.balanceOf(address(this)) - tokenOut).u128(),
                 (fyTokenReserves + supply - tokensBurned).u128(),
@@ -586,47 +585,6 @@ contract Pool is IPool, ERC20Permit {
     function getStoredReserves() public view returns (uint112, uint112, uint32) {
         return (storedBaseTokenReserve, storedFYTokenReserve, blockTimestampLast);
     }
-
-    // TODO: Refactor using some multicall
-    /*
-    function rollFYToken(address to, uint128 fyTokenIn)
-        external
-        returns (uint256)
-    {
-        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
-            (storedBaseTokenReserve, storedFYTokenReserve);
-
-        // TODO: Either whitelist the pools, or check balances before and after
-        uint128 baseTokenIn = pool.sellFYToken(msg.sender, address(this), fyTokenIn);
-
-        uint128 fyTokenOut = YieldMath.fyTokenOutForBaseIn(
-            _storedBaseTokenReserve,
-            _storedFYTokenReserve,
-            baseTokenIn,
-            maturity - uint32(block.timestamp),             // This can't be called after maturity
-            k,
-            g1
-        );
-
-        require(
-            _storedFYTokenReserve - fyTokenOut >= _storedBaseTokenReserve + baseTokenIn,
-            "Pool: fyToken reserves too low"
-        );
-
-        fyToken.transfer(to, fyTokenOut);
-
-        _update(
-            getBaseTokenReserves(),
-            getFYTokenReserves(),
-            _storedBaseTokenReserve,
-            _storedFYTokenReserve
-        );
-
-        emit Trade(maturity, msg.sender, to, -(baseTokenIn.i128()), -(fyTokenOut.i128()));
-
-        return fyTokenOut;
-    }
-    */
 
     /// @dev Returns the "virtual" fyToken reserves
     function getFYTokenReserves()
