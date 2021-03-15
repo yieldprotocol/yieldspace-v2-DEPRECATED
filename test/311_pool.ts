@@ -162,9 +162,8 @@ describe('Pool', async function () {
       almostEqual(baseOutPreview, expectedBaseOut, fyTokenIn.div(1000000))
     })
 
-    it('doesn\'t sell if the fyToken wasn\'t received', async () => {
-      await expect(poolFromUser1.sellFYToken(user2, WAD))
-        .to.be.revertedWith('Pool: Not enough fyToken in')
+    it("doesn't sell if the fyToken wasn't received", async () => {
+      await expect(poolFromUser1.sellFYToken(user2, WAD)).to.be.revertedWith('Pool: Not enough fyToken in')
     })
 
     it('buys base', async () => {
@@ -407,9 +406,8 @@ describe('Pool', async function () {
         almostEqual(fyTokenOutPreview, expectedFYTokenOut, baseIn.div(1000000))
       })
 
-      it('doesn\'t sell if the base wasn\'t received', async () => {
-        await expect(poolFromUser1.sellBaseToken(user2, WAD))
-          .to.be.revertedWith('Pool: Not enough base token in')
+      it("doesn't sell if the base wasn't received", async () => {
+        await expect(poolFromUser1.sellBaseToken(user2, WAD)).to.be.revertedWith('Pool: Not enough base token in')
       })
 
       it('buys fyToken', async () => {
