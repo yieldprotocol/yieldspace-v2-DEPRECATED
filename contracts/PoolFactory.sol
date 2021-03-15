@@ -1,9 +1,42 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity ^0.7.5;
+pragma solidity ^0.8.1;
 
-import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/IPoolFactory.sol";
 import "./Pool.sol";
+
+
+/**
+ * @dev Collection of functions related to the address type
+ */
+library Address {
+    /**
+     * @dev Returns true if `account` is a contract.
+     *
+     * [IMPORTANT]
+     * ====
+     * It is unsafe to assume that an address for which this function returns
+     * false is an externally-owned account (EOA) and not a contract.
+     *
+     * Among others, `isContract` will return false for the following
+     * types of addresses:
+     *
+     *  - an externally-owned account
+     *  - a contract in construction
+     *  - an address where a contract will be created
+     *  - an address where a contract lived, but was destroyed
+     * ====
+     */
+    function isContract(address account) internal view returns (bool) {
+        // This method relies on extcodesize, which returns 0 for contracts in
+        // construction, since the code is only stored at the end of the
+        // constructor execution.
+
+        uint256 size;
+        // solhint-disable-next-line no-inline-assembly
+        assembly { size := extcodesize(account) }
+        return size > 0;
+    }
+}
 
 /// @dev The PoolFactory can deterministically create new pool instances.
 contract PoolFactory is IPoolFactory {
@@ -28,12 +61,12 @@ contract PoolFactory is IPoolFactory {
   function _calculatePoolAddress(address baseToken, address fyToken)
     private view returns (address calculatedAddress)
   {
-    calculatedAddress = address(uint(keccak256(abi.encodePacked(
-      byte(0xff),
+    calculatedAddress = address(uint160(uint256(keccak256(abi.encodePacked(
+      bytes1(0xff),
       address(this),
       keccak256(abi.encodePacked(baseToken, fyToken)),
       POOL_BYTECODE_HASH
-    ))));
+    )))));
   }
 
   /// @dev Calculate the addreess of a pool, and return address(0) if not deployed.

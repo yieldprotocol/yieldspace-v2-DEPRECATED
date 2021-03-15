@@ -44,9 +44,6 @@
     "tsdx": "^0.14.1",
     "typechain": "^4.0.1",
     "typechain-target-ethers-v5": "^5.0.1",
-    "typescript": "^3.9.7",
-
-    "@openzeppelin/contracts": "^3.3.0"
-    
+    "typescript": "^3.9.7"
   }
 }

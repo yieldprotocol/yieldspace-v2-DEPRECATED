@@ -3,7 +3,7 @@
  *  Math 64.64 Smart Contract Library.  Copyright © 2019 by  Consulting.
  * Author: Mikhail Vladimirov <mikhail.vladimirov@gmail.com>
  */
-pragma solidity ^0.7.5;
+pragma solidity ^0.8.1;
 
 /**
  * Smart contract library of mathematical functions operating with signed
@@ -32,8 +32,10 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function fromInt (int256 x) internal pure returns (int128) {
+    unchecked {
     require (x >= -0x8000000000000000 && x <= 0x7FFFFFFFFFFFFFFF);
     return int128 (x << 64);
+    }
   }
 
   /**
@@ -44,7 +46,9 @@ library Math64x64 {
    * @return signed 64-bit integer number
    */
   function toInt (int128 x) internal pure returns (int64) {
+    unchecked {
     return int64 (x >> 64);
+    }
   }
 
   /**
@@ -55,8 +59,10 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function fromUInt (uint256 x) internal pure returns (int128) {
+    unchecked {
     require (x <= 0x7FFFFFFFFFFFFFFF);
-    return int128 (x << 64);
+    return int128 (uint128 (x << 64));
+    }
   }
 
   /**
@@ -67,8 +73,10 @@ library Math64x64 {
    * @return unsigned 64-bit integer number
    */
   function toUInt (int128 x) internal pure returns (uint64) {
+    unchecked {
     require (x >= 0);
-    return uint64 (x >> 64);
+    return uint64 (uint128 (x >> 64));
+    }
   }
 
   /**
@@ -79,9 +87,11 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function from128x128 (int256 x) internal pure returns (int128) {
+    unchecked {
     int256 result = x >> 64;
     require (result >= MIN_64x64 && result <= MAX_64x64);
     return int128 (result);
+    }
   }
 
   /**
@@ -92,7 +102,9 @@ library Math64x64 {
    * @return signed 128.128 fixed point number
    */
   function to128x128 (int128 x) internal pure returns (int256) {
+    unchecked {
     return int256 (x) << 64;
+    }
   }
 
   /**
@@ -103,9 +115,11 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function add (int128 x, int128 y) internal pure returns (int128) {
+    unchecked {
     int256 result = int256(x) + y;
     require (result >= MIN_64x64 && result <= MAX_64x64);
     return int128 (result);
+    }
   }
 
   /**
@@ -116,9 +130,11 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function sub (int128 x, int128 y) internal pure returns (int128) {
+    unchecked {
     int256 result = int256(x) - y;
     require (result >= MIN_64x64 && result <= MAX_64x64);
     return int128 (result);
+    }
   }
 
   /**
@@ -129,9 +145,11 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function mul (int128 x, int128 y) internal pure returns (int128) {
+    unchecked {
     int256 result = int256(x) * y >> 64;
     require (result >= MIN_64x64 && result <= MAX_64x64);
     return int128 (result);
+    }
   }
 
   /**
@@ -143,6 +161,7 @@ library Math64x64 {
    * @return signed 256-bit integer number
    */
   function muli (int128 x, int256 y) internal pure returns (int256) {
+    unchecked {
     if (x == MIN_64x64) {
       require (y >= -0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF &&
         y <= 0x1000000000000000000000000000000000000000000000000);
@@ -168,6 +187,7 @@ library Math64x64 {
         return int256 (absoluteResult);
       }
     }
+    }
   }
 
   /**
@@ -179,12 +199,13 @@ library Math64x64 {
    * @return unsigned 256-bit integer number
    */
   function mulu (int128 x, uint256 y) internal pure returns (uint256) {
+    unchecked {
     if (y == 0) return 0;
 
     require (x >= 0);
 
-    uint256 lo = (uint256 (x) * (y & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)) >> 64;
-    uint256 hi = uint256 (x) * (y >> 128);
+    uint256 lo = (uint256 (uint128 (x)) * (y & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)) >> 64;
+    uint256 hi = uint256 (uint128 (x)) * (y >> 128);
 
     require (hi <= 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
     hi <<= 64;
@@ -192,6 +213,7 @@ library Math64x64 {
     require (hi <=
       0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF - lo);
     return hi + lo;
+    }
   }
 
   /**
@@ -203,10 +225,12 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function div (int128 x, int128 y) internal pure returns (int128) {
+    unchecked {
     require (y != 0);
     int256 result = (int256 (x) << 64) / y;
     require (result >= MIN_64x64 && result <= MAX_64x64);
     return int128 (result);
+    }
   }
 
   /**
@@ -218,6 +242,7 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function divi (int256 x, int256 y) internal pure returns (int128) {
+    unchecked {
     require (y != 0);
 
     bool negativeResult = false;
@@ -237,6 +262,7 @@ library Math64x64 {
       require (absoluteResult <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
       return int128 (absoluteResult); // We rely on overflow behavior here
     }
+    }
   }
 
   /**
@@ -248,10 +274,12 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function divu (uint256 x, uint256 y) internal pure returns (int128) {
+    unchecked {
     require (y != 0);
     uint128 result = divuu (x, y);
     require (result <= uint128 (MAX_64x64));
     return int128 (result);
+    }
   }
 
   /**
@@ -261,8 +289,10 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function neg (int128 x) internal pure returns (int128) {
+    unchecked {
     require (x != MIN_64x64);
     return -x;
+    }
   }
 
   /**
@@ -272,8 +302,10 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function abs (int128 x) internal pure returns (int128) {
+    unchecked {
     require (x != MIN_64x64);
     return x < 0 ? -x : x;
+    }
   }
 
   /**
@@ -284,10 +316,12 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function inv (int128 x) internal pure returns (int128) {
+    unchecked {
     require (x != 0);
     int256 result = int256 (0x100000000000000000000000000000000) / x;
     require (result >= MIN_64x64 && result <= MAX_64x64);
     return int128 (result);
+    }
   }
 
   /**
@@ -298,7 +332,9 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function avg (int128 x, int128 y) internal pure returns (int128) {
+    unchecked {
     return int128 ((int256 (x) + int256 (y)) >> 1);
+    }
   }
 
   /**
@@ -310,11 +346,13 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function gavg (int128 x, int128 y) internal pure returns (int128) {
+    unchecked {
     int256 m = int256 (x) * int256 (y);
     require (m >= 0);
     require (m <
         0x4000000000000000000000000000000000000000000000000000000000000000);
-    return int128 (sqrtu (uint256 (m), uint256 (x) + uint256 (y) >> 1));
+    return int128 (sqrtu (uint256 (m), uint256 (uint128 (x)) + uint256 (uint128 (y)) >> 1));
+    }
   }
 
   /**
@@ -326,10 +364,11 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function pow (int128 x, uint256 y) internal pure returns (int128) {
+    unchecked {
     uint256 absoluteResult;
     bool negativeResult = false;
     if (x >= 0) {
-      absoluteResult = powu (uint256 (x) << 63, y);
+      absoluteResult = powu (uint256 (uint128 (x)) << 63, y);
     } else {
       // We rely on overflow behavior here
       absoluteResult = powu (uint256 (uint128 (-x)) << 63, y);
@@ -340,10 +379,11 @@ library Math64x64 {
 
     if (negativeResult) {
       require (absoluteResult <= 0x80000000000000000000000000000000);
-      return -int128 (absoluteResult); // We rely on overflow behavior here
+      return -int128 (uint128 (absoluteResult)); // We rely on overflow behavior here
     } else {
       require (absoluteResult <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
-      return int128 (absoluteResult); // We rely on overflow behavior here
+      return int128 (uint128 (absoluteResult)); // We rely on overflow behavior here
+    }
     }
   }
 
@@ -354,8 +394,10 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function sqrt (int128 x) internal pure returns (int128) {
+    unchecked {
     require (x >= 0);
-    return int128 (sqrtu (uint256 (x) << 64, 0x10000000000000000));
+    return int128 (sqrtu (uint256 (uint128 (x)) << 64, 0x10000000000000000));
+    }
   }
 
   /**
@@ -365,6 +407,7 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function log_2 (int128 x) internal pure returns (int128) {
+    unchecked {
     require (x > 0);
 
     int256 msb = 0;
@@ -378,7 +421,7 @@ library Math64x64 {
     if (xc >= 0x2) msb += 1;  // No need to shift xc anymore
 
     int256 result = msb - 64 << 64;
-    uint256 ux = uint256 (x) << uint256(127 - msb);
+    uint256 ux = uint256 (uint128 (x)) << uint256(127 - msb);
     for (int256 bit = 0x8000000000000000; bit > 0; bit >>= 1) {
       ux *= ux;
       uint256 b = ux >> 255;
@@ -387,6 +430,7 @@ library Math64x64 {
     }
 
     return int128 (result);
+    }
   }
 
   /**
@@ -396,10 +440,12 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function ln (int128 x) internal pure returns (int128) {
+    unchecked {
     require (x > 0);
 
-    return int128 (
-        uint256 (log_2 (x)) * 0xB17217F7D1CF79ABC9E3B39803F2F6AF >> 128);
+    return int128 ( uint128 (
+        uint256 (uint128 (log_2 (x))) * 0xB17217F7D1CF79ABC9E3B39803F2F6AF >> 128));
+    }
   }
 
   /**
@@ -409,6 +455,7 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function exp_2 (int128 x) internal pure returns (int128) {
+    unchecked {
     require (x < 0x400000000000000000); // Overflow
 
     if (x < -0x400000000000000000) return 0; // Underflow
@@ -544,10 +591,11 @@ library Math64x64 {
     if (x & 0x1 > 0)
       result = result * 0x10000000000000000B17217F7D1CF79AB >> 128;
 
-    result >>= uint256(63 - (x >> 64));
-    require (result <= uint256 (MAX_64x64));
+    result >>= uint256( uint128 (63 - (x >> 64)));
+    require (result <= uint256 (uint128 (MAX_64x64)));
 
-    return int128 (result);
+    return int128 (uint128 (result));
+    }
   }
 
   /**
@@ -557,12 +605,14 @@ library Math64x64 {
    * @return signed 64.64-bit fixed point number
    */
   function exp (int128 x) internal pure returns (int128) {
+    unchecked {
     require (x < 0x400000000000000000); // Overflow
 
     if (x < -0x400000000000000000) return 0; // Underflow
 
     return exp_2 (
         int128 (int256 (x) * 0x171547652B82FE1777D0FFDA0D23A7D12 >> 128));
+    }
   }
 
   /**
@@ -574,6 +624,7 @@ library Math64x64 {
    * @return unsigned 64.64-bit fixed point number
    */
   function divuu (uint256 x, uint256 y) private pure returns (uint128) {
+    unchecked {
     require (y != 0);
 
     uint256 result;
@@ -612,6 +663,7 @@ library Math64x64 {
 
     require (result <= 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
     return uint128 (result);
+    }
   }
 
   /**
@@ -623,6 +675,7 @@ library Math64x64 {
    * @return unsigned 129.127-bit fixed point number
    */
   function powu (uint256 x, uint256 y) private pure returns (uint256) {
+    unchecked {
     if (y == 0) return 0x80000000000000000000000000000000;
     else if (x == 0) return 0;
     else {
@@ -639,7 +692,7 @@ library Math64x64 {
 
       int256 xe = msb - 127;
       if (xe > 0) x >>= uint256(xe);
-      else x <<= -uint256(xe);
+      else x <<= uint256(-xe);
 
       uint256 result = 0x80000000000000000000000000000000;
       int256 re = 0;
@@ -671,9 +724,10 @@ library Math64x64 {
       }
 
       if (re > 0) result <<= uint256(re);
-      else if (re < 0) result >>= -uint256(re);
+      else if (re < 0) result >>= uint256(-re);
 
       return result;
+    }
     }
   }
 
@@ -685,6 +739,7 @@ library Math64x64 {
    * @return unsigned 128-bit integer number
    */
   function sqrtu (uint256 x, uint256 r) private pure returns (uint128) {
+    unchecked {
     if (x == 0) return 0;
     else {
       require (r > 0);
@@ -694,6 +749,7 @@ library Math64x64 {
         else if (r == rr + 1) return uint128 (rr);
         r = r + rr + 1 >> 1;
       }
+    }
     }
   }
 }

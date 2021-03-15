@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity ^0.7.5;
+pragma solidity ^0.8.1;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@yield-protocol/utils/contracts/token/ERC20Permit.sol";
+import "@yield-protocol/utils/contracts/token/IERC20.sol";
 import "./YieldMath.sol";
-import "./helpers/ERC20Permit.sol";
 import "./helpers/SafeERC20Namer.sol";
 import "./interfaces/IFYToken.sol";
 import "./interfaces/IPool.sol";
 import "./interfaces/IPoolFactory.sol";
+
 
 library SafeCast256 {
     /// @dev Safely cast an uint256 to an uint128
@@ -36,7 +35,6 @@ library SafeCast128 {
 
 /// @dev The Pool contract exchanges baseToken for fyToken at a price defined by a specific formula.
 contract Pool is IPool, ERC20Permit {
-    using SafeMath for uint256;
     using SafeCast256 for uint256;
     using SafeCast128 for uint128;
 
@@ -44,9 +42,9 @@ contract Pool is IPool, ERC20Permit {
     event Liquidity(uint32 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens, int256 poolTokens);
     event Sync(uint112 baseTokenReserve, uint112 storedFYTokenReserve, uint256 cumulativeReserveRatio);
 
-    int128 constant public k = int128(uint256((1 << 64)) / 126144000); // 1 / Seconds in 4 years, in 64.64
-    int128 constant public g1 = int128(uint256((950 << 64)) / 1000); // To be used when selling baseToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
-    int128 constant public g2 = int128(uint256((1000 << 64)) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
+    int128 constant public k = int128(uint128(uint256((1 << 64))) / 126144000); // 1 / Seconds in 4 years, in 64.64
+    int128 constant public g1 = int128(uint128(uint256((950 << 64))) / 1000); // To be used when selling baseToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
+    int128 constant public g2 = int128(uint128(uint256((1000 << 64))) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
     uint32 immutable public maturity;
 
     IERC20 public immutable override baseToken;
@@ -78,24 +76,6 @@ contract Pool is IPool, ERC20Permit {
             "Pool: Too late"
         );
         _;
-    }
-
-    /// @dev Overflow-protected addition, from OpenZeppelin
-    function add(uint128 a, uint128 b)
-        internal pure returns (uint128)
-    {
-        uint128 c = a + b;
-        require(c >= a, "Pool: Base reserves too high");
-
-        return c;
-    }
-
-    /// @dev Overflow-protected substraction, from OpenZeppelin
-    function sub(uint128 a, uint128 b) internal pure returns (uint128) {
-        require(b <= a, "Pool: fy reserves too low");
-        uint128 c = a - b;
-
-        return c;
     }
 
     /// @dev Mint initial liquidity tokens.
@@ -154,19 +134,19 @@ contract Pool is IPool, ERC20Permit {
         uint256 baseTokenReserves = baseToken.balanceOf(address(this));
         // use the actual reserves rather than the virtual reserves
         uint256 fyTokenReserves = fyToken.balanceOf(address(this));
-        uint256 tokensMinted = supply.mul(tokenOffered).div(baseTokenReserves);
-        uint256 fyTokenRequired = fyTokenReserves.mul(tokensMinted).div(supply);
+        uint256 tokensMinted = (supply * tokenOffered) / baseTokenReserves;
+        uint256 fyTokenRequired = (fyTokenReserves * tokensMinted) / supply;
 
         {
-            uint256 newBaseTokenReserves = baseTokenReserves.add(tokenOffered);
-            uint256 newFYTokenReserves = supply.add(fyTokenReserves.add(fyTokenRequired));
+            uint256 newBaseTokenReserves = baseTokenReserves + tokenOffered;
+            uint256 newFYTokenReserves = supply + fyTokenReserves + fyTokenRequired;
 
             require(newBaseTokenReserves <= type(uint128).max); // fyTokenReserves can't go over type(uint128).max
             require(newFYTokenReserves <= type(uint128).max); // fyTokenReserves can't go over type(uint128).max
 
             _update(
                 newBaseTokenReserves.u128(),
-                newFYTokenReserves.add(tokensMinted).u128(), // Account for the "virtual" fyToken from the new minted LP tokens
+                (newFYTokenReserves + tokensMinted).u128(), // Account for the "virtual" fyToken from the new minted LP tokens
                 _storedBaseTokenReserve,
                 _storedFYTokenReserve
             );
@@ -207,10 +187,10 @@ contract Pool is IPool, ERC20Permit {
         ); // This is a virtual buy
 
         require(fyTokenReserves >= fyTokenToBuy, "Pool: Not enough fyToken");
-        uint256 tokensMinted = supply.mul(fyTokenToBuy).div(fyTokenReserves.sub(fyTokenToBuy));
-        baseTokenIn = baseTokenReserves.add(baseTokenIn).mul(tokensMinted).div(supply);
+        uint256 tokensMinted = (supply * fyTokenToBuy) / (fyTokenReserves - fyTokenToBuy);
+        baseTokenIn = ((baseTokenReserves + baseTokenIn) * tokensMinted) / supply;
 
-        uint256 newBaseTokenReserves = baseTokenReserves.add(baseTokenIn);
+        uint256 newBaseTokenReserves = baseTokenReserves + baseTokenIn;
         require(newBaseTokenReserves <= type(uint128).max/*, "Pool: Too much baseToken"*/);
 
         require(baseToken.transferFrom(msg.sender, address(this), baseTokenIn)/*, "Pool: baseToken transfer failed"*/);
@@ -218,7 +198,7 @@ contract Pool is IPool, ERC20Permit {
 
         _update(
             newBaseTokenReserves.u128(),
-            fyTokenReserves.add(supply).add(tokensMinted).u128(), // Add LP tokens to get virtual fyToken reserves
+            (fyTokenReserves + supply + tokensMinted).u128(), // Add LP tokens to get virtual fyToken reserves
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
@@ -244,16 +224,16 @@ contract Pool is IPool, ERC20Permit {
         uint256 fyTokenOut;
         { // avoiding stack too deep
             uint256 fyTokenReserves = fyToken.balanceOf(address(this));
-            tokenOut = tokensBurned.mul(baseTokenReserves).div(supply);
-            fyTokenOut = tokensBurned.mul(fyTokenReserves).div(supply);
+            tokenOut = (tokensBurned * baseTokenReserves) / supply;
+            fyTokenOut = (tokensBurned * fyTokenReserves) / supply;
 
-            uint256 newFYTokenReserves = fyTokenReserves.sub(fyTokenOut).add(supply).sub(tokensBurned);
+            uint256 newFYTokenReserves = fyTokenReserves - fyTokenOut + supply - tokensBurned;
 
             (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
                 (storedBaseTokenReserve, storedFYTokenReserve);
 
             _update(
-                baseTokenReserves.sub(tokenOut).u128(),
+                (baseTokenReserves - tokenOut).u128(),
                 newFYTokenReserves.u128(),
                 _storedBaseTokenReserve,
                 _storedFYTokenReserve
@@ -287,23 +267,22 @@ contract Pool is IPool, ERC20Permit {
         uint256 fyTokenObtained;
         { // avoiding stack too deep
             uint256 fyTokenReserves = fyToken.balanceOf(address(this));
-            tokenOut = tokensBurned.mul(_storedBaseTokenReserve).div(supply);
-            fyTokenObtained = tokensBurned.mul(fyTokenReserves).div(supply);
+            tokenOut = (tokensBurned * _storedBaseTokenReserve) / supply;
+            fyTokenObtained = (tokensBurned * fyTokenReserves) / supply;
 
-            tokenOut = tokenOut.add(
-                YieldMath.baseOutForFYTokenIn(                            // This is a virtual sell
-                    uint256(_storedBaseTokenReserve).sub(tokenOut).u128(),                // Real reserves, minus virtual burn
-                    sub(_storedFYTokenReserve, fyTokenObtained.u128()), // Virtual reserves, minus virtual burn
-                    fyTokenObtained.u128(),                          // Sell the virtual fyToken obtained
-                    maturity - uint32(block.timestamp),             // This can't be called after maturity
-                    k,
-                    g2
-                )
+            tokenOut += YieldMath.baseOutForFYTokenIn(                            // This is a virtual sell
+                (uint256(_storedBaseTokenReserve) - tokenOut).u128(),                // Real reserves, minus virtual burn
+                _storedFYTokenReserve - fyTokenObtained.u128(), // Virtual reserves, minus virtual burn
+                fyTokenObtained.u128(),                          // Sell the virtual fyToken obtained
+                maturity - uint32(block.timestamp),             // This can't be called after maturity
+                k,
+                g2
             );
 
+
             _update(
-                baseToken.balanceOf(address(this)).sub(tokenOut).u128(),
-                fyTokenReserves.add(supply).sub(tokensBurned).u128(),
+                (baseToken.balanceOf(address(this)) - tokenOut).u128(),
+                (fyTokenReserves + supply - tokensBurned).u128(),
                 _storedBaseTokenReserve,
                 _storedFYTokenReserve
             );
@@ -383,7 +362,7 @@ contract Pool is IPool, ERC20Permit {
         );
 
         require(
-            sub(fyTokenReserves, fyTokenOut) >= add(baseTokenReserves, baseTokenIn),
+            fyTokenReserves - fyTokenOut >= baseTokenReserves + baseTokenIn,
             "Pool: fy reserves too low"
         );
 
@@ -585,7 +564,7 @@ contract Pool is IPool, ERC20Permit {
         );
 
         require(
-            sub(fyTokenReserves, fyTokenOut) >= add(baseTokenReserves, baseTokenIn),
+            fyTokenReserves - fyTokenOut >= baseTokenReserves + baseTokenIn,
             "Pool: fy reserves too low"
         );
 
@@ -627,7 +606,7 @@ contract Pool is IPool, ERC20Permit {
         );
 
         require(
-            sub(_storedFYTokenReserve, fyTokenOut) >= add(_storedBaseTokenReserve, baseTokenIn),
+            _storedFYTokenReserve - fyTokenOut >= _storedBaseTokenReserve + baseTokenIn,
             "Pool: fyToken reserves too low"
         );
 
@@ -651,7 +630,7 @@ contract Pool is IPool, ERC20Permit {
         public view override
         returns(uint128)
     {
-        return fyToken.balanceOf(address(this)).add(totalSupply()).u128();
+        return (fyToken.balanceOf(address(this)) + totalSupply()).u128();
     }
 
     /// @dev Returns the baseToken reserves
