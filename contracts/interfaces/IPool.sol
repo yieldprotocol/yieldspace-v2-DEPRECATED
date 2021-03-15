@@ -3,7 +3,7 @@ pragma solidity ^0.8.1;
 
 import "@yield-protocol/utils/contracts/token/IERC20.sol";
 import "@yield-protocol/utils/contracts/token/IERC2612.sol";
-import "./IFYToken.sol";
+import "@yield-protocol/vault-interfaces/IFYToken.sol";
 
 interface IPool is IERC20, IERC2612 {
     function baseToken() external view returns(IERC20);

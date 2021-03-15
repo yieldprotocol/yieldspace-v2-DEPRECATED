@@ -3,11 +3,11 @@ pragma solidity ^0.8.1;
 
 import "@yield-protocol/utils/contracts/token/ERC20Permit.sol";
 import "@yield-protocol/utils/contracts/token/IERC20.sol";
-import "./YieldMath.sol";
+import "@yield-protocol/vault-interfaces/IFYToken.sol";
 import "./helpers/SafeERC20Namer.sol";
-import "./interfaces/IFYToken.sol";
 import "./interfaces/IPool.sol";
 import "./interfaces/IPoolFactory.sol";
+import "./YieldMath.sol";
 
 
 library SafeCast256 {
