@@ -150,7 +150,7 @@ describe('Pool', async function () {
 
       await fyToken1FromUser1.mint(user1, fyTokenIn)
       await fyToken1FromUser1.transfer(pool.address, fyTokenIn)
-      await expect(poolFromUser1.sellFYToken(user2, fyTokenIn))
+      await expect(poolFromUser1.sellFYToken(user2))
         .to.emit(pool, 'Trade')
         .withArgs(maturity1, user1, user2, await baseFromUser1.balanceOf(user2), fyTokenIn.mul(-1))
 
@@ -160,10 +160,6 @@ describe('Pool', async function () {
 
       almostEqual(baseOut, expectedBaseOut, fyTokenIn.div(1000000))
       almostEqual(baseOutPreview, expectedBaseOut, fyTokenIn.div(1000000))
-    })
-
-    it("doesn't sell if the fyToken wasn't received", async () => {
-      await expect(poolFromUser1.sellFYToken(user2, WAD)).to.be.revertedWith('Pool: Not enough fyToken in')
     })
 
     it('buys base', async () => {
@@ -228,7 +224,7 @@ describe('Pool', async function () {
         const additionalFYTokenReserves = WAD.mul(30)
         await fyToken1FromOwner.mint(owner, additionalFYTokenReserves)
         await fyToken1FromOwner.transfer(pool.address, additionalFYTokenReserves)
-        await poolFromOwner.sellFYToken(owner, additionalFYTokenReserves)
+        await poolFromOwner.sellFYToken(owner)
       })
 
       it('mints liquidity tokens', async () => {
@@ -394,7 +390,7 @@ describe('Pool', async function () {
         await baseFromOwner.mint(user1, baseIn)
         await baseFromUser1.transfer(pool.address, baseIn)
 
-        await expect(poolFromUser1.sellBaseToken(user2, baseIn, OVERRIDES))
+        await expect(poolFromUser1.sellBaseToken(user2, OVERRIDES))
           .to.emit(pool, 'Trade')
           .withArgs(maturity1, user1, user2, baseIn.mul(-1), await fyToken1FromOwner.balanceOf(user2))
 
@@ -404,10 +400,6 @@ describe('Pool', async function () {
 
         almostEqual(fyTokenOut, expectedFYTokenOut, baseIn.div(1000000))
         almostEqual(fyTokenOutPreview, expectedFYTokenOut, baseIn.div(1000000))
-      })
-
-      it("doesn't sell if the base wasn't received", async () => {
-        await expect(poolFromUser1.sellBaseToken(user2, WAD)).to.be.revertedWith('Pool: Not enough base token in')
       })
 
       it('buys fyToken', async () => {
@@ -456,7 +448,7 @@ describe('Pool', async function () {
         await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
 
         await expect(poolFromUser1.sellBaseTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.sellBaseToken(user1, WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.sellBaseToken(user1)).to.be.revertedWith('Pool: Too late')
       })
 
       /* TODO: Hardhat bug. If you import "hardhat/console.sol" and put a console.log inside _buyBaseTokenPreview, the test passes
@@ -472,7 +464,7 @@ describe('Pool', async function () {
         await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
 
         await expect(poolFromUser1.sellFYTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.sellFYToken(user1, WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.sellFYToken(user1)).to.be.revertedWith('Pool: Too late')
       })
 
       it("once mature, doesn't allow buyFYToken", async () => {

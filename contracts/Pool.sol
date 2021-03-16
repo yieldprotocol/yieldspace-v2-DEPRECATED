@@ -11,6 +11,12 @@ import "./YieldMath.sol";
 
 
 library SafeCast256 {
+    /// @dev Safely cast an uint256 to an uint112
+    function u112(uint256 x) internal pure returns (uint112 y) {
+        require (x <= type(uint112).max, "Cast overflow");
+        y = uint112(x);
+    }
+
     /// @dev Safely cast an uint256 to an uint128
     function u128(uint256 x) internal pure returns (uint128 y) {
         require (x <= type(uint128).max, "Cast overflow");
@@ -51,7 +57,7 @@ contract Pool is IPool, ERC20Permit {
     int128 constant public k = int128(uint128(uint256((1 << 64))) / 126144000); // 1 / Seconds in 4 years, in 64.64
     int128 constant public g1 = int128(uint128(uint256((950 << 64))) / 1000); // To be used when selling baseToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
     int128 constant public g2 = int128(uint128(uint256((1000 << 64))) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
-    uint32 immutable public maturity;
+    uint32 public immutable override maturity;
 
     IERC20 public immutable override baseToken;
     IFYToken public immutable override fyToken;
@@ -294,26 +300,25 @@ contract Pool is IPool, ERC20Permit {
         return tokenOut;
     }
 
-    /// @dev Sell baseToken for fyToken
-    /// The trader needs to have transferred `baseTokenIn` to the pool
+    /// @dev Sell baseToken for fyToken.
+    /// The trader needs to have transferred the amount of base to sell to the pool before in the same transaction.
     /// @param to Wallet receiving the fyToken being bought
-    /// @param baseTokenIn Amount of baseToken being sold
     /// @return Amount of fyToken that will be deposited on `to` wallet
-    function sellBaseToken(address to, uint128 baseTokenIn)
+    function sellBaseToken(address to)
         external override
         returns(uint128)
     {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
 
+        uint112 _baseTokenReserves = getBaseTokenReserves();
+        uint128 baseTokenIn = _baseTokenReserves - _storedBaseTokenReserve;
+
         uint128 fyTokenOut = _sellBaseTokenPreview(
             baseTokenIn,
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
-
-        uint128 _baseTokenReserves = getBaseTokenReserves();
-        require(_baseTokenReserves - _storedBaseTokenReserve >= baseTokenIn, "Pool: Not enough base token in");
 
         fyToken.transfer(to, fyTokenOut);
 
@@ -432,25 +437,24 @@ contract Pool is IPool, ERC20Permit {
     }
 
     /// @dev Sell fyToken for baseToken
-    /// The trader needs to have transferred `fyTokenIn` to the pool
+    /// The trader needs to have transferred the amount of fyToken to sell to the pool before in the same transaction.
     /// @param to Wallet receiving the baseToken being bought
-    /// @param fyTokenIn Amount of fyToken being sold
     /// @return Amount of baseToken that will be deposited on `to` wallet
-    function sellFYToken(address to, uint128 fyTokenIn)
+    function sellFYToken(address to)
         external override
         returns(uint128)
     {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
 
+        uint112 _fyTokenReserves = getFYTokenReserves();
+        uint128 fyTokenIn = _fyTokenReserves - _storedFYTokenReserve;
+
         uint128 tokenOut = _sellFYTokenPreview(
             fyTokenIn,
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
-
-        uint128 _fyTokenReserves = getFYTokenReserves();
-        require(_fyTokenReserves - _storedFYTokenReserve >= fyTokenIn, "Pool: Not enough fyToken in");
 
         baseToken.transfer(to, tokenOut);
 
@@ -589,16 +593,16 @@ contract Pool is IPool, ERC20Permit {
     /// @dev Returns the "virtual" fyToken reserves
     function getFYTokenReserves()
         public view override
-        returns(uint128)
+        returns(uint112)
     {
-        return (fyToken.balanceOf(address(this)) + totalSupply()).u128();
+        return (fyToken.balanceOf(address(this)) + totalSupply()).u112();
     }
 
     /// @dev Returns the baseToken reserves
     function getBaseTokenReserves()
         public view override
-        returns(uint128)
+        returns(uint112)
     {
-        return baseToken.balanceOf(address(this)).u128();
+        return baseToken.balanceOf(address(this)).u112();
     }
 }
