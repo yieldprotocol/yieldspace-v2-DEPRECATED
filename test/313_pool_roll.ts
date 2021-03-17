@@ -27,7 +27,7 @@ async function currentTimestamp() {
 import { sellBase, sellFYToken } from './shared/yieldspace'
 const WAD = BigNumber.from(10).pow(18)
 
-describe('Pool', async function () {
+describe('Pool - roll', async function () {
   this.timeout(0)
 
   let snapshotId: string
