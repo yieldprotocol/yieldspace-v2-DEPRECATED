@@ -35,7 +35,6 @@ describe('Pool - trade', async function () {
   const initialBase = baseTokens
   const OVERRIDES = { gasLimit: 1_000_000 }
 
-  let snapshotId: string
   let ownerAcc: SignerWithAddress
   let user1Acc: SignerWithAddress
   let user2Acc: SignerWithAddress
@@ -65,8 +64,6 @@ describe('Pool - trade', async function () {
   }
 
   before(async () => {
-    snapshotId = await timeMachine.takeSnapshot(ethers.provider)
-
     const signers = await ethers.getSigners()
     ownerAcc = signers[0]
     owner = ownerAcc.address
@@ -74,10 +71,6 @@ describe('Pool - trade', async function () {
     user1 = user1Acc.address
     user2Acc = signers[2]
     user2 = user2Acc.address
-  })
-
-  after(async () => {
-    await timeMachine.revertToSnapshot(ethers.provider, snapshotId)
   })
 
   beforeEach(async () => {

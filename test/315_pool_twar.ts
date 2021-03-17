@@ -25,7 +25,6 @@ describe('Pool - TWAR', async function () {
   const baseTokens = BigNumber.from('1000000000000000000000000')
   const initialBase = baseTokens
 
-  let snapshotId: string
   let ownerAcc: SignerWithAddress
   let user1Acc: SignerWithAddress
   let owner: string
@@ -47,17 +46,11 @@ describe('Pool - TWAR', async function () {
   }
 
   before(async () => {
-    snapshotId = await timeMachine.takeSnapshot(ethers.provider)
-
     const signers = await ethers.getSigners()
     ownerAcc = signers[0]
     owner = ownerAcc.address
     user1Acc = signers[1]
     user1 = user1Acc.address
-  })
-
-  after(async () => {
-    await timeMachine.revertToSnapshot(ethers.provider, snapshotId)
   })
 
   beforeEach(async () => {

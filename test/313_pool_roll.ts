@@ -30,7 +30,6 @@ const WAD = BigNumber.from(10).pow(18)
 describe('Pool - roll', async function () {
   this.timeout(0)
 
-  let snapshotId: string
   let ownerAcc: SignerWithAddress
   let owner: string
 
@@ -55,15 +54,9 @@ describe('Pool - roll', async function () {
   }
 
   before(async () => {
-    snapshotId = await timeMachine.takeSnapshot(ethers.provider)
-
     const signers = await ethers.getSigners()
     ownerAcc = signers[0]
     owner = ownerAcc.address
-  })
-
-  after(async () => {
-    await timeMachine.revertToSnapshot(ethers.provider, snapshotId)
   })
 
   beforeEach(async () => {
