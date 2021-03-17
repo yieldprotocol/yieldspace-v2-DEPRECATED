@@ -21,7 +21,7 @@ function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
 }
 
 async function currentTimestamp() {
-  return (await ethers.provider.getBlock(ethers.provider.getBlockNumber())).timestamp
+  return (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp
 }
 
 import { sellBase, sellFYToken } from './shared/yieldspace'
