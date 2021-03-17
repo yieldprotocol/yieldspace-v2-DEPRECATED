@@ -7,6 +7,7 @@ import "@yield-protocol/vault-interfaces/IFYToken.sol";
 import "@yield-protocol/yieldspace-interfaces/IPool.sol";
 import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
 import "./helpers/SafeERC20Namer.sol";
+import "./Ownable.sol";
 import "./YieldMath.sol";
 
 
@@ -46,17 +47,18 @@ library SafeCast128 {
 
 
 /// @dev The Pool contract exchanges baseToken for fyToken at a price defined by a specific formula.
-contract Pool is IPool, ERC20Permit {
+contract Pool is IPool, ERC20Permit, Ownable {
     using SafeCast256 for uint256;
     using SafeCast128 for uint128;
 
     event Trade(uint32 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens);
     event Liquidity(uint32 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens, int256 poolTokens);
     event Sync(uint112 baseTokenReserve, uint112 storedFYTokenReserve, uint256 cumulativeReserveRatio);
+    event ParameterSet(bytes32 parameter, int128 k);
 
-    int128 constant public k = int128(uint128(uint256((1 << 64))) / 126144000); // 1 / Seconds in 4 years, in 64.64
-    int128 constant public g1 = int128(uint128(uint256((950 << 64))) / 1000); // To be used when selling baseToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
-    int128 constant public g2 = int128(uint128(uint256((1000 << 64))) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
+    int128 public k = int128(uint128(uint256((1 << 64))) / 126144000); // 1 / Seconds in 4 years, in 64.64
+    int128 public g1 = int128(uint128(uint256((950 << 64))) / 1000); // To be used when selling baseToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
+    int128 public g2 = int128(uint128(uint256((1000 << 64))) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
     uint32 public immutable override maturity;
 
     IERC20 public immutable override baseToken;
@@ -111,6 +113,15 @@ contract Pool is IPool, ERC20Permit {
         emit Liquidity(maturity, msg.sender, msg.sender, -(baseTokenIn.i256()), 0, baseTokenIn.i256());
 
         return baseTokenIn;
+    }
+
+    /// @dev Set the k, g1 or g2 parameters
+    function setParameter(bytes32 parameter, int128 value) public onlyOwner {
+        if (parameter == "k") k = value;
+        else if (parameter == "g1") g1 = value;
+        else if (parameter == "g2") g2 = value;
+        else revert("Pool: Unrecognized parameter");
+        emit ParameterSet(parameter, value);
     }
 
     /// @dev Update reserves and, on the first call per block, ratio accumulators
