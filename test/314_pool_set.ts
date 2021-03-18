@@ -1,10 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { id } from '@yield-protocol/utils'
 
 import { Pool } from '../typechain/Pool'
 import { PoolFactory } from '../typechain/PoolFactory'
-import { BaseMock as Base } from '../typechain/BaseMock'
-import { FYTokenMock as FYToken } from '../typechain/FYTokenMock'
 import { YieldSpaceEnvironment } from './shared/fixtures'
 
 import { BigNumber } from 'ethers'
@@ -13,12 +10,9 @@ import { ethers, waffle } from 'hardhat'
 import { expect } from 'chai'
 const { loadFixture } = waffle
 
-const timeMachine = require('ether-time-traveler')
-
 describe('Pool - set', async function () {
   this.timeout(0)
 
-  let snapshotId: string
   let ownerAcc: SignerWithAddress
   let owner: string
 
@@ -35,15 +29,9 @@ describe('Pool - set', async function () {
   }
 
   before(async () => {
-    snapshotId = await timeMachine.takeSnapshot(ethers.provider)
-
     const signers = await ethers.getSigners()
     ownerAcc = signers[0]
     owner = ownerAcc.address
-  })
-
-  after(async () => {
-    await timeMachine.revertToSnapshot(ethers.provider, snapshotId)
   })
 
   beforeEach(async () => {
