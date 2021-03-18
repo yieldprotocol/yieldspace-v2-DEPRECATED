@@ -12,8 +12,6 @@ import { ethers, waffle } from 'hardhat'
 import { expect } from 'chai'
 const { loadFixture } = waffle
 
-const timeMachine = require('ether-time-traveler')
-
 function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
   // Check that abs(x - y) < p:
   const diff = x.gt(y) ? BigNumber.from(x).sub(y) : BigNumber.from(y).sub(x) // Not sure why I have to convert x and y to BigNumber
@@ -69,8 +67,6 @@ describe('Pool', async function () {
   }
 
   before(async () => {
-    snapshotId = await timeMachine.takeSnapshot(ethers.provider)
-
     const signers = await ethers.getSigners()
     ownerAcc = signers[0]
     owner = ownerAcc.address
@@ -80,10 +76,6 @@ describe('Pool', async function () {
     user2 = user2Acc.address
     operatorAcc = signers[3]
     operator = operatorAcc.address
-  })
-
-  after(async () => {
-    await timeMachine.revertToSnapshot(ethers.provider, snapshotId)
   })
 
   beforeEach(async () => {
@@ -436,36 +428,6 @@ describe('Pool', async function () {
 
         almostEqual(baseIn, expectedBaseIn, baseIn.div(1000000))
         almostEqual(baseInPreview, expectedBaseIn, baseIn.div(1000000))
-      })
-
-      it("once mature, doesn't allow sellBaseToken", async () => {
-        await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
-
-        await expect(poolFromUser1.sellBaseTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.sellBaseToken(user1)).to.be.revertedWith('Pool: Too late')
-      })
-
-      /* TODO: Hardhat bug. If you import "hardhat/console.sol" and put a console.log inside _buyBaseTokenPreview, the test passes
-      it("once mature, doesn't allow buyBaseToken", async () => {
-        await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
-
-        await expect(poolFromUser1.buyBaseTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.buyBaseToken(user1, WAD)).to.be.revertedWith('Pool: Too late')
-      })
-      */
-
-      it("once mature, doesn't allow sellFYToken", async () => {
-        await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
-
-        await expect(poolFromUser1.sellFYTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.sellFYToken(user1)).to.be.revertedWith('Pool: Too late')
-      })
-
-      it("once mature, doesn't allow buyFYToken", async () => {
-        await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
-
-        await expect(poolFromUser1.buyFYTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.buyFYToken(user1, WAD)).to.be.revertedWith('Pool: Too late')
       })
     })
   })
