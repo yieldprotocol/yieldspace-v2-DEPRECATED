@@ -74,7 +74,7 @@ describe('Pool - TWAR', async function () {
     expect(cumulativePrice1).to.equal(0, 'Price should start at 0')
     const timestamp1 = (await pool.getStoredReserves())[2]
 
-    await ethers.provider.send('evm_mine', [await currentTimestamp() + 120])
+    await ethers.provider.send('evm_mine', [(await currentTimestamp()) + 120])
 
     await pool.sync()
 
@@ -85,7 +85,7 @@ describe('Pool - TWAR', async function () {
     const ratio2 = cumulativeRatio2.div(BigNumber.from(timestamp2 - timestamp1))
     almostEqual(ratio2, balancedRatio, BigNumber.from('10000000000'))
 
-    await ethers.provider.send('evm_mine', [await currentTimestamp() + 120])
+    await ethers.provider.send('evm_mine', [(await currentTimestamp()) + 120])
 
     await pool.sync()
 

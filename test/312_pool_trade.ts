@@ -240,7 +240,7 @@ describe('Pool - trade', async function () {
       beforeEach(async () => {
         await ethers.provider.send('evm_mine', [await pool.maturity()])
       })
-      
+
       it("doesn't allow sellBaseToken", async () => {
         await expect(poolFromUser1.sellBaseTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
         await expect(poolFromUser1.sellBaseToken(user1)).to.be.revertedWith('Pool: Too late')
