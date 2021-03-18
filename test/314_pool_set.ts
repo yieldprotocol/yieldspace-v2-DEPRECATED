@@ -66,14 +66,14 @@ describe('Pool - set', async function () {
     expect(await pool.getK()).to.equal(1)
     expect(await pool.getG1()).to.equal(1)
     expect(await pool.getG2()).to.equal(0)
-  
+
     expect(await pool.setParameter(g2, 1))
       .to.emit(pool, 'ParameterSet')
       .withArgs(g2, 1)
     expect(await pool.getK()).to.equal(1)
     expect(await pool.getG1()).to.equal(1)
     expect(await pool.getG2()).to.equal(1)
-  
+
     await expect(pool.setParameter(invalid, 1)).to.be.revertedWith('Pool: Unrecognized parameter')
   })
 })
