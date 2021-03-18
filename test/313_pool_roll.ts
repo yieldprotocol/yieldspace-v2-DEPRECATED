@@ -12,8 +12,6 @@ import { ethers, waffle } from 'hardhat'
 import { expect } from 'chai'
 const { loadFixture } = waffle
 
-const timeMachine = require('ether-time-traveler')
-
 function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
   // Check that abs(x - y) < p:
   const diff = x.gt(y) ? BigNumber.from(x).sub(y) : BigNumber.from(y).sub(x) // Not sure why I have to convert x and y to BigNumber
@@ -21,16 +19,15 @@ function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
 }
 
 async function currentTimestamp() {
-  return (await ethers.provider.getBlock(ethers.provider.getBlockNumber())).timestamp
+  return (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp
 }
 
 import { sellBase, sellFYToken } from './shared/yieldspace'
 const WAD = BigNumber.from(10).pow(18)
 
-describe('Pool', async function () {
+describe('Pool - roll', async function () {
   this.timeout(0)
 
-  let snapshotId: string
   let ownerAcc: SignerWithAddress
   let owner: string
 
@@ -55,15 +52,9 @@ describe('Pool', async function () {
   }
 
   before(async () => {
-    snapshotId = await timeMachine.takeSnapshot(ethers.provider)
-
     const signers = await ethers.getSigners()
     ownerAcc = signers[0]
     owner = ownerAcc.address
-  })
-
-  after(async () => {
-    await timeMachine.revertToSnapshot(ethers.provider, snapshotId)
   })
 
   beforeEach(async () => {

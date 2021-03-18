@@ -66,8 +66,8 @@ export class YieldSpaceEnvironment {
     const bases: Map<string, ERC20> = new Map()
     const fyTokens: Map<string, FYToken> = new Map()
     const pools: Map<string, Map<string, Pool>> = new Map()
-    const provider: BaseProvider = ethers.getDefaultProvider()
-    const now = (await provider.getBlock(provider.getBlockNumber())).timestamp
+    const provider: BaseProvider = await ethers.provider
+    const now = (await provider.getBlock(await provider.getBlockNumber())).timestamp
     let count: number = 1
     for (let baseId of baseIds) {
       // deploy base
