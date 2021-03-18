@@ -106,7 +106,10 @@ contract Pool is IPool, ERC20Permit, Ownable {
             "Pool: Already initialized"
         );
         // no fyToken transferred, because initial fyToken deposit is entirely virtual
-        baseToken.transferFrom(msg.sender, address(this), baseTokenIn);
+        require(
+            baseToken.transferFrom(msg.sender, address(this), baseTokenIn),
+            "Pool: Base token transfer failed"
+        );
         _mint(msg.sender, baseTokenIn);
 
         _update(getBaseTokenReserves(), getFYTokenReserves(), 0, 0);
@@ -164,30 +167,18 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external override
         returns (uint256)
     {
-        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
-            (storedBaseTokenReserve, storedFYTokenReserve);
-
         uint256 supply = totalSupply();
         if (supply == 0) return init(tokenOffered);
 
-        uint256 baseTokenReserves = baseToken.balanceOf(address(this));
-        // use the actual reserves rather than the virtual reserves
+        // Calculate trade
+        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
+        uint256 baseTokenReserves = baseToken.balanceOf(address(this));     // use the actual reserves rather than the virtual reserves
         uint256 fyTokenReserves = fyToken.balanceOf(address(this));
         uint256 tokensMinted = (supply * tokenOffered) / baseTokenReserves;
         uint256 fyTokenRequired = (fyTokenReserves * tokensMinted) / supply;
 
-        {
-            uint256 newBaseTokenReserves = baseTokenReserves + tokenOffered;
-            uint256 newFYTokenReserves = supply + fyTokenReserves + fyTokenRequired;
-
-            _update(
-                newBaseTokenReserves.u128(),
-                (newFYTokenReserves + tokensMinted).u128(), // Account for the "virtual" fyToken from the new minted LP tokens
-                _storedBaseTokenReserve,
-                _storedFYTokenReserve
-            );
-        }
-
+        // Transfer assets
         require(
             baseToken.transferFrom(msg.sender, address(this), tokenOffered),
             "Pool: Base token transfer failed"
@@ -198,8 +189,17 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
         _mint(to, tokensMinted);
 
-        emit Liquidity(maturity, msg.sender, to, -(tokenOffered.i256()), -(fyTokenRequired.i256()), tokensMinted.i256());
+        // Update TWAR
+        uint256 newBaseTokenReserves = baseTokenReserves + tokenOffered;
+        uint256 newFYTokenReserves = supply + fyTokenReserves + fyTokenRequired;
+        _update(
+            newBaseTokenReserves.u128(),
+            (newFYTokenReserves + tokensMinted).u128(), // Account for the "virtual" fyToken from the new minted LP tokens
+            _storedBaseTokenReserve,
+            _storedFYTokenReserve
+        );
 
+        emit Liquidity(maturity, msg.sender, to, -(tokenOffered.i256()), -(fyTokenRequired.i256()), tokensMinted.i256());
         return tokensMinted;
     }
 
@@ -212,12 +212,12 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external
         returns (uint256, uint256)
     {
-        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
-            (storedBaseTokenReserve, storedFYTokenReserve);
-
         uint256 supply = totalSupply();
         require(supply > 0, "Pool: Use mint first");
 
+        // Calculate trade
+        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
         uint256 baseTokenReserves = baseToken.balanceOf(address(this));
         uint256 fyTokenReserves = fyToken.balanceOf(address(this));
 
@@ -230,23 +230,23 @@ contract Pool is IPool, ERC20Permit, Ownable {
         require(fyTokenReserves >= fyTokenToBuy, "Pool: Not enough fyToken");
         uint256 tokensMinted = (supply * fyTokenToBuy) / (fyTokenReserves - fyTokenToBuy);
         baseTokenIn = ((baseTokenReserves + baseTokenIn) * tokensMinted) / supply;
-        uint256 newBaseTokenReserves = baseTokenReserves + baseTokenIn;
 
+        // Transfer assets
         require(
             baseToken.transferFrom(msg.sender, address(this), baseTokenIn),
             "Pool: baseToken transfer failed"
         );
         _mint(to, tokensMinted);
 
+        // Update TWAR
         _update(
-            newBaseTokenReserves.u128(),
+            (baseTokenReserves + baseTokenIn).u128(),
             (fyTokenReserves + supply + tokensMinted).u128(), // Add LP tokens to get virtual fyToken reserves
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
 
         emit Liquidity(maturity, msg.sender, to, -(baseTokenIn.i256()), 0, tokensMinted.i256());
-
         return (baseTokenIn, tokensMinted);
     }
 
@@ -259,35 +259,38 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external override
         returns (uint256, uint256)
     {
+        // Calculate trade
         uint256 supply = totalSupply();
         uint256 baseTokenReserves = baseToken.balanceOf(address(this));
         // use the actual reserves rather than the virtual reserves
-        uint256 tokenOut;
-        uint256 fyTokenOut;
-        { // avoiding stack too deep
-            uint256 fyTokenReserves = fyToken.balanceOf(address(this));
-            tokenOut = (tokensBurned * baseTokenReserves) / supply;
-            fyTokenOut = (tokensBurned * fyTokenReserves) / supply;
+        uint256 fyTokenReserves = fyToken.balanceOf(address(this));
+        uint256 tokenOut = (tokensBurned * baseTokenReserves) / supply;
+        uint256 fyTokenOut = (tokensBurned * fyTokenReserves) / supply;
 
-            uint256 newFYTokenReserves = fyTokenReserves - fyTokenOut + supply - tokensBurned;
+        // Transfer assets
+        _burn(msg.sender, tokensBurned);
+        require(
+            baseToken.transfer(to, tokenOut),
+            "Pool: Base token transfer failed"
+        );
+        require(
+            fyToken.transfer(to, fyTokenOut),
+            "Pool: fyToken transfer failed"
+        );
 
+        // Update TWAR
+        {
             (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
                 (storedBaseTokenReserve, storedFYTokenReserve);
-
             _update(
                 (baseTokenReserves - tokenOut).u128(),
-                newFYTokenReserves.u128(),
+                (fyTokenReserves - fyTokenOut + supply - tokensBurned).u128(),
                 _storedBaseTokenReserve,
                 _storedFYTokenReserve
             );
         }
 
-        _burn(msg.sender, tokensBurned); // TODO: Fix to check allowance
-        baseToken.transfer(to, tokenOut);
-        fyToken.transfer(to, fyTokenOut);
-
         emit Liquidity(maturity, msg.sender, to, tokenOut.i256(), fyTokenOut.i256(), -(tokensBurned.i256()));
-
         return (tokenOut, fyTokenOut);
     }
 
@@ -300,20 +303,15 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external
         returns (uint256)
     {
+        // Calculate trade
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
-
         uint256 supply = totalSupply();
-        // use the actual reserves rather than the virtual reserves
-        uint256 tokenOut;
-        uint256 fyTokenObtained;
-        { // avoiding stack too deep
-            uint256 fyTokenReserves = fyToken.balanceOf(address(this));
-            tokenOut = (tokensBurned * _storedBaseTokenReserve) / supply;
-            fyTokenObtained = (tokensBurned * fyTokenReserves) / supply;
-
+        uint256 fyTokenReserves = fyToken.balanceOf(address(this));             // use the actual reserves rather than the virtual reserves
+        uint256 tokenOut = (tokensBurned * _storedBaseTokenReserve) / supply;
+        uint256 fyTokenObtained = (tokensBurned * fyTokenReserves) / supply;
+        {
             (int128 _k, int128 _g2) = (k2, g2);
-
             tokenOut += YieldMath.baseOutForFYTokenIn(                            // This is a virtual sell
                 _storedBaseTokenReserve - tokenOut.u128(),                // Real reserves, minus virtual burn
                 _storedFYTokenReserve - fyTokenObtained.u128(), // Virtual reserves, minus virtual burn
@@ -322,20 +320,24 @@ contract Pool is IPool, ERC20Permit, Ownable {
                 _k,
                 _g2
             );
-
-            _update(
-                (baseToken.balanceOf(address(this)) - tokenOut).u128(),
-                (fyTokenReserves + supply - tokensBurned).u128(),
-                _storedBaseTokenReserve,
-                _storedFYTokenReserve
-            );
         }
 
+        // Transfer assets
         _burn(msg.sender, tokensBurned); // TODO: Fix to check allowance
-        baseToken.transfer(to, tokenOut);
+        require(
+            baseToken.transfer(to, tokenOut),
+            "Pool: Base token transfer failed"
+        );
+
+        // Update TWAR
+        _update(
+            (baseToken.balanceOf(address(this)) - tokenOut).u128(),
+            (fyTokenReserves + supply - tokensBurned).u128(),
+            _storedBaseTokenReserve,
+            _storedFYTokenReserve
+        );
 
         emit Liquidity(maturity, msg.sender, to, tokenOut.i256(), 0, -(tokensBurned.i256()));
-
         return tokenOut;
     }
 
@@ -347,20 +349,24 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external override
         returns(uint128)
     {
+        // Calculate trade
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
-
         uint112 _baseTokenReserves = getBaseTokenReserves();
         uint128 baseTokenIn = _baseTokenReserves - _storedBaseTokenReserve;
-
         uint128 fyTokenOut = _sellBaseTokenPreview(
             baseTokenIn,
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
 
-        fyToken.transfer(to, fyTokenOut);
+        // Transfer assets
+        require(
+            fyToken.transfer(to, fyTokenOut),
+            "Pool: FYToken transfer failed"
+        );
 
+        // Update TWAR
         _update(
             _baseTokenReserves,
             getFYTokenReserves(),
@@ -369,7 +375,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         emit Trade(maturity, msg.sender, to, -(baseTokenIn.i128()), fyTokenOut.i128());
-
         return fyTokenOut;
     }
 
@@ -382,7 +387,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
     {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
-
         return _sellBaseTokenPreview(baseTokenIn, _storedBaseTokenReserve, _storedFYTokenReserve);
     }
 
@@ -397,7 +401,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
         returns(uint128)
     {
         (int128 _k, int128 _g1) = (k1, g1);
-
         uint128 fyTokenOut = YieldMath.fyTokenOutForBaseIn(
             baseTokenReserves,
             fyTokenReserves,
@@ -424,14 +427,22 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external override
         returns(uint128)
     {
+        // Calculate trade
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
-
         uint128 fyTokenIn = _buyBaseTokenPreview(tokenOut, _storedBaseTokenReserve, _storedFYTokenReserve);
 
-        fyToken.transferFrom(msg.sender, address(this), fyTokenIn);
-        baseToken.transfer(to, tokenOut);
+        // Transfer assets
+        require(
+            baseToken.transfer(to, tokenOut),
+            "Pool: Base token transfer failed"
+        );
+        require(
+            fyToken.transferFrom(msg.sender, address(this), fyTokenIn),
+            "Pool: fyToken transfer failed"
+        );
 
+        // Update TWAR
         _update(
             getBaseTokenReserves(),
             getFYTokenReserves(),
@@ -440,7 +451,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         emit Trade(maturity, msg.sender, to, tokenOut.i128(), -(fyTokenIn.i128()));
-
         return fyTokenIn;
     }
 
@@ -453,7 +463,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
     {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
-
         return _buyBaseTokenPreview(tokenOut, _storedBaseTokenReserve, _storedFYTokenReserve);
     }
 
@@ -468,7 +477,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
         returns(uint128)
     {
         (int128 _k, int128 _g2) = (k2, g2);
-
         return YieldMath.fyTokenInForBaseOut(
             baseTokenReserves,
             fyTokenReserves,
@@ -487,20 +495,24 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external override
         returns(uint128)
     {
+        // Calculate trade
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
-
         uint112 _fyTokenReserves = getFYTokenReserves();
         uint128 fyTokenIn = _fyTokenReserves - _storedFYTokenReserve;
-
         uint128 tokenOut = _sellFYTokenPreview(
             fyTokenIn,
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
 
-        baseToken.transfer(to, tokenOut);
+        // Transfer assets
+        require(
+            baseToken.transfer(to, tokenOut),
+            "Pool: Base token transfer failed"
+        );
 
+        // Update TWAR
         _update(
             getBaseTokenReserves(),
             _fyTokenReserves,
@@ -509,7 +521,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         emit Trade(maturity, msg.sender, to, tokenOut.i128(), -(fyTokenIn.i128()));
-
         return tokenOut;
     }
 
@@ -522,7 +533,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
     {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
-
         return _sellFYTokenPreview(fyTokenIn, _storedBaseTokenReserve, _storedFYTokenReserve);
     }
 
@@ -537,7 +547,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
         returns(uint128)
     {
         (int128 _k, int128 _g2) = (k2, g2);
-
         return YieldMath.baseOutForFYTokenIn(
             baseTokenReserves,
             fyTokenReserves,
@@ -557,18 +566,26 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external override
         returns(uint128)
     {
+        // Calculate trade
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
-
         uint128 baseTokenIn = _buyFYTokenPreview(
             fyTokenOut,
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
 
-        baseToken.transferFrom(msg.sender, address(this), baseTokenIn);
-        fyToken.transfer(to, fyTokenOut);
+        // Transfer assets
+        require(
+            baseToken.transferFrom(msg.sender, address(this), baseTokenIn),
+            "Pool: Base token transfer failed"
+        );
+        require(
+            fyToken.transfer(to, fyTokenOut),
+            "Pool: fyToken transfer failed"
+        );
 
+        // Update TWAR
         _update(
             getBaseTokenReserves(),
             getFYTokenReserves(),
@@ -577,10 +594,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         emit Trade(maturity, msg.sender, to, -(baseTokenIn.i128()), fyTokenOut.i128());
-
         return baseTokenIn;
     }
-
 
     /// @dev Returns how much baseToken would be required to buy `fyTokenOut` fyToken.
     /// @param fyTokenOut Amount of fyToken hypothetically desired.
@@ -591,7 +606,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
     {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
-
         return _buyFYTokenPreview(fyTokenOut, _storedBaseTokenReserve, _storedFYTokenReserve);
     }
 
@@ -606,7 +620,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
         returns(uint128)
     {
         (int128 _k, int128 _g1) = (k1, g1);
-
         uint128 baseTokenIn = YieldMath.baseInForFYTokenOut(
             baseTokenReserves,
             fyTokenReserves,
