@@ -10,7 +10,9 @@ import { ethers, waffle } from 'hardhat'
 import { expect } from 'chai'
 const { loadFixture } = waffle
 
-const timeMachine = require('ether-time-traveler')
+async function currentTimestamp() {
+  return (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp
+}
 
 function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
   // Check that abs(x - y) < p:
@@ -72,7 +74,7 @@ describe('Pool - TWAR', async function () {
     expect(cumulativePrice1).to.equal(0, 'Price should start at 0')
     const timestamp1 = (await pool.getStoredReserves())[2]
 
-    await timeMachine.advanceTimeAndBlock(ethers.provider, 120)
+    await ethers.provider.send('evm_mine', [await currentTimestamp() + 120])
 
     await pool.sync()
 
@@ -83,7 +85,7 @@ describe('Pool - TWAR', async function () {
     const ratio2 = cumulativeRatio2.div(BigNumber.from(timestamp2 - timestamp1))
     almostEqual(ratio2, balancedRatio, BigNumber.from('10000000000'))
 
-    await timeMachine.advanceTimeAndBlock(ethers.provider, 120)
+    await ethers.provider.send('evm_mine', [await currentTimestamp() + 120])
 
     await pool.sync()
 

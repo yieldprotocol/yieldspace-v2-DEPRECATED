@@ -11,8 +11,6 @@ import { ethers, waffle } from 'hardhat'
 import { expect } from 'chai'
 const { loadFixture } = waffle
 
-const timeMachine = require('ether-time-traveler')
-
 function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
   // Check that abs(x - y) < p:
   const diff = x.gt(y) ? BigNumber.from(x).sub(y) : BigNumber.from(y).sub(x) // Not sure why I have to convert x and y to BigNumber
@@ -238,32 +236,30 @@ describe('Pool - trade', async function () {
       almostEqual(baseInPreview, expectedBaseIn, baseIn.div(1000000))
     })
 
-    it("once mature, doesn't allow sellBaseToken", async () => {
-      await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
+    describe('once mature', () => {
+      beforeEach(async () => {
+        await ethers.provider.send('evm_mine', [await pool.maturity()])
+      })
+      
+      it("doesn't allow sellBaseToken", async () => {
+        await expect(poolFromUser1.sellBaseTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.sellBaseToken(user1)).to.be.revertedWith('Pool: Too late')
+      })
 
-      await expect(poolFromUser1.sellBaseTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-      await expect(poolFromUser1.sellBaseToken(user1)).to.be.revertedWith('Pool: Too late')
-    })
+      it("doesn't allow buyBaseToken", async () => {
+        await expect(poolFromUser1.buyBaseTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.buyBaseToken(user1, WAD)).to.be.revertedWith('Pool: Too late')
+      })
 
-    it("once mature, doesn't allow buyBaseToken", async () => {
-      await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
+      it("doesn't allow sellFYToken", async () => {
+        await expect(poolFromUser1.sellFYTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.sellFYToken(user1)).to.be.revertedWith('Pool: Too late')
+      })
 
-      await expect(poolFromUser1.buyBaseTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-      await expect(poolFromUser1.buyBaseToken(user1, WAD)).to.be.revertedWith('Pool: Too late')
-    })
-
-    it("once mature, doesn't allow sellFYToken", async () => {
-      await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
-
-      await expect(poolFromUser1.sellFYTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-      await expect(poolFromUser1.sellFYToken(user1)).to.be.revertedWith('Pool: Too late')
-    })
-
-    it("once mature, doesn't allow buyFYToken", async () => {
-      await timeMachine.advanceTimeAndBlock(ethers.provider, 31556952)
-
-      await expect(poolFromUser1.buyFYTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-      await expect(poolFromUser1.buyFYToken(user1, WAD)).to.be.revertedWith('Pool: Too late')
+      it("doesn't allow buyFYToken", async () => {
+        await expect(poolFromUser1.buyFYTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.buyFYToken(user1, WAD)).to.be.revertedWith('Pool: Too late')
+      })
     })
   })
 })
