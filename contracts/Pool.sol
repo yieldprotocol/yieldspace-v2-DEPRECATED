@@ -56,9 +56,10 @@ contract Pool is IPool, ERC20Permit, Ownable {
     event Sync(uint112 baseTokenReserve, uint112 storedFYTokenReserve, uint256 cumulativeReserveRatio);
     event ParameterSet(bytes32 parameter, int128 k);
 
-    int128 public k = int128(uint128(uint256((1 << 64))) / 126144000); // 1 / Seconds in 4 years, in 64.64
-    int128 public g1 = int128(uint128(uint256((950 << 64))) / 1000); // To be used when selling baseToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
-    int128 public g2 = int128(uint128(uint256((1000 << 64))) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
+    int128 private k1 = int128(uint128(uint256((1 << 64))) / 126144000); // 1 / Seconds in 4 years, in 64.64
+    int128 private g1 = int128(uint128(uint256((950 << 64))) / 1000); // To be used when selling baseToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
+    int128 private k2 = int128(uint128(uint256((1 << 64))) / 126144000); // k is stored twice to be able to recover with 1 SLOAD alongside both g1 and g2
+    int128 private g2 = int128(uint128(uint256((1000 << 64))) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
     uint32 public immutable override maturity;
 
     IERC20 public immutable override baseToken;
@@ -117,11 +118,37 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
     /// @dev Set the k, g1 or g2 parameters
     function setParameter(bytes32 parameter, int128 value) public onlyOwner {
-        if (parameter == "k") k = value;
+        if (parameter == "k") k1 = k2 = value;
         else if (parameter == "g1") g1 = value;
         else if (parameter == "g2") g2 = value;
         else revert("Pool: Unrecognized parameter");
         emit ParameterSet(parameter, value);
+    }
+
+    /// @dev Get k
+    function getK() public view returns (int128) {
+        assert(k1 == k2);
+        return k1;
+    }
+
+    /// @dev Get g1
+    function getG1() public view returns (int128) {
+        return g1;
+    }
+
+    /// @dev Get g2
+    function getG2() public view returns (int128) {
+        return g2;
+    }
+
+    /// @dev Get k (stored as k1) and g1 with one SLOAD
+    function getKG1() private view returns (int128, int128) {
+        return (k1, g1);
+    }
+
+    /// @dev Get k (stored as k2) and g2 with one SLOAD
+    function getKG2() private view returns (int128, int128) {
+        return (k2, g2);
     }
 
     /// @dev Update reserves and, on the first call per block, ratio accumulators
@@ -295,13 +322,15 @@ contract Pool is IPool, ERC20Permit, Ownable {
             tokenOut = (tokensBurned * _storedBaseTokenReserve) / supply;
             fyTokenObtained = (tokensBurned * fyTokenReserves) / supply;
 
+            (int128 _k, int128 _g2) = getKG2();
+
             tokenOut += YieldMath.baseOutForFYTokenIn(                            // This is a virtual sell
                 _storedBaseTokenReserve - tokenOut.u128(),                // Real reserves, minus virtual burn
                 _storedFYTokenReserve - fyTokenObtained.u128(), // Virtual reserves, minus virtual burn
                 fyTokenObtained.u128(),                          // Sell the virtual fyToken obtained
                 maturity - uint32(block.timestamp),             // This can't be called after maturity
-                k,
-                g2
+                _k,
+                _g2
             );
 
             _update(
@@ -377,13 +406,15 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
+        (int128 _k, int128 _g1) = getKG1();
+
         uint128 fyTokenOut = YieldMath.fyTokenOutForBaseIn(
             baseTokenReserves,
             fyTokenReserves,
             baseTokenIn,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            k,
-            g1
+            _k,
+            _g1
         );
 
         require(
@@ -446,13 +477,15 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
+        (int128 _k, int128 _g2) = getKG2();
+
         return YieldMath.fyTokenInForBaseOut(
             baseTokenReserves,
             fyTokenReserves,
             tokenOut,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            k,
-            g2
+            _k,
+            _g2
         );
     }
 
@@ -513,13 +546,15 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
+        (int128 _k, int128 _g2) = getKG2();
+
         return YieldMath.baseOutForFYTokenIn(
             baseTokenReserves,
             fyTokenReserves,
             fyTokenIn,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            k,
-            g2
+            _k,
+            _g2
         );
     }
 
@@ -580,13 +615,15 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
+        (int128 _k, int128 _g1) = getKG1();
+
         uint128 baseTokenIn = YieldMath.baseInForFYTokenOut(
             baseTokenReserves,
             fyTokenReserves,
             fyTokenOut,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            k,
-            g1
+            _k,
+            _g1
         );
 
         require(
