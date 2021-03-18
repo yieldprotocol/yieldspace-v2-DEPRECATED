@@ -58,21 +58,34 @@ describe('Pool - set', async function () {
     const g2 = ethers.utils.formatBytes32String('g2')
     const invalid = ethers.utils.formatBytes32String('invalid')
 
+    await pool.setParameter(k, 0)
+    await pool.setParameter(g1, 0)
+    await pool.setParameter(g2, 0)
+    expect(await pool.getK()).to.equal(0)
+    expect(await pool.getG1()).to.equal(0)
+    expect(await pool.getG2()).to.equal(0)
+
     expect(await pool.setParameter(k, 1))
       .to.emit(pool, 'ParameterSet')
       .withArgs(k, 1)
-    expect(await pool.k()).to.equal(1)
+    expect(await pool.getK()).to.equal(1)
+    expect(await pool.getG1()).to.equal(0)
+    expect(await pool.getG2()).to.equal(0)
 
     expect(await pool.setParameter(g1, 1))
       .to.emit(pool, 'ParameterSet')
       .withArgs(g1, 1)
-    expect(await pool.g1()).to.equal(1)
-
+    expect(await pool.getK()).to.equal(1)
+    expect(await pool.getG1()).to.equal(1)
+    expect(await pool.getG2()).to.equal(0)
+  
     expect(await pool.setParameter(g2, 1))
       .to.emit(pool, 'ParameterSet')
       .withArgs(g2, 1)
-    expect(await pool.g2()).to.equal(1)
-
+    expect(await pool.getK()).to.equal(1)
+    expect(await pool.getG1()).to.equal(1)
+    expect(await pool.getG2()).to.equal(1)
+  
     await expect(pool.setParameter(invalid, 1)).to.be.revertedWith('Pool: Unrecognized parameter')
   })
 })
