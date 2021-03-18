@@ -141,16 +141,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
         return g2;
     }
 
-    /// @dev Get k (stored as k1) and g1 with one SLOAD
-    function getKG1() private view returns (int128, int128) {
-        return (k1, g1);
-    }
-
-    /// @dev Get k (stored as k2) and g2 with one SLOAD
-    function getKG2() private view returns (int128, int128) {
-        return (k2, g2);
-    }
-
     /// @dev Update reserves and, on the first call per block, ratio accumulators
     function _update(uint128 baseBalance, uint128 fyBalance, uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) private {
         uint32 blockTimestamp = uint32(block.timestamp);
@@ -322,7 +312,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
             tokenOut = (tokensBurned * _storedBaseTokenReserve) / supply;
             fyTokenObtained = (tokensBurned * fyTokenReserves) / supply;
 
-            (int128 _k, int128 _g2) = getKG2();
+            (int128 _k, int128 _g2) = (k2, g2);
 
             tokenOut += YieldMath.baseOutForFYTokenIn(                            // This is a virtual sell
                 _storedBaseTokenReserve - tokenOut.u128(),                // Real reserves, minus virtual burn
@@ -406,7 +396,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
-        (int128 _k, int128 _g1) = getKG1();
+        (int128 _k, int128 _g1) = (k1, g1);
 
         uint128 fyTokenOut = YieldMath.fyTokenOutForBaseIn(
             baseTokenReserves,
@@ -477,7 +467,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
-        (int128 _k, int128 _g2) = getKG2();
+        (int128 _k, int128 _g2) = (k2, g2);
 
         return YieldMath.fyTokenInForBaseOut(
             baseTokenReserves,
@@ -546,7 +536,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
-        (int128 _k, int128 _g2) = getKG2();
+        (int128 _k, int128 _g2) = (k2, g2);
 
         return YieldMath.baseOutForFYTokenIn(
             baseTokenReserves,
@@ -615,7 +605,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
-        (int128 _k, int128 _g1) = getKG1();
+        (int128 _k, int128 _g1) = (k1, g1);
 
         uint128 baseTokenIn = YieldMath.baseInForFYTokenOut(
             baseTokenReserves,
