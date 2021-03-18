@@ -160,8 +160,14 @@ contract Pool is IPool, ERC20Permit {
             );
         }
 
-        require(baseToken.transferFrom(msg.sender, address(this), tokenOffered));
-        require(fyToken.transferFrom(msg.sender, address(this), fyTokenRequired));
+        require(
+            baseToken.transferFrom(msg.sender, address(this), tokenOffered),
+            "Pool: Base token transfer failed"
+        );
+        require(
+            fyToken.transferFrom(msg.sender, address(this), fyTokenRequired),
+            "Pool: fyToken transfer failed"
+        );
         _mint(to, tokensMinted);
 
         emit Liquidity(maturity, msg.sender, to, -(tokenOffered.i256()), -(fyTokenRequired.i256()), tokensMinted.i256());
@@ -198,7 +204,10 @@ contract Pool is IPool, ERC20Permit {
         baseTokenIn = ((baseTokenReserves + baseTokenIn) * tokensMinted) / supply;
         uint256 newBaseTokenReserves = baseTokenReserves + baseTokenIn;
 
-        require(baseToken.transferFrom(msg.sender, address(this), baseTokenIn)/*, "Pool: baseToken transfer failed"*/);
+        require(
+            baseToken.transferFrom(msg.sender, address(this), baseTokenIn),
+            "Pool: baseToken transfer failed"
+        );
         _mint(to, tokensMinted);
 
         _update(
