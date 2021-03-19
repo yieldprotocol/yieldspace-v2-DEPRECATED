@@ -329,7 +329,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
         // Update TWAR
         _update(
-            (baseToken.balanceOf(address(this)) - tokenOut).u128(),
+            baseToken.balanceOf(address(this)).u128(),
             (fyTokenReserves + supply - tokensBurned).u128(),
             _storedBaseTokenReserve,
             _storedFYTokenReserve
