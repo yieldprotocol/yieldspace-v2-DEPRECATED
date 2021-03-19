@@ -190,11 +190,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
         _mint(to, tokensMinted);
 
         // Update TWAR
-        uint256 newBaseTokenReserves = baseTokenReserves + tokenOffered;
-        uint256 newFYTokenReserves = supply + fyTokenReserves + fyTokenRequired;
         _update(
-            newBaseTokenReserves.u128(),
-            (newFYTokenReserves + tokensMinted).u128(), // Account for the "virtual" fyToken from the new minted LP tokens
+            (baseTokenReserves + tokenOffered).u128(),
+            (fyTokenReserves + fyTokenRequired + supply + tokensMinted).u128(), // Account for the "virtual" fyToken from the new minted LP tokens
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
