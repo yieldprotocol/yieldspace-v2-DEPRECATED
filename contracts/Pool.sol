@@ -352,11 +352,12 @@ contract Pool is IPool, ERC20Permit, Ownable {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
         uint112 _baseTokenReserves = getBaseTokenReserves();
+        uint112 _fyTokenReserves = getFYTokenReserves();
         uint128 baseTokenIn = _baseTokenReserves - _storedBaseTokenReserve;
         uint128 fyTokenOut = _sellBaseTokenPreview(
             baseTokenIn,
             _storedBaseTokenReserve,
-            _storedFYTokenReserve
+            _fyTokenReserves
         );
 
         // Transfer assets
@@ -368,7 +369,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         // Update TWAR
         _update(
             _baseTokenReserves,
-            getFYTokenReserves(),
+            _fyTokenReserves - fyTokenOut,
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
