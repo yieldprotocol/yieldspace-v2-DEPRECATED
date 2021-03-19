@@ -306,7 +306,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
             (storedBaseTokenReserve, storedFYTokenReserve);
         uint256 supply = totalSupply();
         uint256 fyTokenReserves = fyToken.balanceOf(address(this));             // use the actual reserves rather than the virtual reserves
-        uint256 tokenOut = (tokensBurned * _storedBaseTokenReserve) / supply;
+        uint256 baseTokenReserves = baseToken.balanceOf(address(this));
+        uint256 tokenOut = (tokensBurned * baseTokenReserves) / supply;
         uint256 fyTokenObtained = (tokensBurned * fyTokenReserves) / supply;
         {
             (int128 _k, int128 _g2) = (k2, g2);
@@ -329,7 +330,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
         // Update TWAR
         _update(
-            baseToken.balanceOf(address(this)).u128(),
+            (baseTokenReserves - tokenOut).u128(),
             (fyTokenReserves + supply - tokensBurned).u128(),
             _storedBaseTokenReserve,
             _storedFYTokenReserve
