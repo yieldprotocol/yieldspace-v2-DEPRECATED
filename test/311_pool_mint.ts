@@ -99,7 +99,7 @@ describe('Pool - mint', async function () {
   it('should setup pool', async () => {
     const b = BigNumber.from('18446744073709551615')
     const k = b.div('126144000')
-    expect(await pool.k()).to.be.equal(k)
+    expect(await pool.getK()).to.be.equal(k)
   })
 
   it('adds initial liquidity', async () => {

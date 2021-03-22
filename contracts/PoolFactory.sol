@@ -88,14 +88,18 @@ contract PoolFactory is IPoolFactory {
   /// @param baseToken Address of the base token (such as Base).
   /// @param fyToken Address of the fixed yield token (such as fyToken).
   /// @return pool The pool address.
-  function createPool(address baseToken, address fyToken) external override returns (address pool) {
+  function createPool(address baseToken, address fyToken) external override returns (address) {
       _nextBaseToken = baseToken;
     _nextFYToken = fyToken;
-    pool = address(new Pool{salt: keccak256(abi.encodePacked(baseToken, fyToken))}());
+    Pool pool = new Pool{salt: keccak256(abi.encodePacked(baseToken, fyToken))}();
     _nextBaseToken = address(0);
     _nextFYToken = address(0);
 
-    emit PoolCreated(baseToken, fyToken, pool);
+    pool.transferOwnership(msg.sender);
+
+    emit PoolCreated(baseToken, fyToken, address(pool));
+
+    return address(pool);
   }
 
   /// @dev Only used by the Pool constructor.
