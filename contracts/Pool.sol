@@ -95,8 +95,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
     /// @dev Mint initial liquidity tokens.
     /// The liquidity provider needs to have called `baseToken.approve`
+    /// @param to Wallet receiving the minted liquidity tokens.
     /// @param baseTokenIn The initial baseToken liquidity to provide.
-    function init(uint256 baseTokenIn)
+    function init(address to, uint256 baseTokenIn)
         internal
         beforeMaturity
         returns (uint256)
@@ -107,11 +108,11 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
         // no fyToken transferred, because initial fyToken deposit is entirely virtual
         baseToken.transferFrom(msg.sender, address(this), baseTokenIn);
-        _mint(msg.sender, baseTokenIn);
+        _mint(to, baseTokenIn);
 
         _update(getBaseTokenReserves(), getFYTokenReserves(), 0, 0);
 
-        emit Liquidity(maturity, msg.sender, msg.sender, -(baseTokenIn.i256()), 0, baseTokenIn.i256());
+        emit Liquidity(maturity, msg.sender, to, -(baseTokenIn.i256()), 0, baseTokenIn.i256());
 
         return baseTokenIn;
     }
@@ -168,7 +169,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
             (storedBaseTokenReserve, storedFYTokenReserve);
 
         uint256 supply = totalSupply();
-        if (supply == 0) return init(tokenOffered);
+        if (supply == 0) return init(to, tokenOffered);
 
         uint256 baseTokenReserves = baseToken.balanceOf(address(this));
         // use the actual reserves rather than the virtual reserves
