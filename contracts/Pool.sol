@@ -369,6 +369,19 @@ contract Pool is IPool, ERC20Permit, Ownable {
         return tokenOut;
     }
 
+    /// @dev Retrieve any fyTokens not accounted for in the stored reserves
+    function retrieveFYToken(address to)
+        external
+        returns(uint128 surplus)
+    {
+        surplus = getFYTokenReserves() - storedFYTokenReserve; // TODO: Consider adding a require for UX
+        require(
+            fyToken.transfer(to, surplus),
+            "Pool: FYToken transfer failed"
+        );
+        // Now the current reserves match the stored reserves, so no need to update the TWAR
+    }
+
     /// @dev Sell baseToken for fyToken.
     /// The trader needs to have transferred the amount of base to sell to the pool before in the same transaction.
     /// @param to Wallet receiving the fyToken being bought
@@ -461,20 +474,23 @@ contract Pool is IPool, ERC20Permit, Ownable {
             (storedBaseTokenReserve, storedFYTokenReserve);
         uint128 fyTokenIn = _buyBaseTokenPreview(tokenOut, _storedBaseTokenReserve, _storedFYTokenReserve);
 
+        // uint128 baseTokenReserves = getBaseTokenReserves();
+        uint128 fyTokenReserves = getFYTokenReserves();
+        require(
+            fyTokenReserves - _storedFYTokenReserve > fyTokenIn,
+            "Pool: Not enought fyToken in"
+        );
+
         // Transfer assets
         require(
             baseToken.transfer(to, tokenOut),
             "Pool: Base token transfer failed"
         );
-        require(
-            fyToken.transferFrom(msg.sender, address(this), fyTokenIn),
-            "Pool: fyToken transfer failed"
-        );
 
         // Update TWAR
         _update(
-            getBaseTokenReserves(),
-            getFYTokenReserves(),
+            _storedBaseTokenReserve - tokenOut,
+            _storedFYTokenReserve + fyTokenIn,
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
