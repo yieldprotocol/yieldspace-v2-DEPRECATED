@@ -408,6 +408,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
     /// @dev Sell baseToken for fyToken.
     /// The trader needs to have transferred the amount of base to sell to the pool before in the same transaction.
     /// @param to Wallet receiving the fyToken being bought
+    /// @param min Minimm accepted amount of fyToken
     /// @return Amount of fyToken that will be deposited on `to` wallet
     function sellBaseToken(address to, uint128 min)
         external override
@@ -566,8 +567,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
     /// @dev Sell fyToken for baseToken
     /// The trader needs to have transferred the amount of fyToken to sell to the pool before in the same transaction.
     /// @param to Wallet receiving the baseToken being bought
+    /// @param min Minimm accepted amount of baseToken
     /// @return Amount of baseToken that will be deposited on `to` wallet
-    function sellFYToken(address to)
+    function sellFYToken(address to, uint128 min)
         external override
         returns(uint128)
     {
@@ -576,15 +578,21 @@ contract Pool is IPool, ERC20Permit, Ownable {
             (storedBaseTokenReserve, storedFYTokenReserve);
         uint112 _fyTokenReserves = getFYTokenReserves();
         uint128 fyTokenIn = _fyTokenReserves - _storedFYTokenReserve;
-        uint128 tokenOut = _sellFYTokenPreview(
+        uint128 baseTokenOut = _sellFYTokenPreview(
             fyTokenIn,
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
 
+        // Slippage check
+        require(
+            baseTokenOut >= min,
+            "Pool: Not enough baseToken obtained"
+        );
+
         // Transfer assets
         require(
-            baseToken.transfer(to, tokenOut),
+            baseToken.transfer(to, baseTokenOut),
             "Pool: Base token transfer failed"
         );
 
@@ -596,8 +604,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
             _storedFYTokenReserve
         );
 
-        emit Trade(maturity, msg.sender, to, tokenOut.i128(), -(fyTokenIn.i128()));
-        return tokenOut;
+        emit Trade(maturity, msg.sender, to, baseTokenOut.i128(), -(fyTokenIn.i128()));
+        return baseTokenOut;
     }
 
     /// @dev Returns how much baseToken would be obtained by selling `fyTokenIn` fyToken.
