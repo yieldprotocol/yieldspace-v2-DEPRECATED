@@ -325,7 +325,7 @@ describe('Pool - trade', async function () {
       await baseFromOwner.mint(user1, baseTokens)
 
       await baseFromUser1.transfer(poolFromUser1.address, baseTokens)
-      await expect(poolFromUser1.buyFYToken(user2, fyTokenOut, OVERRIDES))
+      await expect(poolFromUser1.buyFYToken(user2, fyTokenOut, MAX128, OVERRIDES))
         .to.emit(pool, 'Trade')
         .withArgs(
           maturity1,
@@ -350,6 +350,15 @@ describe('Pool - trade', async function () {
       expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
     })
 
+    it('does not buy fyToken beyond slippage', async () => {
+      const fyTokenOut = WAD
+
+      await base.mint(pool.address, baseTokens)
+      await expect(poolFromUser1.buyFYToken(user2, fyTokenOut, 0, OVERRIDES)).to.be.revertedWith(
+        'Pool: Too much base token in'
+      )
+    })
+
     it('buys fyToken and retrieves change', async () => {
       const baseReserves = await poolFromOwner.getBaseTokenReserves()
       const fyTokenReserves = await poolFromOwner.getFYTokenReserves()
@@ -362,7 +371,7 @@ describe('Pool - trade', async function () {
       await baseFromOwner.mint(user1, baseTokens)
 
       await baseFromUser1.transfer(poolFromUser1.address, baseTokens)
-      await poolFromUser1.buyFYToken(user2, fyTokenOut, OVERRIDES)
+      await poolFromUser1.buyFYToken(user2, fyTokenOut, MAX128, OVERRIDES)
 
       const baseTokenStoredCurrent = (await pool.getStoredReserves())[0]
       const baseTokenIn = baseTokenStoredCurrent.sub(baseTokenStoredBefore)
@@ -392,7 +401,7 @@ describe('Pool - trade', async function () {
       await baseFromOwner.mint(user1, baseTokens)
 
       await baseFromUser1.transfer(pool.address, baseTokens)
-      await poolFromUser1.buyFYToken(user2, fyTokenOut, OVERRIDES)
+      await poolFromUser1.buyFYToken(user2, fyTokenOut, MAX128, OVERRIDES)
 
       const baseTokenStoredCurrent = (await pool.getStoredReserves())[0]
       const baseTokenIn = baseTokenStoredCurrent.sub(baseTokenStoredBefore)
@@ -423,7 +432,7 @@ describe('Pool - trade', async function () {
 
       it("doesn't allow buyFYToken", async () => {
         await expect(poolFromUser1.buyFYTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.buyFYToken(user1, WAD)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.buyFYToken(user1, WAD, MAX128)).to.be.revertedWith('Pool: Too late')
       })
     })
   })

@@ -652,8 +652,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
     /// The trader needs to have called `baseToken.approve`
     /// @param to Wallet receiving the fyToken being bought
     /// @param fyTokenOut Amount of fyToken being bought that will be deposited in `to` wallet
+    /// @param max Maximum amount of base token that will be paid for the trade
     /// @return Amount of baseToken that will be taken from caller's wallet
-    function buyFYToken(address to, uint128 fyTokenOut)
+    function buyFYToken(address to, uint128 fyTokenOut, uint128 max)
         external override
         returns(uint128)
     {
@@ -669,6 +670,12 @@ contract Pool is IPool, ERC20Permit, Ownable {
         require(
             baseTokenReserves - _storedBaseTokenReserve > baseTokenIn,
             "Pool: Not enought base token in"
+        );
+
+        // Slippage check
+        require(
+            baseTokenIn <= max,
+            "Pool: Too much base token in"
         );
 
         // Transfer assets
