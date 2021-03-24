@@ -139,7 +139,6 @@ describe('Pool - trade', async function () {
     expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
   })
 
-
   it('buys base', async () => {
     const baseReserves = await pool.getBaseTokenReserves()
     const fyTokenReserves = await pool.getFYTokenReserves()
@@ -156,7 +155,7 @@ describe('Pool - trade', async function () {
     const expectedFYTokenIn = buyBase(baseReserves, fyTokenReserves, baseOut, timeTillMaturity)
 
     await fyToken1FromOwner.mint(user1, fyTokenTokens)
-    
+
     await fyToken1FromUser1.approve(pool.address, fyTokenTokens)
     await expect(poolFromUser1.buyBaseToken(user2, baseOut, OVERRIDES))
       .to.emit(pool, 'Trade')
@@ -205,7 +204,7 @@ describe('Pool - trade', async function () {
         "'User2' wallet should have no fyToken, instead has " + (await fyToken1.balanceOf(user2))
       )
 
-      const fyTokenOutPreview = await poolFromOwner.sellBaseTokenPreview(baseIn)  // Test preview since we are here
+      const fyTokenOutPreview = await poolFromOwner.sellBaseTokenPreview(baseIn) // Test preview since we are here
       const expectedFYTokenOut = sellBase(baseReserves, fyTokenReserves, baseIn, timeTillMaturity)
 
       await baseFromOwner.mint(user1, baseIn)
