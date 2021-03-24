@@ -409,7 +409,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
     /// The trader needs to have transferred the amount of base to sell to the pool before in the same transaction.
     /// @param to Wallet receiving the fyToken being bought
     /// @return Amount of fyToken that will be deposited on `to` wallet
-    function sellBaseToken(address to)
+    function sellBaseToken(address to, uint128 min)
         external override
         returns(uint128)
     {
@@ -423,6 +423,12 @@ contract Pool is IPool, ERC20Permit, Ownable {
             baseTokenIn,
             _storedBaseTokenReserve,
             _fyTokenReserves
+        );
+
+        // Slippage check
+        require(
+            fyTokenOut >= min,
+            "Pool: Not enough fyToken obtained"
         );
 
         // Transfer assets

@@ -23,6 +23,7 @@ async function currentTimestamp() {
 
 import { sellBase, sellFYToken, buyBase, buyFYToken } from './shared/yieldspace'
 const WAD = BigNumber.from('1000000000000000000')
+const MAX128 = BigNumber.from(2).pow(128).sub(1)
 
 describe('Pool - trade', async function () {
   this.timeout(0)
@@ -250,7 +251,7 @@ describe('Pool - trade', async function () {
       await baseFromOwner.mint(user1, baseIn)
 
       await baseFromUser1.transfer(pool.address, baseIn)
-      await expect(poolFromUser1.sellBaseToken(user2, OVERRIDES))
+      await expect(poolFromUser1.sellBaseToken(user2, 0, OVERRIDES))
         .to.emit(pool, 'Trade')
         .withArgs(maturity1, user1, user2, baseIn.mul(-1), await fyToken1FromOwner.balanceOf(user2))
 
@@ -264,6 +265,15 @@ describe('Pool - trade', async function () {
       expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
     })
 
+    it('does not sell base beyond slippage', async () => {
+      const baseIn = WAD
+
+      await baseFromOwner.mint(pool.address, baseIn)
+      await expect(poolFromUser1.sellBaseToken(user2, MAX128, OVERRIDES)).to.be.revertedWith(
+        'Pool: Not enough fyToken obtained'
+      )
+    })
+
     it('donates fyToken and sells base', async () => {
       const baseIn = WAD
       const fyTokenDonation = WAD
@@ -272,7 +282,7 @@ describe('Pool - trade', async function () {
       await baseFromOwner.mint(user1, baseIn)
 
       await baseFromUser1.transfer(pool.address, baseIn)
-      await poolFromUser1.sellBaseToken(user2, OVERRIDES)
+      await poolFromUser1.sellBaseToken(user2, 0, OVERRIDES)
 
       expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
       expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
@@ -380,7 +390,7 @@ describe('Pool - trade', async function () {
 
       it("doesn't allow sellBaseToken", async () => {
         await expect(poolFromUser1.sellBaseTokenPreview(WAD)).to.be.revertedWith('Pool: Too late')
-        await expect(poolFromUser1.sellBaseToken(user1)).to.be.revertedWith('Pool: Too late')
+        await expect(poolFromUser1.sellBaseToken(user1, 0)).to.be.revertedWith('Pool: Too late')
       })
 
       it("doesn't allow buyBaseToken", async () => {
