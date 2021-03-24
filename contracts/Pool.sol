@@ -93,32 +93,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
         _;
     }
 
-    /// @dev Mint initial liquidity tokens.
-    /// The liquidity provider needs to have called `baseToken.approve`
-    /// @param baseTokenIn The initial baseToken liquidity to provide.
-    function init(uint256 baseTokenIn)
-        internal
-        beforeMaturity
-        returns (uint256)
-    {
-        require(
-            totalSupply() == 0,
-            "Pool: Already initialized"
-        );
-        // no fyToken transferred, because initial fyToken deposit is entirely virtual
-        require(
-            baseToken.transferFrom(msg.sender, address(this), baseTokenIn),
-            "Pool: Base token transfer failed"
-        );
-        _mint(msg.sender, baseTokenIn);
-
-        _update(getBaseTokenReserves(), getFYTokenReserves(), 0, 0);
-
-        emit Liquidity(maturity, msg.sender, msg.sender, -(baseTokenIn.i256()), 0, baseTokenIn.i256());
-
-        return baseTokenIn;
-    }
-
     /// @dev Set the k, g1 or g2 parameters
     function setParameter(bytes32 parameter, int128 value) public onlyOwner {
         if (parameter == "k") k1 = k2 = value;
@@ -144,6 +118,35 @@ contract Pool is IPool, ERC20Permit, Ownable {
         return g2;
     }
 
+    /// @dev Updates the stored reserves to match the actual reserve balances.
+    function sync() external {
+        _update(getBaseTokenReserves(), getFYTokenReserves(), storedBaseTokenReserve, storedFYTokenReserve);
+    }
+
+    /// @dev Returns the stored reserve balances & last updated timestamp.
+    /// @return Stored base token reserves.
+    /// @return Stored virtual FY token reserves.
+    /// @return Timestamp that reserves were last stored.
+    function getStoredReserves() public view returns (uint112, uint112, uint32) {
+        return (storedBaseTokenReserve, storedFYTokenReserve, blockTimestampLast);
+    }
+
+    /// @dev Returns the "virtual" fyToken reserves
+    function getFYTokenReserves()
+        public view override
+        returns(uint112)
+    {
+        return (fyToken.balanceOf(address(this)) + totalSupply()).u112();
+    }
+
+    /// @dev Returns the baseToken reserves
+    function getBaseTokenReserves()
+        public view override
+        returns(uint112)
+    {
+        return baseToken.balanceOf(address(this)).u112();
+    }
+
     /// @dev Update reserves and, on the first call per block, ratio accumulators
     function _update(uint128 baseBalance, uint128 fyBalance, uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) private {
         uint32 blockTimestamp = uint32(block.timestamp);
@@ -156,6 +159,32 @@ contract Pool is IPool, ERC20Permit, Ownable {
         storedFYTokenReserve = fyBalance.u112();
         blockTimestampLast = blockTimestamp;
         emit Sync(storedBaseTokenReserve, storedFYTokenReserve, cumulativeReserveRatio);
+    }
+
+    /// @dev Mint initial liquidity tokens.
+    /// The liquidity provider needs to have called `baseToken.approve`
+    /// @param baseTokenIn The initial baseToken liquidity to provide.
+    function init(uint256 baseTokenIn)
+        internal
+        beforeMaturity
+        returns (uint256)
+    {
+        require(
+            totalSupply() == 0,
+            "Pool: Already initialized"
+        );
+        // no fyToken transferred, because initial fyToken deposit is entirely virtual
+        require(
+            baseToken.transferFrom(msg.sender, address(this), baseTokenIn),
+            "Pool: Base token transfer failed"
+        );
+        _mint(msg.sender, baseTokenIn);
+
+        _update(getBaseTokenReserves(), getFYTokenReserves(), 0, 0);
+
+        emit Liquidity(maturity, msg.sender, msg.sender, -(baseTokenIn.i256()), 0, baseTokenIn.i256());
+
+        return baseTokenIn;
     }
 
     /// @dev Mint liquidity tokens in exchange for adding baseToken and fyToken
@@ -635,34 +664,5 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         return baseTokenIn;
-    }
-
-    /// @dev Updates the stored reserves to match the actual reserve balances.
-    function sync() external {
-        _update(getBaseTokenReserves(), getFYTokenReserves(), storedBaseTokenReserve, storedFYTokenReserve);
-    }
-
-    /// @dev Returns the stored reserve balances & last updated timestamp.
-    /// @return Stored base token reserves.
-    /// @return Stored virtual FY token reserves.
-    /// @return Timestamp that reserves were last stored.
-    function getStoredReserves() public view returns (uint112, uint112, uint32) {
-        return (storedBaseTokenReserve, storedFYTokenReserve, blockTimestampLast);
-    }
-
-    /// @dev Returns the "virtual" fyToken reserves
-    function getFYTokenReserves()
-        public view override
-        returns(uint112)
-    {
-        return (fyToken.balanceOf(address(this)) + totalSupply()).u112();
-    }
-
-    /// @dev Returns the baseToken reserves
-    function getBaseTokenReserves()
-        public view override
-        returns(uint112)
-    {
-        return baseToken.balanceOf(address(this)).u112();
     }
 }

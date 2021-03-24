@@ -121,6 +121,8 @@ describe('Pool - trade', async function () {
 
     almostEqual(baseOut, expectedBaseOut, fyTokenIn.div(1000000))
     almostEqual(baseOutPreview, expectedBaseOut, fyTokenIn.div(1000000))
+    expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
+    expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
   })
 
   it('buys base', async () => {
@@ -152,6 +154,8 @@ describe('Pool - trade', async function () {
 
     almostEqual(fyTokenIn, expectedFYTokenIn, baseOut.div(1000000))
     almostEqual(fyTokenInPreview, expectedFYTokenIn, baseOut.div(1000000))
+    expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
+    expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
   })
 
   describe('with extra fyToken reserves', () => {
@@ -192,6 +196,8 @@ describe('Pool - trade', async function () {
 
       almostEqual(fyTokenOut, expectedFYTokenOut, baseIn.div(1000000))
       almostEqual(fyTokenOutPreview, expectedFYTokenOut, baseIn.div(1000000))
+      expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
+      expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
     })
 
     it('buys fyToken', async () => {
@@ -234,6 +240,8 @@ describe('Pool - trade', async function () {
 
       almostEqual(baseIn, expectedBaseIn, baseIn.div(1000000))
       almostEqual(baseInPreview, expectedBaseIn, baseIn.div(1000000))
+      expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
+      expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
     })
 
     describe('once mature', () => {
