@@ -155,12 +155,12 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
     /// @dev Retrieve any base okens not accounted for in the stored reserves
     function retrieveBaseToken(address to)
-        external
-        returns(uint128 surplus)
+        external override
+        returns(uint128 retrieved)
     {
-        surplus = getBaseTokenReserves() - storedBaseTokenReserve; // TODO: Consider adding a require for UX
+        retrieved = getBaseTokenReserves() - storedBaseTokenReserve; // TODO: Consider adding a require for UX
         require(
-            baseToken.transfer(to, surplus),
+            baseToken.transfer(to, retrieved),
             "Pool: Base transfer failed"
         );
         // Now the current reserves match the stored reserves, so no need to update the TWAR
@@ -168,12 +168,12 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
     /// @dev Retrieve any fyTokens not accounted for in the stored reserves
     function retrieveFYToken(address to)
-        external
-        returns(uint128 surplus)
+        external override
+        returns(uint128 retrieved)
     {
-        surplus = getFYTokenReserves() - storedFYTokenReserve; // TODO: Consider adding a require for UX
+        retrieved = getFYTokenReserves() - storedFYTokenReserve; // TODO: Consider adding a require for UX
         require(
-            fyToken.transfer(to, surplus),
+            fyToken.transfer(to, retrieved),
             "Pool: FYToken transfer failed"
         );
         // Now the current reserves match the stored reserves, so no need to update the TWAR
