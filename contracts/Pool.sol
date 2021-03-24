@@ -81,7 +81,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
         fyToken = _fyToken;
         baseToken = IERC20(IPoolFactory(msg.sender).nextToken());
 
-        maturity = _fyToken.maturity();
+        uint256 _maturity = _fyToken.maturity();
+        require (_maturity <= type(uint32).max, "Pool: Maturity too far in the future");
+        maturity = uint32(_maturity);
     }
 
     /// @dev Trading can only be done before maturity
