@@ -158,7 +158,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external override
         returns(uint128 retrieved)
     {
-        retrieved = getBaseTokenReserves() - storedBaseTokenReserve; // TODO: Consider adding a require for UX
+        retrieved = getBaseTokenReserves() - storedBaseTokenReserve; // Stored reserves can never be above actual reserves
         require(
             baseToken.transfer(to, retrieved),
             "Pool: Base transfer failed"
@@ -171,7 +171,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external override
         returns(uint128 retrieved)
     {
-        retrieved = getFYTokenReserves() - storedFYTokenReserve; // TODO: Consider adding a require for UX
+        retrieved = getFYTokenReserves() - storedFYTokenReserve; // Stored reserves can never be above actual reserves
         require(
             fyToken.transfer(to, retrieved),
             "Pool: FYToken transfer failed"
