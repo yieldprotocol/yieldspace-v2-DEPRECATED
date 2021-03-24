@@ -29,7 +29,7 @@ describe('Pool - trade', async function () {
 
   // These values impact the pool results
   const baseTokens = BigNumber.from('1000000000000000000000000')
-  const fyTokenTokens = baseTokens
+  const fyTokens = baseTokens
   const initialBase = baseTokens
   const OVERRIDES = { gasLimit: 1_000_000 }
 
@@ -142,7 +142,8 @@ describe('Pool - trade', async function () {
   it('buys base', async () => {
     const baseReserves = await pool.getBaseTokenReserves()
     const fyTokenReserves = await pool.getFYTokenReserves()
-    const baseOut = WAD.mul(10) // TODO: This runs out of gas with WAD, why?
+    const fyTokenStoredBefore = (await pool.getStoredReserves())[1]
+    const baseOut = WAD
 
     const timeTillMaturity = maturity1.sub(await currentTimestamp())
 
@@ -154,34 +155,73 @@ describe('Pool - trade', async function () {
     const fyTokenInPreview = await poolFromUser1.buyBaseTokenPreview(baseOut) // Test preview since we are here
     const expectedFYTokenIn = buyBase(baseReserves, fyTokenReserves, baseOut, timeTillMaturity)
 
-    await fyToken1FromOwner.mint(user1, fyTokenTokens)
+    await fyToken1FromOwner.mint(user1, fyTokens)
 
-    await fyToken1FromUser1.approve(pool.address, fyTokenTokens)
+    await fyToken1FromUser1.transfer(pool.address, fyTokens)
     await expect(poolFromUser1.buyBaseToken(user2, baseOut, OVERRIDES))
       .to.emit(pool, 'Trade')
-      .withArgs(maturity1, user1, user2, baseOut, fyTokenTokens.sub(await fyToken1.balanceOf(user1)).mul(-1))
+      .withArgs(maturity1, user1, user2, baseOut, (await pool.getStoredReserves())[1].sub(fyTokenStoredBefore).mul(-1))
 
-    const fyTokenIn = fyTokenTokens.sub(await fyToken1.balanceOf(user1))
+    const fyTokenStoredCurrent = (await pool.getStoredReserves())[1]
+    const fyTokenIn = fyTokenStoredCurrent.sub(fyTokenStoredBefore)
+    const fyTokenChange = (await pool.getFYTokenReserves()).sub(fyTokenStoredCurrent)
+
     expect(await base.balanceOf(user2)).to.equal(baseOut, 'Receiver account should have 1 base token')
 
     almostEqual(fyTokenIn, expectedFYTokenIn, baseOut.div(1000000))
+
     almostEqual(fyTokenInPreview, expectedFYTokenIn, baseOut.div(1000000))
     expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
-    expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
+    expect((await pool.getStoredReserves())[1].add(fyTokenChange)).to.equal(await pool.getFYTokenReserves())
+  })
+
+  it('buys base and retrieves change', async () => {
+    const baseReserves = await pool.getBaseTokenReserves()
+    const fyTokenReserves = await pool.getFYTokenReserves()
+    const timeTillMaturity = maturity1.sub(await currentTimestamp())
+
+    const baseOut = WAD
+
+    const expectedFYTokenIn = buyBase(baseReserves, fyTokenReserves, baseOut, timeTillMaturity)
+
+    await fyToken1FromOwner.mint(user1, fyTokens)
+
+    await fyToken1FromUser1.transfer(pool.address, fyTokens)
+    await poolFromUser1.buyBaseToken(user2, baseOut, OVERRIDES)
+
+    const fyTokenStoredCurrent = (await pool.getStoredReserves())[1]
+    const fyTokenChange = (await pool.getFYTokenReserves()).sub(fyTokenStoredCurrent)
+
+    expect(await base.balanceOf(user2)).to.equal(baseOut, 'Receiver account should have 1 base token')
+    almostEqual(fyTokenChange, fyTokens.sub(expectedFYTokenIn), baseOut.div(1000000))
+
+    expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
+    expect((await pool.getStoredReserves())[1].add(fyTokenChange)).to.equal(await pool.getFYTokenReserves())
+
+    await expect(pool.retrieveFYToken(user1)).to.emit(fyToken1, 'Transfer').withArgs(pool.address, user1, fyTokenChange)
+
+    expect(await fyToken1FromUser1.balanceOf(user1)).to.equal(fyTokenChange)
   })
 
   it('donates fyToken and buys base', async () => {
+    const baseReserves = await pool.getBaseTokenReserves()
+    const fyTokenReserves = await pool.getFYTokenReserves()
+    const fyTokenStoredBefore = (await pool.getStoredReserves())[1]
+
     const baseOut = WAD
     const fyTokenDonation = WAD
 
     await fyToken1FromOwner.mint(pool.address, fyTokenDonation)
-    await fyToken1FromOwner.mint(user1, fyTokenTokens)
+    await fyToken1FromOwner.mint(user1, fyTokens)
 
-    await fyToken1FromUser1.approve(pool.address, fyTokenTokens)
+    await fyToken1FromUser1.transfer(pool.address, fyTokens)
     await poolFromUser1.buyBaseToken(user2, baseOut, OVERRIDES)
 
-    expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
-    expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
+    const fyTokenStoredCurrent = (await pool.getStoredReserves())[1]
+    const fyTokenIn = fyTokenStoredCurrent.sub(fyTokenStoredBefore)
+
+    expect((await pool.getStoredReserves())[0]).to.equal(baseReserves.sub(baseOut))
+    expect((await pool.getStoredReserves())[1]).to.equal(fyTokenReserves.add(fyTokenIn))
   })
 
   describe('with extra fyToken reserves', () => {
@@ -241,6 +281,7 @@ describe('Pool - trade', async function () {
     it('buys fyToken', async () => {
       const baseReserves = await poolFromOwner.getBaseTokenReserves()
       const fyTokenReserves = await poolFromOwner.getFYTokenReserves()
+      const baseTokenStoredBefore = (await pool.getStoredReserves())[0]
       const fyTokenOut = WAD
 
       const timeTillMaturity = maturity1.sub(await currentTimestamp())
@@ -254,44 +295,82 @@ describe('Pool - trade', async function () {
       const expectedBaseIn = buyFYToken(baseReserves, fyTokenReserves, fyTokenOut, timeTillMaturity)
 
       await baseFromOwner.mint(user1, baseTokens)
-      const baseBalanceBefore = await baseFromOwner.balanceOf(user1)
 
-      await baseFromUser1.approve(poolFromUser1.address, baseTokens)
+      await baseFromUser1.transfer(poolFromUser1.address, baseTokens)
       await expect(poolFromUser1.buyFYToken(user2, fyTokenOut, OVERRIDES))
         .to.emit(pool, 'Trade')
         .withArgs(
           maturity1,
           user1,
           user2,
-          baseBalanceBefore.sub(await baseFromOwner.balanceOf(user1)).mul(-1),
+          (await pool.getStoredReserves())[0].sub(baseTokenStoredBefore).mul(-1),
           fyTokenOut
         )
 
-      const baseIn = baseBalanceBefore.sub(await baseFromOwner.balanceOf(user1))
+      const baseTokenStoredCurrent = (await pool.getStoredReserves())[0]
+      const baseTokenIn = baseTokenStoredCurrent.sub(baseTokenStoredBefore)
+      const baseTokenChange = (await pool.getBaseTokenReserves()).sub(baseTokenStoredCurrent)
 
       expect(await fyToken1FromOwner.balanceOf(user2)).to.equal(
         fyTokenOut,
         "'User2' wallet should have 1 fyToken token"
       )
 
-      almostEqual(baseIn, expectedBaseIn, baseIn.div(1000000))
-      almostEqual(baseInPreview, expectedBaseIn, baseIn.div(1000000))
-      expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
+      almostEqual(baseTokenIn, expectedBaseIn, baseTokenIn.div(1000000))
+      almostEqual(baseInPreview, expectedBaseIn, baseTokenIn.div(1000000))
+      expect((await pool.getStoredReserves())[0].add(baseTokenChange)).to.equal(await pool.getBaseTokenReserves())
       expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
     })
 
+    it('buys fyToken and retrieves change', async () => {
+      const baseReserves = await poolFromOwner.getBaseTokenReserves()
+      const fyTokenReserves = await poolFromOwner.getFYTokenReserves()
+      const baseTokenStoredBefore = (await pool.getStoredReserves())[0]
+      const fyTokenOut = WAD
+      const timeTillMaturity = maturity1.sub(await currentTimestamp())
+
+      const expectedBaseIn = buyFYToken(baseReserves, fyTokenReserves, fyTokenOut, timeTillMaturity)
+
+      await baseFromOwner.mint(user1, baseTokens)
+
+      await baseFromUser1.transfer(poolFromUser1.address, baseTokens)
+      await poolFromUser1.buyFYToken(user2, fyTokenOut, OVERRIDES)
+
+      const baseTokenStoredCurrent = (await pool.getStoredReserves())[0]
+      const baseTokenIn = baseTokenStoredCurrent.sub(baseTokenStoredBefore)
+      const baseTokenChange = (await pool.getBaseTokenReserves()).sub(baseTokenStoredCurrent)
+
+      almostEqual(baseTokenIn, expectedBaseIn, baseTokenIn.div(1000000))
+
+      expect((await pool.getStoredReserves())[0].add(baseTokenChange)).to.equal(await pool.getBaseTokenReserves())
+      expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
+
+      await expect(pool.retrieveBaseToken(user1))
+        .to.emit(base, 'Transfer')
+        .withArgs(pool.address, user1, baseTokenChange)
+
+      expect(await baseFromUser1.balanceOf(user1)).to.equal(baseTokenChange)
+    })
+
     it('donates base and buys fyToken', async () => {
+      const baseReserves = await pool.getBaseTokenReserves()
+      const fyTokenReserves = await pool.getFYTokenReserves()
+      const baseTokenStoredBefore = (await pool.getStoredReserves())[0]
+
       const fyTokenOut = WAD
       const baseDonation = WAD
 
       await baseFromOwner.mint(pool.address, baseDonation)
       await baseFromOwner.mint(user1, baseTokens)
 
-      await baseFromUser1.approve(poolFromUser1.address, baseTokens)
+      await baseFromUser1.transfer(pool.address, baseTokens)
       await poolFromUser1.buyFYToken(user2, fyTokenOut, OVERRIDES)
 
-      expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
-      expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
+      const baseTokenStoredCurrent = (await pool.getStoredReserves())[0]
+      const baseTokenIn = baseTokenStoredCurrent.sub(baseTokenStoredBefore)
+
+      expect((await pool.getStoredReserves())[0]).to.equal(baseReserves.add(baseTokenIn))
+      expect((await pool.getStoredReserves())[1]).to.equal(fyTokenReserves.sub(fyTokenOut))
     })
 
     describe('once mature', () => {
