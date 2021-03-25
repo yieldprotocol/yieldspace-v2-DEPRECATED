@@ -114,6 +114,9 @@ describe('Pool - mint', async function () {
       initialBase,
       'User2 should have ' + initialBase + ' liquidity tokens'
     )
+
+    expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
+    expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
   })
 
   describe('with initial liquidity', () => {
@@ -161,6 +164,8 @@ describe('Pool - mint', async function () {
 
       almostEqual(minted, expectedMinted, baseIn.div(10000))
       almostEqual(fyTokenIn, expectedFYTokenIn, baseIn.div(10000))
+      expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
+      expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
     })
 
     it('mints liquidity tokens with base only', async () => {
@@ -204,6 +209,8 @@ describe('Pool - mint', async function () {
 
       almostEqual(minted, expectedMinted, minted.div(10000))
       almostEqual(baseIn, expectedBaseIn, baseIn.div(10000))
+      expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
+      expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
     })
 
     it('burns liquidity tokens', async () => {
@@ -233,6 +240,8 @@ describe('Pool - mint', async function () {
 
       almostEqual(baseOut, expectedBaseOut, baseOut.div(10000))
       almostEqual(fyTokenOut, expectedFYTokenOut, fyTokenOut.div(10000))
+      expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
+      expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
     })
 
     it('burns liquidity tokens to Base', async () => {
@@ -270,6 +279,8 @@ describe('Pool - mint', async function () {
       const baseOut = baseReserves.sub(await base.balanceOf(pool.address))
 
       almostEqual(baseOut, expectedBaseOut, baseOut.div(10000))
+      expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
+      expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
     })
   })
 })

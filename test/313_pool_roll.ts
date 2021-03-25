@@ -97,5 +97,9 @@ describe('Pool - roll', async function () {
     await pool2.sellBaseToken(owner)
 
     almostEqual((await fyToken2.balanceOf(owner)).sub(fyToken2Before), fyTokenOut, fyTokenIn.div(1000000))
+    expect((await pool1.getStoredReserves())[0]).to.equal(await pool1.getBaseTokenReserves())
+    expect((await pool1.getStoredReserves())[1]).to.equal(await pool1.getFYTokenReserves())
+    expect((await pool2.getStoredReserves())[0]).to.equal(await pool2.getBaseTokenReserves())
+    expect((await pool2.getStoredReserves())[1]).to.equal(await pool2.getFYTokenReserves())
   })
 })
