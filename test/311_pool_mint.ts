@@ -106,13 +106,13 @@ describe('Pool - mint', async function () {
     await base.mint(user1, initialBase)
 
     await baseFromUser1.approve(pool.address, initialBase)
-    await expect(poolFromUser1.mint(user1, initialBase))
+    await expect(poolFromUser1.mint(user2, initialBase))
       .to.emit(pool, 'Liquidity')
-      .withArgs(maturity1, user1, user1, initialBase.mul(-1), 0, initialBase)
+      .withArgs(maturity1, user1, user2, initialBase.mul(-1), 0, initialBase)
 
-    expect(await poolFromUser1.balanceOf(user1)).to.equal(
+    expect(await poolFromUser1.balanceOf(user2)).to.equal(
       initialBase,
-      'User1 should have ' + initialBase + ' liquidity tokens'
+      'User2 should have ' + initialBase + ' liquidity tokens'
     )
 
     expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
