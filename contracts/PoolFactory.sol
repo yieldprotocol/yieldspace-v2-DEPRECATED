@@ -2,6 +2,7 @@
 pragma solidity ^0.8.1;
 
 import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
+import "./IPoolRouter.sol";
 import "./Pool.sol";
 
 
@@ -46,8 +47,15 @@ contract PoolFactory is IPoolFactory {
   /// makes client-side address calculation easier
   bytes32 public constant override POOL_BYTECODE_HASH = keccak256(type(Pool).creationCode);
 
+  /// The Pool Router allows batching transactions for pools created by this factory
+  IPoolRouter public immutable poolRouter;
+
   address private _nextBaseToken;
   address private _nextFYToken;
+
+  constructor (IPoolRouter poolRouter_) {
+    poolRouter = poolRouter_;
+  }
 
   /// @dev Calculate the deterministic addreess of a pool, based on the base token & fy token.
   /// @param baseToken Address of the base token (such as Base).
@@ -96,7 +104,8 @@ contract PoolFactory is IPoolFactory {
     _nextFYToken = address(0);
 
     pool.transferOwnership(msg.sender);
-
+    poolRouter.setPool(baseToken, fyToken, pool);
+    
     emit PoolCreated(baseToken, fyToken, address(pool));
 
     return address(pool);
