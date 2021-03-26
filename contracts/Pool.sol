@@ -157,21 +157,21 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
     /// @dev Retrieve any base okens not accounted for in the stored reserves
     function retrieveBaseToken(address to)
-        external
-        returns(uint128 surplus)
+        external override
+        returns(uint128 retrieved)
     {
-        surplus = getBaseTokenReserves() - storedBaseTokenReserve; // TODO: Consider adding a require for UX
-        baseToken.safeTransfer(to, surplus);
+        retrieved = getBaseTokenReserves() - storedBaseTokenReserve; // Stored reserves can never be above actual reserves
+        baseToken.safeTransfer(to, retrieved);
         // Now the current reserves match the stored reserves, so no need to update the TWAR
     }
 
     /// @dev Retrieve any fyTokens not accounted for in the stored reserves
     function retrieveFYToken(address to)
-        external
-        returns(uint128 surplus)
+        external override
+        returns(uint128 retrieved)
     {
-        surplus = getFYTokenReserves() - storedFYTokenReserve; // TODO: Consider adding a require for UX
-        IERC20(address(fyToken)).safeTransfer(to, surplus);
+        retrieved = getFYTokenReserves() - storedFYTokenReserve; // Stored reserves can never be above actual reserves
+        IERC20(address(fyToken)).safeTransfer(to, retrieved);
         // Now the current reserves match the stored reserves, so no need to update the TWAR
     }
 
@@ -393,8 +393,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
     /// @dev Sell baseToken for fyToken.
     /// The trader needs to have transferred the amount of base to sell to the pool before in the same transaction.
     /// @param to Wallet receiving the fyToken being bought
+    /// @param min Minimm accepted amount of fyToken
     /// @return Amount of fyToken that will be deposited on `to` wallet
-    function sellBaseToken(address to)
+    function sellBaseToken(address to, uint128 min)
         external override
         returns(uint128)
     {
@@ -408,6 +409,12 @@ contract Pool is IPool, ERC20Permit, Ownable {
             baseTokenIn,
             _storedBaseTokenReserve,
             _fyTokenReserves
+        );
+
+        // Slippage check
+        require(
+            fyTokenOut >= min,
+            "Pool: Not enough fyToken obtained"
         );
 
         // Transfer assets
@@ -469,8 +476,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
     /// The trader needs to have called `fyToken.approve`
     /// @param to Wallet receiving the baseToken being bought
     /// @param tokenOut Amount of baseToken being bought that will be deposited in `to` wallet
+    /// @param max Maximum amount of fyToken that will be paid for the trade
     /// @return Amount of fyToken that will be taken from caller
-    function buyBaseToken(address to, uint128 tokenOut)
+    function buyBaseToken(address to, uint128 tokenOut, uint128 max)
         external override
         returns(uint128)
     {
@@ -486,6 +494,12 @@ contract Pool is IPool, ERC20Permit, Ownable {
         require(
             fyTokenReserves - _storedFYTokenReserve > fyTokenIn,
             "Pool: Not enought fyToken in"
+        );
+
+        // Slippage check
+        require(
+            fyTokenIn <= max,
+            "Pool: Too much fyToken in"
         );
 
         // Transfer assets
@@ -539,8 +553,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
     /// @dev Sell fyToken for baseToken
     /// The trader needs to have transferred the amount of fyToken to sell to the pool before in the same transaction.
     /// @param to Wallet receiving the baseToken being bought
+    /// @param min Minimm accepted amount of baseToken
     /// @return Amount of baseToken that will be deposited on `to` wallet
-    function sellFYToken(address to)
+    function sellFYToken(address to, uint128 min)
         external override
         returns(uint128)
     {
@@ -549,14 +564,20 @@ contract Pool is IPool, ERC20Permit, Ownable {
             (storedBaseTokenReserve, storedFYTokenReserve);
         uint112 _fyTokenReserves = getFYTokenReserves();
         uint128 fyTokenIn = _fyTokenReserves - _storedFYTokenReserve;
-        uint128 tokenOut = _sellFYTokenPreview(
+        uint128 baseTokenOut = _sellFYTokenPreview(
             fyTokenIn,
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
 
+        // Slippage check
+        require(
+            baseTokenOut >= min,
+            "Pool: Not enough baseToken obtained"
+        );
+
         // Transfer assets
-        baseToken.safeTransfer(to, tokenOut);
+        baseToken.safeTransfer(to, baseTokenOut);
 
         // Update TWAR
         _update(
@@ -566,8 +587,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
             _storedFYTokenReserve
         );
 
-        emit Trade(maturity, msg.sender, to, tokenOut.i128(), -(fyTokenIn.i128()));
-        return tokenOut;
+        emit Trade(maturity, msg.sender, to, baseTokenOut.i128(), -(fyTokenIn.i128()));
+        return baseTokenOut;
     }
 
     /// @dev Returns how much baseToken would be obtained by selling `fyTokenIn` fyToken.
@@ -607,8 +628,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
     /// The trader needs to have called `baseToken.approve`
     /// @param to Wallet receiving the fyToken being bought
     /// @param fyTokenOut Amount of fyToken being bought that will be deposited in `to` wallet
+    /// @param max Maximum amount of base token that will be paid for the trade
     /// @return Amount of baseToken that will be taken from caller's wallet
-    function buyFYToken(address to, uint128 fyTokenOut)
+    function buyFYToken(address to, uint128 fyTokenOut, uint128 max)
         external override
         returns(uint128)
     {
@@ -624,6 +646,12 @@ contract Pool is IPool, ERC20Permit, Ownable {
         require(
             baseTokenReserves - _storedBaseTokenReserve > baseTokenIn,
             "Pool: Not enought base token in"
+        );
+
+        // Slippage check
+        require(
+            baseTokenIn <= max,
+            "Pool: Too much base token in"
         );
 
         // Transfer assets
