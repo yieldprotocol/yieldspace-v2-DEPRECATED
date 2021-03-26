@@ -92,9 +92,9 @@ describe('Pool - roll', async function () {
     const fyToken2Before = await fyToken2.balanceOf(owner)
     const baseTokenPool2Before = await base.balanceOf(pool2.address)
     await fyToken1.transfer(pool1.address, fyTokenIn)
-    await pool1.sellFYToken(pool2.address)
+    await pool1.sellFYToken(pool2.address, 0)
     const exactBaseIn = (await base.balanceOf(pool2.address)).sub(baseTokenPool2Before)
-    await pool2.sellBaseToken(owner)
+    await pool2.sellBaseToken(owner, 0)
 
     almostEqual((await fyToken2.balanceOf(owner)).sub(fyToken2Before), fyTokenOut, fyTokenIn.div(1000000))
     expect((await pool1.getStoredReserves())[0]).to.equal(await pool1.getBaseTokenReserves())

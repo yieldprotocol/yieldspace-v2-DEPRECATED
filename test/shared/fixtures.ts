@@ -99,7 +99,7 @@ export class YieldSpaceEnvironment {
         await fyToken.mint(ownerAdd, initialFYToken)
         await fyToken.approve(pool.address, initialFYToken)
         await fyToken.transfer(pool.address, initialFYToken)
-        await pool.sellFYToken(ownerAdd)
+        await pool.sellFYToken(ownerAdd, 0)
       }
     }
 
