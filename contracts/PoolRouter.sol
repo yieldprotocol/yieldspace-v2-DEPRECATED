@@ -11,6 +11,7 @@ import "./helpers/Batchable.sol";
 import "./helpers/Ownable.sol";
 import "./helpers/RevertMsgExtractor.sol";
 import "./helpers/TransferFromHelper.sol";
+import "./IWETH9.sol";
 
 
 contract PoolRouter is IPoolRouter, Ownable, Batchable {
@@ -29,12 +30,16 @@ contract PoolRouter is IPoolRouter, Ownable, Batchable {
         emit PoolRegistered(base, fyToken, address(pool));
     }
 
-    function _findPool(address base, address fyToken) internal returns (IPool pool) {
+    function _findPool(address base, address fyToken)
+        internal view returns (IPool pool)
+    {
         pool = pools[base][fyToken];
         require (pool != IPool(address(0)), "Pool not found");
     }
 
-    function _findToken(address base, address fyToken, PoolTokenTypes.TokenType tokenType) internal returns (IPool pool, address token) {
+    function _findToken(address base, address fyToken, PoolTokenTypes.TokenType tokenType)
+        internal view returns (IPool pool, address token)
+    {
         pool = _findPool(base, fyToken);
         if (tokenType == PoolTokenTypes.TokenType.BASE)
             token = address(pool.baseToken());
@@ -66,14 +71,53 @@ contract PoolRouter is IPoolRouter, Ownable, Batchable {
     // ---- Permit management ----
 
     /// @dev Execute an ERC2612 permit for the selected asset or fyToken
-    function forwardPermit(address base, address fyToken, PoolTokenTypes.TokenType tokenType, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s) public {
+    function forwardPermit(address base, address fyToken, PoolTokenTypes.TokenType tokenType, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
+        public
+    {
         (, address token) = _findToken(base, fyToken, tokenType);
         IERC2612(token).permit(msg.sender, spender, amount, deadline, v, r, s);
     }
 
     /// @dev Execute a Dai-style permit for the selected asset or fyToken
-    function forwardDaiPermit(address base, address fyToken, PoolTokenTypes.TokenType tokenType, address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s) public {
+    function forwardDaiPermit(address base, address fyToken, PoolTokenTypes.TokenType tokenType, address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s)
+        public
+    {
         (, address token) = _findToken(base, fyToken, tokenType);
         DaiAbstract(token).permit(msg.sender, spender, nonce, deadline, allowed, v, r, s);
+    }
+
+    // ---- Ether management ----
+
+    /// @dev The WETH9 contract will send ether to the PoolRouter on `weth.withdraw` using this function.
+    receive() external payable { }
+
+    /// @dev Accept Ether, wrap it and forward it to the WethJoin
+    /// This function should be called first in a multicall, and the Join should keep track of stored reserves
+    /// Passing the id for a join that doesn't link to a contract implemnting IWETH9 will fail
+    function joinEther(address base, address fyToken)
+        public payable
+        returns (uint256 ethTransferred)
+    {
+        ethTransferred = address(this).balance;
+
+        IPool pool = _findPool(base, fyToken);
+        IWETH9 weth = IWETH9(address(pool.baseToken()));
+
+        weth.deposit{ value: ethTransferred }();   // TODO: Test gas savings using WETH10 `depositTo`
+        weth.transfer(address(pool), ethTransferred);
+    }
+
+    /// @dev Unwrap Wrapped Ether held by this Ladle, and send the Ether
+    /// This function should be called last in a multicall, and the Ladle should have no reason to keep an WETH balance
+    function exitEther(address base, address fyToken, address payable to)
+        public payable
+        returns (uint256 ethTransferred)
+    {
+        IPool pool = _findPool(base, fyToken);
+        IWETH9 weth = IWETH9(address(pool.baseToken()));
+        ethTransferred = weth.balanceOf(address(this));
+
+        weth.withdraw(ethTransferred);   // TODO: Test gas savings using WETH10 `withdrawTo`
+        to.transfer(ethTransferred); /// TODO: Consider reentrancy and safe transfers
     }
 }
