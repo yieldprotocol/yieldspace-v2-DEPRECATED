@@ -90,7 +90,7 @@ describe('Pool - mint', async function () {
   it('adds initial liquidity', async () => {
     await base.mint(pool.address, initialBase)
 
-    await expect(poolFromUser1.mint(user2))
+    await expect(poolFromUser1.mint(user2, 0))
       .to.emit(pool, 'Liquidity')
       .withArgs(maturity, user1, user2, initialBase.mul(-1), 0, initialBase)
 
@@ -116,7 +116,7 @@ describe('Pool - mint', async function () {
   describe('with initial liquidity', () => {
     beforeEach(async () => {
       await base.mint(pool.address, initialBase)
-      await poolFromUser1.mint(user1)
+      await poolFromUser1.mint(user1, 0)
 
       const additionalFYTokenReserves = initialBase.div(9)
       // Skew the reserves without using trading functions
@@ -139,7 +139,7 @@ describe('Pool - mint', async function () {
 
       await base.connect(user1Acc).transfer(pool.address, WAD)
       await fyToken.connect(user1Acc).transfer(pool.address, expectedFYTokenIn)
-      await expect(poolFromUser1.mint(user2))
+      await expect(poolFromUser1.mint(user2, 0))
         .to.emit(pool, 'Liquidity')
         .withArgs(maturity, user1, user2, WAD.mul(-1), expectedFYTokenIn.mul(-1), expectedMinted)
 
@@ -176,7 +176,7 @@ describe('Pool - mint', async function () {
 
       await base.mint(pool.address, expectedBaseIn)
 
-      await expect(poolFromUser1.mintWithBaseToken(user2, fyTokenToBuy, OVERRIDES))
+      await expect(poolFromUser1.mintWithBaseToken(user2, fyTokenToBuy, 0, OVERRIDES))
         .to.emit(pool, 'Liquidity')
         .withArgs(
           maturity,
@@ -206,7 +206,7 @@ describe('Pool - mint', async function () {
       const [expectedBaseOut, expectedFYTokenOut] = burn(baseReserves, fyTokenReserves, supply, lpTokensIn)
 
       await poolFromUser1.transfer(pool.address, lpTokensIn)
-      await expect(poolFromUser1.burn(user2))
+      await expect(poolFromUser1.burn(user2, 0, 0))
         .to.emit(pool, 'Liquidity')
         .withArgs(
           maturity,
@@ -244,7 +244,7 @@ describe('Pool - mint', async function () {
       )
 
       await poolFromUser1.transfer(pool.address, lpTokensIn)
-      await expect(poolFromUser1.burnForBaseToken(user2, OVERRIDES))
+      await expect(poolFromUser1.burnForBaseToken(user2, 0, 0, OVERRIDES))
         .to.emit(pool, 'Liquidity')
         .withArgs(maturity, user1, user2, baseReserves.sub(await base.balanceOf(pool.address)), 0, lpTokensIn.mul(-1))
 
