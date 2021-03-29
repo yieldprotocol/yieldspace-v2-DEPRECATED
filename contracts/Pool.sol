@@ -275,15 +275,15 @@ contract Pool is IPool, ERC20Permit, Ownable {
     }
 
     /// @dev Burn liquidity tokens in exchange for baseToken and fyToken.
-    /// The liquidity provider needs to have called `pool.approve`.
+    /// The liquidity tokens need to be in this contract.
     /// @param to Wallet receiving the baseToken and fyToken.
-    /// @param tokensBurned Amount of liquidity tokens being burned.
-    /// @return The amount of reserve tokens returned (baseTokens, fyTokenTokens).
-    function burn(address to, uint256 tokensBurned)
+    /// @return The amount of reserve tokens burned and returned (tokensBurned, baseTokens, fyTokenTokens).
+    function burn(address to)
         external override
-        returns (uint256, uint256)
+        returns (uint256, uint256, uint256)
     {
         // Calculate trade
+        uint256 tokensBurned = _balanceOf[address(this)];
         uint256 supply = totalSupply();
         uint256 baseTokenReserves = baseToken.balanceOf(address(this));
         // use the actual reserves rather than the virtual reserves
@@ -292,7 +292,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         uint256 fyTokenOut = (tokensBurned * fyTokenReserves) / supply;
 
         // Transfer assets
-        _burn(msg.sender, tokensBurned);
+        _burn(address(this), tokensBurned);
         baseToken.safeTransfer(to, tokenOut);
         IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
 
@@ -309,31 +309,33 @@ contract Pool is IPool, ERC20Permit, Ownable {
         }
 
         emit Liquidity(maturity, msg.sender, to, tokenOut.i256(), fyTokenOut.i256(), -(tokensBurned.i256()));
-        return (tokenOut, fyTokenOut);
+        return (tokensBurned, tokenOut, fyTokenOut);
     }
 
     /// @dev Burn liquidity tokens in exchange for baseToken.
     /// The liquidity provider needs to have called `pool.approve`.
     /// @param to Wallet receiving the baseToken and fyToken.
-    /// @param tokensBurned Amount of liquidity tokens being burned.
     /// @return The amount of base tokens returned.
-    function burnForBaseToken(address to, uint256 tokensBurned)
-        external
-        returns (uint256)
+    function burnForBaseToken(address to)
+        external override
+        returns (uint256, uint256, uint256)
     {
         // Calculate trade
-        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
-            (storedBaseTokenReserve, storedFYTokenReserve);
+        uint256 tokensBurned = _balanceOf[address(this)];
         uint256 supply = totalSupply();
         uint256 fyTokenReserves = fyToken.balanceOf(address(this));             // use the actual reserves rather than the virtual reserves
         uint256 baseTokenReserves = baseToken.balanceOf(address(this));
         uint256 tokenOut = (tokensBurned * baseTokenReserves) / supply;
         uint256 fyTokenObtained = (tokensBurned * fyTokenReserves) / supply;
+
+        (uint112 realStoredBaseTokenReserve, uint112 virtualStoredFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
+
         {
             (int128 _k, int128 _g2) = (k2, g2);
             tokenOut += YieldMath.baseOutForFYTokenIn(                            // This is a virtual sell
-                _storedBaseTokenReserve - tokenOut.u128(),                // Real reserves, minus virtual burn
-                _storedFYTokenReserve - fyTokenObtained.u128(), // Virtual reserves, minus virtual burn
+                realStoredBaseTokenReserve - tokenOut.u128(),                // Real reserves, minus virtual burn
+                virtualStoredFYTokenReserve - fyTokenObtained.u128(), // Virtual reserves, minus virtual burn
                 fyTokenObtained.u128(),                          // Sell the virtual fyToken obtained
                 maturity - uint32(block.timestamp),             // This can't be called after maturity
                 _k,
@@ -342,19 +344,19 @@ contract Pool is IPool, ERC20Permit, Ownable {
         }
 
         // Transfer assets
-        _burn(msg.sender, tokensBurned); // TODO: Fix to check allowance
+        _burn(address(this), tokensBurned); // TODO: Fix to check allowance
         baseToken.safeTransfer(to, tokenOut);
 
         // Update TWAR
         _update(
             (baseTokenReserves - tokenOut).u128(),
             (fyTokenReserves + supply - tokensBurned).u128(),
-            _storedBaseTokenReserve,
-            _storedFYTokenReserve
+            realStoredBaseTokenReserve,
+            virtualStoredFYTokenReserve
         );
 
         emit Liquidity(maturity, msg.sender, to, tokenOut.i256(), 0, -(tokensBurned.i256()));
-        return tokenOut;
+        return (tokensBurned, tokenOut, 0);
     }
 
     // ---- Trading ----

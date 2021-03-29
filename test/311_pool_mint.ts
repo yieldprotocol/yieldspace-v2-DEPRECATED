@@ -203,8 +203,10 @@ describe('Pool - mint', async function () {
       const supply = await pool.totalSupply()
       const lpTokensIn = WAD
 
-      await poolFromUser1.approve(pool.address, lpTokensIn)
-      await expect(poolFromUser1.burn(user2, lpTokensIn))
+      const [expectedBaseOut, expectedFYTokenOut] = burn(baseReserves, fyTokenReserves, supply, lpTokensIn)
+
+      await poolFromUser1.transfer(pool.address, lpTokensIn)
+      await expect(poolFromUser1.burn(user2))
         .to.emit(pool, 'Liquidity')
         .withArgs(
           maturity,
@@ -215,7 +217,6 @@ describe('Pool - mint', async function () {
           lpTokensIn.mul(-1)
         )
 
-      const [expectedBaseOut, expectedFYTokenOut] = burn(baseReserves, fyTokenReserves, supply, lpTokensIn)
 
       const baseOut = baseReserves.sub(await base.balanceOf(pool.address))
       const fyTokenOut = fyTokenReserves.sub(await fyToken.balanceOf(pool.address))
@@ -231,21 +232,8 @@ describe('Pool - mint', async function () {
       const fyTokenReservesVirtual = await pool.getFYTokenReserves()
       const fyTokenReservesReal = await fyToken.balanceOf(pool.address)
       const supply = await pool.totalSupply()
-
       const timeTillMaturity = maturity.sub(await currentTimestamp())
-      const lpTokensIn = WAD.mul(2) // TODO: Why does it run out of gas with 1 WAD?
-
-      await poolFromUser1.approve(pool.address, lpTokensIn)
-      await expect(poolFromUser1.burnForBaseToken(user2, lpTokensIn, OVERRIDES))
-        .to.emit(pool, 'Liquidity')
-        .withArgs(
-          maturity,
-          user1,
-          user2,
-          baseReserves.sub(await base.balanceOf(pool.address)),
-          0,
-          lpTokensIn.mul(-1)
-        )
+      const lpTokensIn = WAD.mul(2)
 
       const expectedBaseOut = burnForBase(
         baseReserves,
@@ -255,6 +243,18 @@ describe('Pool - mint', async function () {
         lpTokensIn,
         timeTillMaturity
       )
+
+      await poolFromUser1.transfer(pool.address, lpTokensIn)
+      await expect(poolFromUser1.burnForBaseToken(user2, OVERRIDES))
+        .to.emit(pool, 'Liquidity')
+        .withArgs(
+          maturity,
+          user1,
+          user2,
+          baseReserves.sub(await base.balanceOf(pool.address)),
+          0,
+          lpTokensIn.mul(-1)
+        )
 
       const baseOut = baseReserves.sub(await base.balanceOf(pool.address))
 
