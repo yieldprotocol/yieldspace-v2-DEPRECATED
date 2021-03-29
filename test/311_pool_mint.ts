@@ -198,11 +198,12 @@ describe('Pool - mint', async function () {
       expect((await pool.getStoredReserves())[1]).to.equal(storedFYTokenReservesBefore.add(minted))
     })
 
-    it('doesn\'t mint beyond slippage', async () => {
+    it("doesn't mint beyond slippage", async () => {
       const fyTokenToBuy = WAD.div(1000)
       await base.mint(pool.address, WAD)
-      await expect(poolFromUser1.mintWithBaseToken(user2, fyTokenToBuy, MAX, OVERRIDES))
-        .to.be.revertedWith('Pool: Not enough tokens minted')
+      await expect(poolFromUser1.mintWithBaseToken(user2, fyTokenToBuy, MAX, OVERRIDES)).to.be.revertedWith(
+        'Pool: Not enough tokens minted'
+      )
     })
 
     it('burns liquidity tokens', async () => {
@@ -263,14 +264,15 @@ describe('Pool - mint', async function () {
       expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
     })
 
-
-    it('doesn\'t burn beyond slippage', async () => {
+    it("doesn't burn beyond slippage", async () => {
       const lpTokensIn = WAD.mul(2)
       await poolFromUser1.transfer(pool.address, lpTokensIn)
-      await expect(poolFromUser1.burnForBaseToken(user2, MAX, 0, OVERRIDES))
-        .to.be.revertedWith('Pool: Not enough base tokens obtained')
-      await expect(poolFromUser1.burnForBaseToken(user2, 0, MAX, OVERRIDES))
-        .to.be.revertedWith('Pool: Not enough fyToken obtained')
+      await expect(poolFromUser1.burnForBaseToken(user2, MAX, 0, OVERRIDES)).to.be.revertedWith(
+        'Pool: Not enough base tokens obtained'
+      )
+      await expect(poolFromUser1.burnForBaseToken(user2, 0, MAX, OVERRIDES)).to.be.revertedWith(
+        'Pool: Not enough fyToken obtained'
+      )
     })
   })
 })
