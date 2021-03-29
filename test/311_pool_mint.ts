@@ -23,7 +23,8 @@ async function currentTimestamp() {
 }
 
 import { mint, mintWithBase, burn, burnForBase } from './shared/yieldspace'
-const WAD = BigNumber.from('1000000000000000000')
+const WAD = BigNumber.from(10).pow(18)
+const MAX = BigNumber.from(2).pow(256).sub(1)
 
 describe('Pool - mint', async function () {
   this.timeout(0)
@@ -197,6 +198,13 @@ describe('Pool - mint', async function () {
       expect((await pool.getStoredReserves())[1]).to.equal(storedFYTokenReservesBefore.add(minted))
     })
 
+    it('doesn\'t mint beyond slippage', async () => {
+      const fyTokenToBuy = WAD.div(1000)
+      await base.mint(pool.address, WAD)
+      await expect(poolFromUser1.mintWithBaseToken(user2, fyTokenToBuy, MAX, OVERRIDES))
+        .to.be.revertedWith('Pool: Not enough tokens minted')
+    })
+
     it('burns liquidity tokens', async () => {
       const baseReserves = await base.balanceOf(pool.address)
       const fyTokenReserves = await fyToken.balanceOf(pool.address)
@@ -253,6 +261,16 @@ describe('Pool - mint', async function () {
       almostEqual(baseOut, expectedBaseOut, baseOut.div(10000))
       expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
       expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
+    })
+
+
+    it('doesn\'t burn beyond slippage', async () => {
+      const lpTokensIn = WAD.mul(2)
+      await poolFromUser1.transfer(pool.address, lpTokensIn)
+      await expect(poolFromUser1.burnForBaseToken(user2, MAX, 0, OVERRIDES))
+        .to.be.revertedWith('Pool: Not enough base tokens obtained')
+      await expect(poolFromUser1.burnForBaseToken(user2, 0, MAX, OVERRIDES))
+        .to.be.revertedWith('Pool: Not enough fyToken obtained')
     })
   })
 })
