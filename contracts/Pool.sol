@@ -199,8 +199,34 @@ contract Pool is IPool, ERC20Permit, Ownable {
     /// @return The amount of liquidity tokens minted.
     function mint(address to)
         external override
-        returns (uint256)
+        returns (uint256, uint256, uint256)
     {
+        return _mintInternal(to, 0);
+    }
+
+    /// @dev Mint liquidity tokens in exchange for adding only baseToken
+    /// The amount of liquidity tokens is calculated from the amount of fyToken to buy from the pool.
+    /// The base tokens need to be present in this contract, unaccounted for.
+    /// @param to Wallet receiving the minted liquidity tokens.
+    /// @param fyTokenToBuy Amount of `fyToken` being bought in the Pool, from this we calculate how much baseToken it will be taken in.
+    /// @return The amount of liquidity tokens minted.
+    function mintWithBaseToken(address to, uint256 fyTokenToBuy)
+        external override
+        returns (uint256, uint256, uint256)
+    {
+        return _mintInternal(to, fyTokenToBuy);
+    }
+
+    /// @dev Mint liquidity tokens in exchange for adding only baseToken, if fyTokenToBuy > 0.
+    /// If fyTokenToBuy == 0, mint liquidity tokens for both baseTokena and fyToken.
+    /// @param to Wallet receiving the minted liquidity tokens.
+    /// @param fyTokenToBuy Amount of `fyToken` being bought in the Pool, from this we calculate how much baseToken it will be taken in.
+    /// @return The amount of liquidity tokens minted.
+    function _mintInternal(address to, uint256 fyTokenToBuy)
+        internal
+        returns (uint256, uint256, uint256)
+    {
+
         // Gather data
         uint256 supply = totalSupply();
         (uint112 realStoredBaseTokenReserve, uint112 virtualStoredFYTokenReserve) =
@@ -209,76 +235,43 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
         uint256 baseTokenReserves = baseToken.balanceOf(address(this));             // Use the real reserves rather than the virtual reserves
         uint256 fyTokenReserves = fyToken.balanceOf(address(this));
-        uint256 baseTokenIn = baseTokenReserves - realStoredBaseTokenReserve;
 
         // Calculate trade
-        uint256 tokensMinted = supply > 0 ? (supply * baseTokenIn) / realStoredBaseTokenReserve : baseTokenIn;   // If supply == 0 we are initializing the pool and tokensMinted == baseTokenIn; fyTokenIn == 0
-        uint256 fyTokenIn = supply > 0 ? (realStoredFYTokenReserve * tokensMinted) / supply : 0;
+        uint256 tokensMinted;
+        uint256 baseTokenIn;
+        uint256 fyTokenIn;
+        
+        if (fyTokenToBuy == 0 || supply == 0){                // We use both base token and fyToken
+            baseTokenIn = baseTokenReserves - realStoredBaseTokenReserve;
+            tokensMinted = supply > 0 ? (supply * baseTokenIn) / realStoredBaseTokenReserve : baseTokenIn;   // If supply == 0 we are initializing the pool and tokensMinted == baseTokenIn; fyTokenIn == 0
+            fyTokenIn = supply > 0 ? (realStoredFYTokenReserve * tokensMinted) / supply : 0;
+            require(realStoredFYTokenReserve + fyTokenIn <= fyTokenReserves, "Pool: Not enought fyToken in");
+        } else {                                              // Use only base token
+            uint256 tradeBaseTokenIn = _buyFYTokenPreview(
+                fyTokenToBuy.u128(),
+                realStoredBaseTokenReserve,
+                virtualStoredFYTokenReserve
+            ); // This is a virtual buy
 
-        require(
-            realStoredFYTokenReserve + fyTokenIn <= fyTokenReserves,
-            "Pool: Not enought fyToken in"
-        );
+            require(fyTokenReserves >= fyTokenToBuy, "Pool: Not enough fyToken in the pool");
+            tokensMinted = (supply * fyTokenToBuy) / (realStoredFYTokenReserve - fyTokenToBuy);
+            baseTokenIn = tradeBaseTokenIn + ((realStoredBaseTokenReserve + tradeBaseTokenIn) * tokensMinted) / supply;
+            require(baseTokenReserves - realStoredBaseTokenReserve >= baseTokenIn, "Pool: Not enough base token in");
+        }
+
+        // Execute mint
         _mint(to, tokensMinted);
 
         // Update TWAR
         _update(
-            baseTokenReserves.u128(),
+            (realStoredBaseTokenReserve + baseTokenIn).u128(),
             (virtualStoredFYTokenReserve + fyTokenIn + tokensMinted).u128(), // Account for the "virtual" fyToken from the new minted LP tokens
             realStoredBaseTokenReserve,
             virtualStoredFYTokenReserve
         );
 
         emit Liquidity(maturity, msg.sender, to, -(baseTokenIn.i256()), -(fyTokenIn.i256()), tokensMinted.i256());
-        return tokensMinted;
-    }
-
-    /// @dev Mint liquidity tokens in exchange for adding only baseToken
-    /// The liquidity provider needs to have called `baseToken.approve`.
-    /// @param to Wallet receiving the minted liquidity tokens.
-    /// @param fyTokenToBuy Amount of `fyToken` being bought in the Pool, from this we calculate how much baseToken it will be taken in.
-    /// @return The amount of liquidity tokens minted.
-    function mintWithBaseToken(address to, uint256 fyTokenToBuy) // TODO: Rename to mintWithBaseToken
-        external
-        returns (uint256, uint256)
-    {
-
-        // Gather data
-        uint256 supply = totalSupply();
-        require(supply > 0, "Pool: Use mint first");
-        (uint112 realStoredBaseTokenReserve, uint112 virtualStoredFYTokenReserve) =
-            (storedBaseTokenReserve, storedFYTokenReserve);
-        uint256 realStoredFYTokenReserve = virtualStoredFYTokenReserve - supply;    // The stored fyToken reserves include the virtual fyToken, equal to the supply
-
-        uint256 baseTokenReserves = baseToken.balanceOf(address(this));             // Use the real reserves rather than the virtual reserves
-        uint256 fyTokenReserves = fyToken.balanceOf(address(this));
-
-        // Calculate trade
-        uint256 tradeBaseTokenIn = _buyFYTokenPreview(
-            fyTokenToBuy.u128(),
-            realStoredBaseTokenReserve,
-            virtualStoredFYTokenReserve
-        ); // This is a virtual buy
-
-        require(fyTokenReserves >= fyTokenToBuy, "Pool: Not enough fyToken in");
-
-        uint256 tokensMinted = (supply * fyTokenToBuy) / (realStoredFYTokenReserve - fyTokenToBuy);
-        uint256 baseTokenIn = tradeBaseTokenIn + ((realStoredBaseTokenReserve + tradeBaseTokenIn) * tokensMinted) / supply;
-
-        // Transfer assets
-        require(baseTokenReserves - realStoredBaseTokenReserve >= baseTokenIn, "Pool: Not enough base token in");
-        _mint(to, tokensMinted);
-
-        // Update TWAR
-        _update(
-            (realStoredBaseTokenReserve + baseTokenIn).u128(),
-            (virtualStoredFYTokenReserve + tokensMinted).u128(), // Account for the "virtual" fyToken from the new minted LP tokens
-            realStoredBaseTokenReserve,
-            virtualStoredFYTokenReserve
-        );
-
-        emit Liquidity(maturity, msg.sender, to, -(baseTokenIn.i256()), 0, tokensMinted.i256());
-        return (baseTokenIn, tokensMinted);
+        return (baseTokenIn, fyTokenIn, tokensMinted);
     }
 
     /// @dev Burn liquidity tokens in exchange for baseToken and fyToken.
