@@ -90,8 +90,9 @@ describe('Pool - mint', async function () {
 
     // Deploy a fresh pool so that we can test initialization
     pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyTokenId) as Pool
-    poolFromUser1 = pool.connect(user1Acc)
     poolFromOwner = pool.connect(ownerAcc)
+    poolFromUser1 = pool.connect(user1Acc)
+
 
     maturity1 = BigNumber.from(await fyToken1.maturity())
   })
@@ -150,7 +151,6 @@ describe('Pool - mint', async function () {
       await baseFromUser1.mint(user1, baseIn)
       await fyToken1FromUser1.mint(user1, fyTokenTokens)
 
-      const fyTokenBefore = await fyToken1.balanceOf(user1)
       const poolTokensBefore = await pool.balanceOf(user2)
 
       await baseFromUser1.transfer(pool.address, WAD)
@@ -166,7 +166,6 @@ describe('Pool - mint', async function () {
       expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
     })
 
-    /*
     it('mints liquidity tokens with base only', async () => {
       const baseReserves = await baseFromOwner.balanceOf(pool.address)
       const fyTokenReservesVirtual = await poolFromOwner.getFYTokenReserves()
@@ -175,24 +174,7 @@ describe('Pool - mint', async function () {
 
       const timeTillMaturity = maturity1.sub(await currentTimestamp())
       const fyTokenToBuy = WAD.div(1000)
-      const maxBaseIn = WAD.mul(1000)
-
-      await baseFromOwner.mint(user1, maxBaseIn)
-
-      const baseBefore = await baseFromOwner.balanceOf(user1)
-      const poolTokensBefore = await poolFromOwner.balanceOf(user2)
-
-      await baseFromUser1.approve(pool.address, maxBaseIn)
-      await expect(poolFromUser1.mintWithToken(user2, fyTokenToBuy, OVERRIDES))
-        .to.emit(pool, 'Liquidity')
-        .withArgs(
-          maturity1,
-          user1,
-          user2,
-          baseBefore.sub(await baseFromOwner.balanceOf(user1)).mul(-1),
-          0,
-          (await poolFromOwner.balanceOf(user2)).sub(poolTokensBefore)
-        )
+      // const maxBaseIn = WAD.mul(1000)
 
       const [expectedMinted, expectedBaseIn] = mintWithBase(
         baseReserves,
@@ -203,13 +185,33 @@ describe('Pool - mint', async function () {
         timeTillMaturity
       )
 
+      const poolTokensBefore = await poolFromOwner.balanceOf(user2)
+      const poolSupplyBefore = await poolFromOwner.totalSupply()
+      const storedBaseReservesBefore = (await pool.getStoredReserves())[0]
+      const storedFYTokenReservesBefore = (await pool.getStoredReserves())[1]
+      // const baseBefore = await baseFromOwner.balanceOf(user1)
+
+      await baseFromOwner.mint(pool.address, expectedBaseIn)
+
+      await expect(poolFromUser1.mintWithBaseToken(user2, fyTokenToBuy, OVERRIDES))
+        .to.emit(pool, 'Liquidity')
+        .withArgs(
+          maturity1,
+          user1,
+          user2,
+          ((await pool.getStoredReserves())[0]).sub(storedBaseReservesBefore).mul(-1),
+          0,
+          (await pool.totalSupply()).sub(poolSupplyBefore)
+        )
+
+      const baseIn = ((await pool.getStoredReserves())[0]).sub(storedBaseReservesBefore)
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
-      const baseIn = baseBefore.sub(await base.balanceOf(user1))
 
       almostEqual(minted, expectedMinted, minted.div(10000))
+
       almostEqual(baseIn, expectedBaseIn, baseIn.div(10000))
-      expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
-      expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
+      expect((await pool.getStoredReserves())[0]).to.equal(storedBaseReservesBefore.add(baseIn))
+      expect((await pool.getStoredReserves())[1]).to.equal(storedFYTokenReservesBefore.add(minted))
     })
 
     it('burns liquidity tokens', async () => {
@@ -281,6 +283,5 @@ describe('Pool - mint', async function () {
       expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
       expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
     })
-    */
   })
 })
