@@ -64,9 +64,8 @@ describe('Pool - TWAR', async function () {
     pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyTokenId) as Pool
     poolFromUser1 = pool.connect(user1Acc)
 
-    await base.mint(user1, initialBase)
-    await baseFromUser1.approve(pool.address, initialBase)
-    await poolFromUser1.mint(user1, initialBase)
+    await base.mint(pool.address, initialBase)
+    await poolFromUser1.mint(user1)
   })
 
   it('calculates the TWAR price', async () => {

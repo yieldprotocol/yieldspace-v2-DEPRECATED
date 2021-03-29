@@ -89,9 +89,8 @@ describe('Pool - trade', async function () {
 
     maturity1 = BigNumber.from(await fyToken1.maturity())
 
-    await base.mint(user1, initialBase)
-    await baseFromUser1.approve(pool.address, initialBase)
-    await poolFromUser1.mint(user1, initialBase)
+    await base.mint(pool.address, initialBase)
+    await poolFromUser1.mint(user1)
   })
 
   it('sells fyToken', async () => {

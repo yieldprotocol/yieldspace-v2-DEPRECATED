@@ -10,6 +10,7 @@ import "./helpers/Ownable.sol";
 import "./helpers/SafeERC20Namer.sol";
 import "./helpers/TransferHelper.sol";
 import "./YieldMath.sol";
+import "hardhat/console.sol";
 
 
 library SafeCast256 {
@@ -191,70 +192,44 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
     // ---- Liquidity ----
 
-    /// @dev Mint initial liquidity tokens.
-    /// The liquidity provider needs to have called `baseToken.approve`
-    /// @param to Wallet receiving the minted liquidity tokens.
-    /// @param baseTokenIn The initial baseToken liquidity to provide.
-    function init(address to, uint256 baseTokenIn)
-        internal
-        beforeMaturity
-        returns (uint256)
-    {
-        require(
-            totalSupply() == 0,
-            "Pool: Already initialized"
-        );
-        // no fyToken transferred, because initial fyToken deposit is entirely virtual
-        baseToken.transferFrom(msg.sender, address(this), baseTokenIn); // TODO: Swap to transfer-first
-        _mint(to, baseTokenIn);
-
-        _update(getBaseTokenReserves(), getFYTokenReserves(), 0, 0);
-
-        emit Liquidity(maturity, msg.sender, to, -(baseTokenIn.i256()), 0, baseTokenIn.i256());
-
-        return baseTokenIn;
-    }
-
     /// @dev Mint liquidity tokens in exchange for adding baseToken and fyToken
-    /// The liquidity provider needs to have called `baseToken.approve` and `fyToken.approve`.
+    /// The amount of liquidity tokens to mint is calculated from the amount of unaccounted for base tokens in this contract.
+    /// A proportional amount of fyTokens needs to be present in this contract, also unaccounted for.
     /// @param to Wallet receiving the minted liquidity tokens.
-    /// @param tokenOffered Amount of `baseToken` being invested, an appropriate amount of `fyToken` to be invested alongside will be calculated and taken by this function from the caller.
     /// @return The amount of liquidity tokens minted.
-    function mint(address to, uint256 tokenOffered)
+    function mint(address to)
         external override
         returns (uint256)
     {
+        // Gather data
         uint256 supply = totalSupply();
-        if (supply == 0) return init(to, tokenOffered);
+        (uint112 realStoredBaseTokenReserve, uint112 virtualStoredFYTokenReserve) =
+            (storedBaseTokenReserve, storedFYTokenReserve);
+        uint256 realStoredFYTokenReserve = virtualStoredFYTokenReserve - supply;    // The stored fyToken reserves include the virtual fyToken, equal to the supply
+
+        uint256 baseTokenReserves = baseToken.balanceOf(address(this));             // Use the real reserves rather than the virtual reserves
+        uint256 fyTokenReserves = fyToken.balanceOf(address(this));
+        uint256 baseTokenIn = baseTokenReserves - realStoredBaseTokenReserve;
 
         // Calculate trade
-        (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
-            (storedBaseTokenReserve, storedFYTokenReserve);
-        uint256 baseTokenReserves = baseToken.balanceOf(address(this));     // use the actual reserves rather than the virtual reserves
-        uint256 fyTokenReserves = fyToken.balanceOf(address(this));
-        uint256 tokensMinted = (supply * tokenOffered) / baseTokenReserves;
-        uint256 fyTokenRequired = (fyTokenReserves * tokensMinted) / supply;
+        uint256 tokensMinted = supply > 0 ? (supply * baseTokenIn) / realStoredBaseTokenReserve : baseTokenIn;   // If supply == 0 we are initializing the pool and tokensMinted == baseTokenIn; fyTokenIn == 0
+        uint256 fyTokenIn = supply > 0 ? (realStoredFYTokenReserve * tokensMinted) / supply : 0;
 
-        // Transfer assets
         require(
-            baseToken.transferFrom(msg.sender, address(this), tokenOffered), // TODO: Swap to transfer-first
-            "Pool: Base token transfer failed"
-        );
-        require(
-            fyToken.transferFrom(msg.sender, address(this), fyTokenRequired), // TODO: Swap to transfer-first
-            "Pool: fyToken transfer failed"
+            realStoredFYTokenReserve + fyTokenIn <= fyTokenReserves,
+            "Pool: Not enought fyToken in"
         );
         _mint(to, tokensMinted);
 
         // Update TWAR
         _update(
-            (baseTokenReserves + tokenOffered).u128(),
-            (fyTokenReserves + fyTokenRequired + supply + tokensMinted).u128(), // Account for the "virtual" fyToken from the new minted LP tokens
-            _storedBaseTokenReserve,
-            _storedFYTokenReserve
+            baseTokenReserves.u128(),
+            (virtualStoredFYTokenReserve + fyTokenIn + tokensMinted).u128(), // Account for the "virtual" fyToken from the new minted LP tokens
+            realStoredBaseTokenReserve,
+            virtualStoredFYTokenReserve
         );
 
-        emit Liquidity(maturity, msg.sender, to, -(tokenOffered.i256()), -(fyTokenRequired.i256()), tokensMinted.i256());
+        emit Liquidity(maturity, msg.sender, to, -(baseTokenIn.i256()), -(fyTokenIn.i256()), tokensMinted.i256());
         return tokensMinted;
     }
 
