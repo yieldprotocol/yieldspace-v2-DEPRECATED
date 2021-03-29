@@ -26,6 +26,7 @@
     "@yield-protocol/yieldspace-interfaces": "^2.0.7",
     "chai": "4.2.0",
     "chai-bignumber": "3.0.0",
+    "dss-interfaces": "0.1.1",
     "erc3156": "^0.4.8",
     "ethers": "^5.0.31",
     "ethereumjs-util": "^7.0.9",
