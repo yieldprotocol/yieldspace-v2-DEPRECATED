@@ -182,12 +182,12 @@ describe('Pool - mint', async function () {
           maturity,
           user1,
           user2,
-          ((await pool.getStoredReserves())[0]).sub(storedBaseReservesBefore).mul(-1),
+          (await pool.getStoredReserves())[0].sub(storedBaseReservesBefore).mul(-1),
           0,
           (await pool.totalSupply()).sub(poolSupplyBefore)
         )
 
-      const baseIn = ((await pool.getStoredReserves())[0]).sub(storedBaseReservesBefore)
+      const baseIn = (await pool.getStoredReserves())[0].sub(storedBaseReservesBefore)
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
 
       almostEqual(minted, expectedMinted, minted.div(10000))
@@ -216,7 +216,6 @@ describe('Pool - mint', async function () {
           fyTokenReserves.sub(await fyToken.balanceOf(pool.address)),
           lpTokensIn.mul(-1)
         )
-
 
       const baseOut = baseReserves.sub(await base.balanceOf(pool.address))
       const fyTokenOut = fyTokenReserves.sub(await fyToken.balanceOf(pool.address))
@@ -247,14 +246,7 @@ describe('Pool - mint', async function () {
       await poolFromUser1.transfer(pool.address, lpTokensIn)
       await expect(poolFromUser1.burnForBaseToken(user2, OVERRIDES))
         .to.emit(pool, 'Liquidity')
-        .withArgs(
-          maturity,
-          user1,
-          user2,
-          baseReserves.sub(await base.balanceOf(pool.address)),
-          0,
-          lpTokensIn.mul(-1)
-        )
+        .withArgs(maturity, user1, user2, baseReserves.sub(await base.balanceOf(pool.address)), 0, lpTokensIn.mul(-1))
 
       const baseOut = baseReserves.sub(await base.balanceOf(pool.address))
 
