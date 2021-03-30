@@ -6,8 +6,9 @@ import "@yield-protocol/utils/contracts/token/IERC20.sol";
 import "@yield-protocol/vault-interfaces/IFYToken.sol";
 import "@yield-protocol/yieldspace-interfaces/IPool.sol";
 import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
+import "./helpers/Ownable.sol";
 import "./helpers/SafeERC20Namer.sol";
-import "./Ownable.sol";
+import "./helpers/TransferHelper.sol";
 import "./YieldMath.sol";
 
 
@@ -50,6 +51,7 @@ library SafeCast128 {
 contract Pool is IPool, ERC20Permit, Ownable {
     using SafeCast256 for uint256;
     using SafeCast128 for uint128;
+    using TransferHelper for IERC20;
 
     event Trade(uint32 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens);
     event Liquidity(uint32 maturity, address indexed from, address indexed to, int256 baseTokens, int256 fyTokenTokens, int256 poolTokens);
@@ -159,10 +161,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         returns(uint128 retrieved)
     {
         retrieved = getBaseTokenReserves() - storedBaseTokenReserve; // Stored reserves can never be above actual reserves
-        require(
-            baseToken.transfer(to, retrieved),
-            "Pool: Base transfer failed"
-        );
+        baseToken.safeTransfer(to, retrieved);
         // Now the current reserves match the stored reserves, so no need to update the TWAR
     }
 
@@ -172,10 +171,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         returns(uint128 retrieved)
     {
         retrieved = getFYTokenReserves() - storedFYTokenReserve; // Stored reserves can never be above actual reserves
-        require(
-            fyToken.transfer(to, retrieved),
-            "Pool: FYToken transfer failed"
-        );
+        IERC20(address(fyToken)).safeTransfer(to, retrieved);
         // Now the current reserves match the stored reserves, so no need to update the TWAR
     }
 
@@ -209,7 +205,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
             "Pool: Already initialized"
         );
         // no fyToken transferred, because initial fyToken deposit is entirely virtual
-        baseToken.transferFrom(msg.sender, address(this), baseTokenIn);
+        baseToken.transferFrom(msg.sender, address(this), baseTokenIn); // TODO: Swap to transfer-first
         _mint(to, baseTokenIn);
 
         _update(getBaseTokenReserves(), getFYTokenReserves(), 0, 0);
@@ -241,11 +237,11 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
         // Transfer assets
         require(
-            baseToken.transferFrom(msg.sender, address(this), tokenOffered),
+            baseToken.transferFrom(msg.sender, address(this), tokenOffered), // TODO: Swap to transfer-first
             "Pool: Base token transfer failed"
         );
         require(
-            fyToken.transferFrom(msg.sender, address(this), fyTokenRequired),
+            fyToken.transferFrom(msg.sender, address(this), fyTokenRequired), // TODO: Swap to transfer-first
             "Pool: fyToken transfer failed"
         );
         _mint(to, tokensMinted);
@@ -292,7 +288,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
         // Transfer assets
         require(
-            baseToken.transferFrom(msg.sender, address(this), baseTokenIn),
+            baseToken.transferFrom(msg.sender, address(this), baseTokenIn), // TODO: Swap to transfer-first
             "Pool: baseToken transfer failed"
         );
         _mint(to, tokensMinted);
@@ -328,14 +324,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
         // Transfer assets
         _burn(msg.sender, tokensBurned);
-        require(
-            baseToken.transfer(to, tokenOut),
-            "Pool: Base token transfer failed"
-        );
-        require(
-            fyToken.transfer(to, fyTokenOut),
-            "Pool: fyToken transfer failed"
-        );
+        baseToken.safeTransfer(to, tokenOut);
+        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
 
         // Update TWAR
         {
@@ -384,10 +374,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
         // Transfer assets
         _burn(msg.sender, tokensBurned); // TODO: Fix to check allowance
-        require(
-            baseToken.transfer(to, tokenOut),
-            "Pool: Base token transfer failed"
-        );
+        baseToken.safeTransfer(to, tokenOut);
 
         // Update TWAR
         _update(
@@ -431,10 +418,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        require(
-            fyToken.transfer(to, fyTokenOut),
-            "Pool: FYToken transfer failed"
-        );
+        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
 
         // Update TWAR
         _update(
@@ -519,10 +503,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        require(
-            baseToken.transfer(to, tokenOut),
-            "Pool: Base token transfer failed"
-        );
+        baseToken.safeTransfer(to, tokenOut);
 
         // Update TWAR
         _update(
@@ -596,10 +577,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        require(
-            baseToken.transfer(to, baseTokenOut),
-            "Pool: Base token transfer failed"
-        );
+        baseToken.safeTransfer(to, baseTokenOut);
 
         // Update TWAR
         _update(
@@ -677,10 +655,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        require(
-            fyToken.transfer(to, fyTokenOut),
-            "Pool: fyToken transfer failed"
-        );
+        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
 
         // Update TWAR
         _update(
