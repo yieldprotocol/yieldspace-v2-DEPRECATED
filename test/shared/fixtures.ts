@@ -48,10 +48,6 @@ export class YieldSpaceEnvironment {
 
     const BaseFactory = await ethers.getContractFactory('BaseMock')
     const FYTokenFactory = await ethers.getContractFactory('FYTokenMock')
-    
-    const PoolRouterFactory = await ethers.getContractFactory('PoolRouter')
-    router = ((await PoolRouterFactory.deploy()) as unknown) as PoolRouter
-    await router.deployed()
 
     const YieldMathFactory = await ethers.getContractFactory('YieldMath')
     yieldMathLibrary = ((await YieldMathFactory.deploy()) as unknown) as YieldMath
@@ -67,9 +63,12 @@ export class YieldSpaceEnvironment {
         SafeERC20Namer: safeERC20NamerLibrary.address,
       },
     })
-    factory = ((await PoolFactoryFactory.deploy(router.address)) as unknown) as PoolFactory
+    factory = ((await PoolFactoryFactory.deploy()) as unknown) as PoolFactory
     await factory.deployed()
-    await router.transferOwnership(factory.address)
+    
+    const PoolRouterFactory = await ethers.getContractFactory('PoolRouter')
+    router = ((await PoolRouterFactory.deploy(factory.address)) as unknown) as PoolRouter
+    await router.deployed()
 
     const WAD = BigNumber.from(10).pow(18)
     const initialBase = WAD.mul(initialLiquidity)
