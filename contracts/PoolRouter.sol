@@ -30,6 +30,7 @@ contract PoolRouter is IPoolRouter, Ownable, Batchable {
         emit PoolRegistered(base, fyToken, address(pool));
     }
 
+    /// @dev Return which pool contract matches the base and fyToken
     function _findPool(address base, address fyToken)
         internal view returns (IPool pool)
     {
@@ -37,16 +38,14 @@ contract PoolRouter is IPoolRouter, Ownable, Batchable {
         require (pool != IPool(address(0)), "Pool not found");
     }
 
+    /// @dev Return which pool contract and token contract match the base, fyToken, and token type.
     function _findToken(address base, address fyToken, PoolTokenTypes.TokenType tokenType)
         internal view returns (IPool pool, address token)
     {
         pool = _findPool(base, fyToken);
-        if (tokenType == PoolTokenTypes.TokenType.BASE)
-            token = address(pool.baseToken());
-        if (tokenType == PoolTokenTypes.TokenType.FYTOKEN)
-            token = address(pool.fyToken());
-        if (tokenType == PoolTokenTypes.TokenType.LP)
-            token = address(pool);
+        if (tokenType == PoolTokenTypes.TokenType.BASE) token = base;
+        if (tokenType == PoolTokenTypes.TokenType.FYTOKEN) token = fyToken;
+        if (tokenType == PoolTokenTypes.TokenType.LP) token = address(pool);
     }
 
     /// @dev Allow users to route calls to a pool, to be used with multicall
