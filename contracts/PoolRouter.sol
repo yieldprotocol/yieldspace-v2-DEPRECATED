@@ -108,12 +108,11 @@ contract PoolRouter is IPoolRouter, Ownable, Batchable {
 
     /// @dev Unwrap Wrapped Ether held by this Ladle, and send the Ether
     /// This function should be called last in a multicall, and the Ladle should have no reason to keep an WETH balance
-    function exitEther(address base, address fyToken, address payable to)
+    function exitEther(IWETH9 weth, address payable to)
         public payable
         returns (uint256 ethTransferred)
     {
-        _findPool(base, fyToken);
-        IWETH9 weth = IWETH9(base);
+        // TODO: Set the WETH contract on constructor or as governance, to avoid calls to unknown contracts
         ethTransferred = weth.balanceOf(address(this));
 
         weth.withdraw(ethTransferred);   // TODO: Test gas savings using WETH10 `withdrawTo`
