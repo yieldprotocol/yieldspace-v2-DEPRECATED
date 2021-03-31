@@ -100,7 +100,7 @@ contract PoolRouter is IPoolRouter, Ownable, Batchable {
         ethTransferred = address(this).balance;
 
         IPool pool = _findPool(base, fyToken);
-        IWETH9 weth = IWETH9(address(pool.baseToken()));
+        IWETH9 weth = IWETH9(base);
 
         weth.deposit{ value: ethTransferred }();   // TODO: Test gas savings using WETH10 `depositTo`
         weth.transfer(address(pool), ethTransferred);
@@ -112,8 +112,8 @@ contract PoolRouter is IPoolRouter, Ownable, Batchable {
         public payable
         returns (uint256 ethTransferred)
     {
-        IPool pool = _findPool(base, fyToken);
-        IWETH9 weth = IWETH9(address(pool.baseToken()));
+        _findPool(base, fyToken);
+        IWETH9 weth = IWETH9(base);
         ethTransferred = weth.balanceOf(address(this));
 
         weth.withdraw(ethTransferred);   // TODO: Test gas savings using WETH10 `withdrawTo`
