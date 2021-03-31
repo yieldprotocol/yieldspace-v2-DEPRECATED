@@ -6,35 +6,30 @@ import "./IPoolRouter.sol";
 import "./PoolTokenTypes.sol";
 import "@yield-protocol/utils/contracts/token/IERC20.sol";
 import "@yield-protocol/utils/contracts/token/IERC2612.sol";
+import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
 import "dss-interfaces/src/dss/DaiAbstract.sol";
 import "./helpers/Batchable.sol";
-import "./helpers/Ownable.sol";
 import "./helpers/RevertMsgExtractor.sol";
 import "./helpers/TransferFromHelper.sol";
 import "./IWETH9.sol";
 
 
-contract PoolRouter is IPoolRouter, Ownable, Batchable {
+contract PoolRouter is IPoolRouter, Batchable {
     using TransferFromHelper for IERC20;
 
     enum TokenType { BASE, FYTOKEN, LP }
 
-    mapping(address => mapping(address => IPool)) public pools;
+    IPoolFactory public immutable factory;
 
-    /// @dev Allow owner to register pools
-    function setPool(address base, address fyToken, IPool pool)
-        public override
-        onlyOwner
-    {
-        pools[base][fyToken] = pool;
-        emit PoolRegistered(base, fyToken, address(pool));
+    constructor(address _factory) {
+        factory = IPoolFactory(_factory);
     }
 
     /// @dev Return which pool contract matches the base and fyToken
     function _findPool(address base, address fyToken)
         internal view returns (IPool pool)
     {
-        pool = pools[base][fyToken];
+        pool = IPool(factory.getPool(base, fyToken));
         require (pool != IPool(address(0)), "Pool not found");
     }
 
