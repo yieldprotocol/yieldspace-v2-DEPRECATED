@@ -49,7 +49,7 @@ contract PoolRouter is IPoolRouter, Batchable {
         returns (bool success, bytes memory result)
     {
         (success, result) = address(_findPool(base, fyToken)).call{ value: msg.value }(data);
-        require(success || !revertOnFail, RevertMsgExtractor.getRevertMsg(result));
+        RevertMsgExtractor.delayedRequire(success || !revertOnFail, result);
     }
 
     /// @dev Allow users to trigger a token transfer to a pool, to be used with multicall

@@ -17,4 +17,12 @@ library RevertMsgExtractor {
         }
         return abi.decode(returnData, (string)); // All that remains is the revert string
     }
+
+    /// @dev We can't just write `revert(success, getRevertMsg(returnData))`, since getRevertMsg
+    /// will always be executed. This helper function only parses the returnData if success is false.
+    function delayedRequire(bool success, bytes memory returnData) internal pure {
+        if (!success) {
+            revert(getRevertMsg(returnData));
+        }
+    }
 }
