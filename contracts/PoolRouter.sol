@@ -181,7 +181,9 @@ contract PoolRouter is Multicall {
     // ---- Ether management ----
 
     /// @dev The WETH9 contract will send ether to the PoolRouter on `weth.withdraw` using this function.
-    receive() external payable { }
+    receive() external payable {
+        require (msg.sender == address(weth), "Only Weth contract allowed");
+    }
 
     /// @dev Accept Ether, wrap it and forward it to a pool
     function joinEther(address base, address fyToken)
