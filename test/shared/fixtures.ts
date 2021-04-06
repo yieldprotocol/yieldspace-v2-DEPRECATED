@@ -5,8 +5,9 @@ import { YieldMath } from '../../typechain/YieldMath'
 import { Pool } from '../../typechain/Pool'
 import { PoolFactory } from '../../typechain/PoolFactory'
 import { PoolRouter } from '../../typechain/PoolRouter'
-import { BaseMock as ERC20 } from '../../typechain/BaseMock' // TODO: Rename/refactor mock
-import { FYTokenMock as FYToken } from '../../typechain/FYTokenMock' // TODO: Rename/refactor mock
+import { BaseMock as ERC20 } from '../../typechain/BaseMock'
+import { FYTokenMock as FYToken } from '../../typechain/FYTokenMock'
+import { WETH9Mock as WETH9 } from '../../typechain/WETH9Mock'
 import { SafeERC20Namer } from '../../typechain/SafeERC20Namer'
 import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
@@ -46,6 +47,10 @@ export class YieldSpaceEnvironment {
     let safeERC20NamerLibrary: SafeERC20Namer
     let factory: PoolFactory
 
+    const WETH9Factory = await ethers.getContractFactory('WETH9Mock')
+    const weth9 = ((await WETH9Factory.deploy()) as unknown) as unknown as ERC20
+    await weth9.deployed()
+
     const BaseFactory = await ethers.getContractFactory('BaseMock')
     const FYTokenFactory = await ethers.getContractFactory('FYTokenMock')
 
@@ -67,7 +72,7 @@ export class YieldSpaceEnvironment {
     await factory.deployed()
     
     const PoolRouterFactory = await ethers.getContractFactory('PoolRouter')
-    router = ((await PoolRouterFactory.deploy(factory.address)) as unknown) as PoolRouter
+    router = ((await PoolRouterFactory.deploy(factory.address, weth9.address)) as unknown) as PoolRouter
     await router.deployed()
 
     const WAD = BigNumber.from(10).pow(18)
@@ -79,11 +84,21 @@ export class YieldSpaceEnvironment {
     const provider: BaseProvider = await ethers.provider
     const now = (await provider.getBlock(await provider.getBlockNumber())).timestamp
     let count: number = 1
+
+    // deploy bases
     for (let baseId of baseIds) {
-      // deploy base
       const base = ((await BaseFactory.deploy()) as unknown) as ERC20
       await base.deployed()
       bases.set(baseId, base)
+    }
+
+    // add WETH to bases
+    const ethId = ethers.utils.formatBytes32String('ETH').slice(0, 14)
+    bases.set(ethId, weth9)
+    baseIds.unshift(ethId)
+
+    for (let baseId of baseIds) {
+      const base = bases.get(baseId) as ERC20
       const fyTokenPoolPairs: Map<string, Pool> = new Map()
       pools.set(baseId, fyTokenPoolPairs)
 
@@ -101,7 +116,12 @@ export class YieldSpaceEnvironment {
         fyTokenPoolPairs.set(fyTokenId, pool)
 
         // init pool
-        await base.mint(pool.address, initialBase)
+        if (baseId === ethId) {
+          await weth9.deposit({ value: initialBase })
+          await weth9.transfer(pool.address, initialBase)
+        } else {
+          await base.mint(pool.address, initialBase)
+        }
         await pool.mint(ownerAdd, 0)
 
         // skew pool to 5% interest rate
