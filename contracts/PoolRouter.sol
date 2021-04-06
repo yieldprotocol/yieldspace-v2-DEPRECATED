@@ -33,41 +33,48 @@ contract PoolRouter /*is IPoolRouter*/ {
         factory = IPoolFactory(_factory);
     }
 
-    struct PairAndPool {
+    struct PoolAddresses {
         address base;
         address fyToken;
         address pool;
     }
 
-    function execute(
+    /// @dev Submit a series of calls for execution
+    /// The `bases` and `fyTokens` parameters define the pools that will be target for operations
+    /// Each trio of `target`, `operation` and `data` define one call:
+    ///  - `target` is an index in the `bases` and `fyTokens` arrays, from which contract addresses the target will be determined.
+    ///  - `operation` is a numerical identifier for the call to be executed, from the enum `Operation`
+    ///  - `data` is an abi-encoded group of parameters, to be consumed by the function encoded in `operation`.
+    function batch(
         address[] calldata bases,
         address[] calldata fyTokens,
-        uint8[] calldata pair,
+        uint8[] calldata targets,
         Operation[] calldata operations,
         bytes[] calldata data
-    ) external {
-        require(bases.length == fyTokens.length);
-        PairAndPool[] memory pairs = new PairAndPool[](bases.length);
+    ) external payable {    // TODO: I think we need `payable` to receive ether which we will deposit through `joinEther`
+        require(bases.length == fyTokens.length, "Unmatched bases and fyTokens");
+        require(targets.length == operations.length && operations.length == data.length, "Unmatched operation data");
+        PoolAddresses[] memory pools = new PoolAddresses[](bases.length);
         for (uint256 i = 0; i < bases.length; i += 1) {
-            pairs[i] = PairAndPool(bases[i], fyTokens[i], _findPool(bases[i], fyTokens[i]));
+            pools[i] = PoolAddresses(bases[i], fyTokens[i], _findPool(bases[i], fyTokens[i]));
         }
 
         for (uint256 i = 0; i < operations.length; i += 1) {
             Operation operation = operations[i];
-            PairAndPool memory selectedPair = pairs[pair[i]];
+            PoolAddresses memory addresses = pools[targets[i]];
             
             if (operation == Operation.ROUTE) {
-                route(selectedPair.pool, data[i]);
+                route(addresses, data[i]);
             } else if (operation == Operation.TRANSFER_TO_POOL) {
-                transferToPool(selectedPair, data[i]);
+                transferToPool(addresses, data[i]);
             } else if (operation == Operation.FORWARD_PERMIT) {
-                forwardPermit(selectedPair, data[i]);
+                forwardPermit(addresses, data[i]);
             } else if (operation == Operation.FORWARD_DAI_PERMIT) {
-                forwardDaiPermit(selectedPair, data[i]);
+                forwardDaiPermit(addresses, data[i]);
             } else if (operation == Operation.JOIN_ETHER) {
-                joinEther(selectedPair);
+                joinEther(addresses);
             } else if (operation == Operation.EXIT_ETHER) {
-                exitEther(IWETH9(selectedPair.base), data[i]);
+                exitEther(addresses, data[i]);
             } else {
                 revert("Invalid operation");
             }
@@ -83,30 +90,30 @@ contract PoolRouter /*is IPoolRouter*/ {
     }
 
     /// @dev Allow users to route calls to a pool, to be used with multicall
-    function route(address pool, bytes memory data)
+    function route(PoolAddresses memory addresses, bytes memory data)
         private
         returns (bool success, bytes memory result)
     {
-        (success, result) = pool.call{ value: msg.value }(data);
+        (success, result) = addresses.pool.call{ value: msg.value }(data);
         require(success, RevertMsgExtractor.getRevertMsg(result));
     }
 
     /// @dev Allow users to trigger a token transfer to a pool, to be used with multicall
-    function transferToPool(PairAndPool memory pair, bytes memory data)
+    function transferToPool(PoolAddresses memory addresses, bytes memory data)
         private
         returns (bool)
     {
         (uint128 wad, address token) = abi.decode(data, (uint128, address));
-        require(token == pair.base || token == pair.fyToken || token == pair.pool);
+        require(token == addresses.base || token == addresses.fyToken || token == addresses.pool);
 
-        IERC20(token).safeTransferFrom(msg.sender, address(pair.pool), wad);
+        IERC20(token).safeTransferFrom(msg.sender, address(addresses.pool), wad);
         return true;
     }
 
     // ---- Permit management ----
 
     /// @dev Execute an ERC2612 permit for the selected asset or fyToken
-    function forwardPermit(PairAndPool memory pair, bytes memory data)
+    function forwardPermit(PoolAddresses memory addresses, bytes memory data)
         private
     {
         (
@@ -119,12 +126,12 @@ contract PoolRouter /*is IPoolRouter*/ {
             bytes32 s
         ) = abi.decode(data, (address, address, uint256, uint256, uint8, bytes32, bytes32));
         
-        require(token == pair.base || token == pair.fyToken || token == pair.pool);
+        require(token == addresses.base || token == addresses.fyToken || token == addresses.pool);
         IERC2612(token).permit(msg.sender, spender, amount, deadline, v, r, s);
     }
 
     /// @dev Execute a Dai-style permit for the selected asset or fyToken
-    function forwardDaiPermit(PairAndPool memory pair, bytes memory data)
+    function forwardDaiPermit(PoolAddresses memory addresses, bytes memory data)
         private
     {
         (
@@ -138,7 +145,7 @@ contract PoolRouter /*is IPoolRouter*/ {
         ) = abi.decode(data, (address, uint256, uint256, bool, uint8, bytes32, bytes32));
 
         // Only the base token would ever be Dai
-        DaiAbstract(pair.base).permit(msg.sender, spender, nonce, deadline, allowed, v, r, s);
+        DaiAbstract(addresses.base).permit(msg.sender, spender, nonce, deadline, allowed, v, r, s);
     }
 
     // ---- Ether management ----
@@ -149,24 +156,24 @@ contract PoolRouter /*is IPoolRouter*/ {
     /// @dev Accept Ether, wrap it and forward it to the WethJoin
     /// This function should be called first in a multicall, and the Join should keep track of stored reserves
     /// Passing the id for a join that doesn't link to a contract implemnting IWETH9 will fail
-    function joinEther(PairAndPool memory pair)
+    function joinEther(PoolAddresses memory addresses)
         private
         returns (uint256 ethTransferred)
     {
+        IWETH9 weth = IWETH9(addresses.base);
         ethTransferred = address(this).balance;
 
-        IWETH9 weth = IWETH9(pair.base);
-
         weth.deposit{ value: ethTransferred }();   // TODO: Test gas savings using WETH10 `depositTo`
-        weth.transfer(address(pair.pool), ethTransferred);
+        weth.transfer(addresses.pool, ethTransferred);
     }
 
     /// @dev Unwrap Wrapped Ether held by this Ladle, and send the Ether
     /// This function should be called last in a multicall, and the Ladle should have no reason to keep an WETH balance
-    function exitEther(IWETH9 weth, bytes memory data)
+    function exitEther(PoolAddresses memory addresses, bytes memory data)
         private
         returns (uint256 ethTransferred)
     {
+        IWETH9 weth = IWETH9(addresses.base);
         (address payable to) = abi.decode(data, (address));
         // TODO: Set the WETH contract on constructor or as governance, to avoid calls to unknown contracts
         ethTransferred = weth.balanceOf(address(this));
