@@ -4,11 +4,11 @@ pragma solidity ^0.8.0;
 pragma abicoder v2;
 
 import "@yield-protocol/yieldspace-interfaces/IPool.sol";
-import "./IPoolRouter.sol";
-import "./PoolTokenTypes.sol";
+import "@yield-protocol/yieldspace-interfaces/IPoolRouter.sol";
+import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
+import "@yield-protocol/yieldspace-interfaces/PoolDataTypes.sol";
 import "@yield-protocol/utils/contracts/token/IERC20.sol";
 import "@yield-protocol/utils/contracts/token/IERC2612.sol";
-import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
 import "dss-interfaces/src/dss/DaiAbstract.sol";
 import "./helpers/AllTransferHelper.sol";
 import "./helpers/Multicall.sol";
@@ -16,18 +16,9 @@ import "./helpers/RevertMsgExtractor.sol";
 import "./IWETH9.sol";
 
 
-contract PoolRouter is Multicall {
+contract PoolRouter is IPoolRouter, Multicall {
     using AllTransferHelper for IERC20;
     using AllTransferHelper for address payable;
-
-    enum Operation {
-        ROUTE, // 0
-        TRANSFER_TO_POOL, // 1
-        FORWARD_PERMIT, // 2
-        FORWARD_DAI_PERMIT, // 3
-        JOIN_ETHER, // 4
-        EXIT_ETHER // 5
-    }
 
     IPoolFactory public immutable factory;
     IWETH9 public immutable weth;
@@ -53,9 +44,9 @@ contract PoolRouter is Multicall {
         address[] calldata bases,
         address[] calldata fyTokens,
         uint8[] calldata targets,
-        Operation[] calldata operations,
+        PoolDataTypes.Operation[] calldata operations,
         bytes[] calldata data
-    ) external payable {    // TODO: I think we need `payable` to receive ether which we will deposit through `joinEther`
+    ) external payable override {
         require(bases.length == fyTokens.length, "Unmatched bases and fyTokens");
         require(targets.length == operations.length && operations.length == data.length, "Unmatched operation data");
         PoolAddresses[] memory pools = new PoolAddresses[](bases.length);
@@ -64,25 +55,25 @@ contract PoolRouter is Multicall {
         }
 
         for (uint256 i = 0; i < operations.length; i += 1) {
-            Operation operation = operations[i];
+            PoolDataTypes.Operation operation = operations[i];
             PoolAddresses memory addresses = pools[targets[i]];
             
-            if (operation == Operation.ROUTE) {
+            if (operation == PoolDataTypes.Operation.ROUTE) {
                 _route(addresses, data[i]);
-            } else if (operation == Operation.TRANSFER_TO_POOL) {
+            } else if (operation == PoolDataTypes.Operation.TRANSFER_TO_POOL) {
                 (address token, uint128 wad) = abi.decode(data[i], (address, uint128));
                 _transferToPool(addresses, token, wad);
-            } else if (operation == Operation.FORWARD_PERMIT) {
+            } else if (operation == PoolDataTypes.Operation.FORWARD_PERMIT) {
                 (address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s) = 
                     abi.decode(data[i], (address, address, uint256, uint256, uint8, bytes32, bytes32));
                 _forwardPermit(addresses, token, spender, amount, deadline, v, r, s);
-            } else if (operation == Operation.FORWARD_DAI_PERMIT) {
+            } else if (operation == PoolDataTypes.Operation.FORWARD_DAI_PERMIT) {
                         (address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s) = 
                     abi.decode(data[i], (address, uint256, uint256, bool, uint8, bytes32, bytes32));
                 _forwardDaiPermit(addresses, spender, nonce, deadline, allowed, v, r, s);
-            } else if (operation == Operation.JOIN_ETHER) {
+            } else if (operation == PoolDataTypes.Operation.JOIN_ETHER) {
                 _joinEther(addresses.pool);
-            } else if (operation == Operation.EXIT_ETHER) {
+            } else if (operation == PoolDataTypes.Operation.EXIT_ETHER) {
                 (address to) = abi.decode(data[i], (address));
                 _exitEther(to);
             } else {
@@ -101,7 +92,7 @@ contract PoolRouter is Multicall {
 
     /// @dev Allow users to route calls to a pool, to be used with multicall
     function route(address base, address fyToken, bytes memory data)
-        external payable
+        external payable override
         returns (bool success, bytes memory result)
     {
         return _route(
