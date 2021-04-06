@@ -110,15 +110,6 @@ contract PoolRouter is Multicall {
         );
     }    
 
-    /// @dev Allow users to route calls to a pool, to be used with batch
-    function _route(PoolAddresses memory addresses, bytes memory data)
-        private
-        returns (bool success, bytes memory result)
-    {
-        (success, result) = addresses.pool.call{ value: msg.value }(data);
-        if (!success) revert(RevertMsgExtractor.getRevertMsg(result));
-    }
-
     /// @dev Allow users to trigger a token transfer to a pool, to be used with multicall
     function transferToPool(address base, address fyToken, address token, uint128 wad)
         external payable
@@ -140,6 +131,15 @@ contract PoolRouter is Multicall {
         return true;
     }
 
+    /// @dev Allow users to route calls to a pool, to be used with batch
+    function _route(PoolAddresses memory addresses, bytes memory data)
+        private
+        returns (bool success, bytes memory result)
+    {
+        (success, result) = addresses.pool.call{ value: msg.value }(data);
+        if (!success) revert(RevertMsgExtractor.getRevertMsg(result));
+    }
+
     // ---- Permit management ----
 
     /// @dev Execute an ERC2612 permit for the selected asset or fyToken, to be used with multicall
@@ -152,14 +152,6 @@ contract PoolRouter is Multicall {
         );
     }
 
-    /// @dev Execute an ERC2612 permit for the selected asset or fyToken, to be used with batch
-    function _forwardPermit(PoolAddresses memory addresses, address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-        private
-    {
-        require(token == addresses.base || token == addresses.fyToken || token == addresses.pool);
-        IERC2612(token).permit(msg.sender, spender, amount, deadline, v, r, s);
-    }
-
     /// @dev Execute a Dai-style permit for the selected asset or fyToken, to be used with multicall
     function forwardDaiPermit(address base, address fyToken, address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s)
         external payable
@@ -168,6 +160,14 @@ contract PoolRouter is Multicall {
             PoolAddresses(base, fyToken, findPool(base, fyToken)),
             spender, nonce, deadline, allowed, v, r, s
         );
+    }
+
+    /// @dev Execute an ERC2612 permit for the selected asset or fyToken, to be used with batch
+    function _forwardPermit(PoolAddresses memory addresses, address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
+        private
+    {
+        require(token == addresses.base || token == addresses.fyToken || token == addresses.pool);
+        IERC2612(token).permit(msg.sender, spender, amount, deadline, v, r, s);
     }
 
     /// @dev Execute a Dai-style permit for the selected asset or fyToken, to be used with batch
@@ -193,6 +193,14 @@ contract PoolRouter is Multicall {
         return _joinEther(findPool(base, fyToken));
     }
 
+    /// @dev Unwrap Wrapped Ether held by this Router, and send the Ether
+    function exitEther(address to)
+        external payable
+        returns (uint256 ethTransferred)
+    {
+        return _exitEther(to);
+    }
+
     /// @dev Accept Ether, wrap it and forward it to the to a pool
     function _joinEther(address pool)
         private
@@ -202,14 +210,6 @@ contract PoolRouter is Multicall {
 
         weth.deposit{ value: ethTransferred }();   // TODO: Test gas savings using WETH10 `depositTo`
         IERC20(weth).safeTransfer(pool, ethTransferred);
-    }
-
-    /// @dev Unwrap Wrapped Ether held by this Router, and send the Ether
-    function exitEther(address to)
-        external payable
-        returns (uint256 ethTransferred)
-    {
-        return _exitEther(to);
     }
 
     /// @dev Unwrap Wrapped Ether held by this Router, and send the Ether
