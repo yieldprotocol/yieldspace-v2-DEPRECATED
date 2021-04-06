@@ -1,4 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
+import { WAD, MAX128 as MAX } from './shared/constants'
 
 import { Pool } from '../typechain/Pool'
 import { BaseMock as Base } from '../typechain/BaseMock'
@@ -22,14 +23,12 @@ async function currentTimestamp() {
 }
 
 import { sellBase, sellFYToken, buyBase, buyFYToken } from './shared/yieldspace'
-const WAD = BigNumber.from('1000000000000000000')
-const MAX128 = BigNumber.from(2).pow(128).sub(1)
 
 describe('Pool - trade', async function () {
   this.timeout(0)
 
   // These values impact the pool results
-  const baseTokens = BigNumber.from('1000000000000000000000000')
+  const baseTokens = WAD.mul(1000000)
   const fyTokens = baseTokens
   const initialBase = baseTokens
   const OVERRIDES = { gasLimit: 1_000_000 }
