@@ -13,7 +13,7 @@ import "dss-interfaces/src/dss/DaiAbstract.sol";
 import "./helpers/AllTransferHelper.sol";
 import "./helpers/Multicall.sol";
 import "./helpers/RevertMsgExtractor.sol";
-import "./IWETH9.sol";
+import "./helpers/IWETH9.sol";
 
 
 contract PoolRouter is IPoolRouter, Multicall {
@@ -127,7 +127,7 @@ contract PoolRouter is IPoolRouter, Multicall {
         private
         returns (bool success, bytes memory result)
     {
-        (success, result) = addresses.pool.call{ value: msg.value }(data);
+        (success, result) = addresses.pool.call(data);
         if (!success) revert(RevertMsgExtractor.getRevertMsg(result));
     }
 
