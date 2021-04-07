@@ -72,10 +72,10 @@ describe('Pool - mint', async function () {
     yieldSpace = await loadFixture(fixture)
     factory = yieldSpace.factory as PoolFactory
     base = yieldSpace.bases.get(baseId) as Base
-    fyToken = yieldSpace.fyTokens.get(fyTokenId) as FYToken
+    fyToken = yieldSpace.fyTokens.get(baseId + '-' + fyTokenId) as FYToken
 
     // Deploy a fresh pool so that we can test initialization
-    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyTokenId) as Pool
+    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(baseId + '-' + fyTokenId) as Pool
     poolFromUser1 = pool.connect(user1Acc)
 
     maturity = BigNumber.from(await fyToken.maturity())

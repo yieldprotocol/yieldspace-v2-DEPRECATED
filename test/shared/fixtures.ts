@@ -1,5 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 import { BaseProvider } from '@ethersproject/providers'
+import { DAI, ETH, USDC } from './constants'
 
 import { YieldMath } from '../../typechain/YieldMath'
 import { Pool } from '../../typechain/Pool'
@@ -7,7 +8,6 @@ import { PoolFactory } from '../../typechain/PoolFactory'
 import { PoolRouter } from '../../typechain/PoolRouter'
 import { BaseMock as ERC20 } from '../../typechain/BaseMock'
 import { FYTokenMock as FYToken } from '../../typechain/FYTokenMock'
-import { WETH9Mock as WETH9 } from '../../typechain/WETH9Mock'
 import { SafeERC20Namer } from '../../typechain/SafeERC20Namer'
 import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
@@ -51,9 +51,12 @@ export class YieldSpaceEnvironment {
     const weth9 = ((await WETH9Factory.deploy()) as unknown) as unknown as ERC20
     await weth9.deployed()
 
+    const DaiFactory = await ethers.getContractFactory('DaiMock')
+    const dai = ((await DaiFactory.deploy('DAI', 'DAI')) as unknown) as unknown as ERC20
+    await dai.deployed()
+
     const BaseFactory = await ethers.getContractFactory('BaseMock')
     const FYTokenFactory = await ethers.getContractFactory('FYTokenMock')
-
     const YieldMathFactory = await ethers.getContractFactory('YieldMath')
     yieldMathLibrary = ((await YieldMathFactory.deploy()) as unknown) as YieldMath
     await yieldMathLibrary.deployed()
@@ -93,9 +96,12 @@ export class YieldSpaceEnvironment {
     }
 
     // add WETH to bases
-    const ethId = ethers.utils.formatBytes32String('ETH').slice(0, 14)
-    bases.set(ethId, weth9)
-    baseIds.unshift(ethId)
+    bases.set(ETH, weth9)
+    baseIds.unshift(ETH)
+
+    // add Dai to bases
+    bases.set(DAI, dai)
+    baseIds.unshift(DAI)
 
     for (let baseId of baseIds) {
       const base = bases.get(baseId) as ERC20
@@ -107,16 +113,16 @@ export class YieldSpaceEnvironment {
         const maturity = now + THREE_MONTHS * count++
         const fyToken = ((await FYTokenFactory.deploy(base.address, maturity)) as unknown) as FYToken
         await fyToken.deployed()
-        fyTokens.set(fyTokenId, fyToken)
+        fyTokens.set(baseId + '-' + fyTokenId, fyToken)
 
         // deploy base/fyToken pool
         const calculatedAddress = await factory.calculatePoolAddress(base.address, fyToken.address)
         await factory.createPool(base.address, fyToken.address)
         const pool = (await ethers.getContractAt('Pool', calculatedAddress, owner) as unknown) as Pool
-        fyTokenPoolPairs.set(fyTokenId, pool)
+        fyTokenPoolPairs.set(baseId + '-' + fyTokenId, pool)
 
         // init pool
-        if (baseId === ethId) {
+        if (baseId === ETH) {
           await weth9.deposit({ value: initialBase })
           await weth9.transfer(pool.address, initialBase)
         } else {

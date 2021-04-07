@@ -1,4 +1,5 @@
 import { BigNumber } from 'ethers'
+import { ethers } from 'hardhat'
 
 export const DEC6 = BigNumber.from(10).pow(6)
 export const WAD = BigNumber.from(10).pow(18)
@@ -15,3 +16,7 @@ export const OPS = {
   JOIN_ETHER: 4,
   EXIT_ETHER: 5
   }
+
+export const ETH = ethers.utils.formatBytes32String('ETH').slice(0, 14)
+export const DAI = ethers.utils.formatBytes32String('DAI').slice(0, 14)
+export const USDC = ethers.utils.formatBytes32String('USDC').slice(0, 14)

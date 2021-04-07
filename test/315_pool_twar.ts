@@ -61,7 +61,7 @@ describe('Pool - TWAR', async function () {
     baseFromUser1 = base.connect(user1Acc)
 
     // Deploy a fresh pool so that we can test initialization
-    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyTokenId) as Pool
+    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(baseId + '-' + fyTokenId) as Pool
     poolFromUser1 = pool.connect(user1Acc)
 
     await base.mint(pool.address, initialBase)

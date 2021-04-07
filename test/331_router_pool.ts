@@ -46,10 +46,10 @@ describe('PoolRouter', async function () {
     factory = yieldSpace.factory as PoolFactory
     router = yieldSpace.router as PoolRouter
     base = yieldSpace.bases.get(baseId) as BaseMock
-    fyToken1 = yieldSpace.fyTokens.get(fyToken1Id) as FYTokenMock
-    fyToken2 = yieldSpace.fyTokens.get(fyToken2Id) as FYTokenMock
-    pool1 = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyToken1Id) as Pool
-    pool2 = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyToken2Id) as Pool
+    fyToken1 = yieldSpace.fyTokens.get(baseId + '-' + fyToken1Id) as FYTokenMock
+    fyToken2 = yieldSpace.fyTokens.get(baseId + '-' + fyToken2Id) as FYTokenMock
+    pool1 = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(baseId + '-' + fyToken1Id) as Pool
+    pool2 = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(baseId + '-' + fyToken2Id) as Pool
   })
 
   it('transfers base tokens to a pool', async () => {
@@ -72,7 +72,7 @@ describe('PoolRouter', async function () {
     await base.mint(pool1.address, WAD)
     await fyToken1.mint(pool1.address, WAD)
     await pool1.mint(owner, WAD)
-    
+
     const poolTokensBefore = await pool1.balanceOf(pool1.address)
     await pool1.approve(router.address, WAD)
     await router.transferToPool(base.address, fyToken1.address, pool1.address, WAD)
@@ -84,7 +84,12 @@ describe('PoolRouter', async function () {
     await base.mint(owner, WAD)
     await base.approve(router.address, WAD)
 
-    const transferToPoolCall = router.interface.encodeFunctionData('transferToPool', [base.address, fyToken1.address, base.address, WAD])
+    const transferToPoolCall = router.interface.encodeFunctionData('transferToPool', [
+      base.address,
+      fyToken1.address,
+      base.address,
+      WAD,
+    ])
     await router.multicall([transferToPoolCall], true)
 
     expect(await base.balanceOf(pool1.address)).to.equal(baseBefore.add(WAD))

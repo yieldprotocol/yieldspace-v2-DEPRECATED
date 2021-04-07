@@ -37,7 +37,7 @@ describe('Pool - set', async function () {
   beforeEach(async () => {
     yieldSpace = await loadFixture(fixture)
     factory = yieldSpace.factory as PoolFactory
-    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyTokenId) as Pool
+    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(baseId + '-' + fyTokenId) as Pool
   })
 
   it('Sets parameters', async () => {

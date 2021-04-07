@@ -77,12 +77,12 @@ describe('Pool - trade', async function () {
     baseFromUser1 = base.connect(user1Acc)
     baseFromOwner = base.connect(ownerAcc)
 
-    fyToken1 = yieldSpace.fyTokens.get(fyTokenId) as FYToken
+    fyToken1 = yieldSpace.fyTokens.get(baseId + '-' + fyTokenId) as FYToken
     fyToken1FromUser1 = fyToken1.connect(user1Acc)
     fyToken1FromOwner = fyToken1.connect(ownerAcc)
 
     // Deploy a fresh pool so that we can test initialization
-    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyTokenId) as Pool
+    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(baseId + '-' + fyTokenId) as Pool
     poolFromUser1 = pool.connect(user1Acc)
     poolFromOwner = pool.connect(ownerAcc)
 
