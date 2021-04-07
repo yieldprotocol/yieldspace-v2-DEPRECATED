@@ -14,7 +14,6 @@ import "./helpers/AllTransferHelper.sol";
 import "./helpers/Multicall.sol";
 import "./helpers/RevertMsgExtractor.sol";
 import "./helpers/IWETH9.sol";
-import "hardhat/console.sol";
 
 
 contract PoolRouter is IPoolRouter, Multicall {
@@ -166,7 +165,6 @@ contract PoolRouter is IPoolRouter, Multicall {
     function _forwardDaiPermit(PoolAddresses memory addresses, address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s)
         private
     {
-        console.log("Base", addresses.base);
         // Only the base token would ever be Dai
         DaiAbstract(addresses.base).permit(msg.sender, spender, nonce, deadline, allowed, v, r, s);
     }

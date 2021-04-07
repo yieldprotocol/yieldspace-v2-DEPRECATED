@@ -39,7 +39,7 @@ export class YieldSpaceEnvironment {
   }
 
   // Set up a test environment with pools according to the cartesian product of the base ids and the fyToken ids
-  public static async setup(owner: SignerWithAddress, baseIds: Array<string>, fyTokenIds: Array<string>, initialLiquidity: BigNumber) {
+  public static async setup(owner: SignerWithAddress, baseIds: Array<string>, maturityIds: Array<string>, initialLiquidity: BigNumber) {
     const ownerAdd = await owner.getAddress()
 
     let router: PoolRouter
@@ -108,18 +108,20 @@ export class YieldSpaceEnvironment {
       const fyTokenPoolPairs: Map<string, Pool> = new Map()
       pools.set(baseId, fyTokenPoolPairs)
 
-      for (let fyTokenId of fyTokenIds) {
+      for (let maturityId of maturityIds) {
+        const fyTokenId = baseId + '-' + maturityId
+
         // deploy fyToken
-        const maturity = now + THREE_MONTHS * count++
+        const maturity = now + THREE_MONTHS * count++ // We are just assuming that the maturities are '3M', '6M', '9M' and so on
         const fyToken = ((await FYTokenFactory.deploy(base.address, maturity)) as unknown) as FYToken
         await fyToken.deployed()
-        fyTokens.set(baseId + '-' + fyTokenId, fyToken)
+        fyTokens.set(fyTokenId, fyToken)
 
         // deploy base/fyToken pool
         const calculatedAddress = await factory.calculatePoolAddress(base.address, fyToken.address)
         await factory.createPool(base.address, fyToken.address)
         const pool = (await ethers.getContractAt('Pool', calculatedAddress, owner) as unknown) as Pool
-        fyTokenPoolPairs.set(baseId + '-' + fyTokenId, pool)
+        fyTokenPoolPairs.set(fyTokenId, pool)
 
         // init pool
         if (baseId === ETH) {

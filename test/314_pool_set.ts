@@ -22,10 +22,11 @@ describe('Pool - set', async function () {
   let pool: Pool
 
   const baseId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
-  const fyTokenId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
+  const maturityId = '3M'
+  const fyTokenId = baseId + '-' + maturityId
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [fyTokenId], BigNumber.from('100'))
+    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturityId], BigNumber.from('100'))
   }
 
   before(async () => {
@@ -37,7 +38,7 @@ describe('Pool - set', async function () {
   beforeEach(async () => {
     yieldSpace = await loadFixture(fixture)
     factory = yieldSpace.factory as PoolFactory
-    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(baseId + '-' + fyTokenId) as Pool
+    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyTokenId) as Pool
   })
 
   it('Sets parameters', async () => {

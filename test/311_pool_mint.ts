@@ -52,10 +52,11 @@ describe('Pool - mint', async function () {
   let maturity: BigNumber
 
   const baseId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
-  const fyTokenId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
+  const maturityId = '3M'
+  const fyTokenId = baseId + '-' + maturityId
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [fyTokenId], BigNumber.from('0'))
+    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturityId], BigNumber.from('0'))
   }
 
   before(async () => {
@@ -72,10 +73,10 @@ describe('Pool - mint', async function () {
     yieldSpace = await loadFixture(fixture)
     factory = yieldSpace.factory as PoolFactory
     base = yieldSpace.bases.get(baseId) as Base
-    fyToken = yieldSpace.fyTokens.get(baseId + '-' + fyTokenId) as FYToken
+    fyToken = yieldSpace.fyTokens.get(fyTokenId) as FYToken
 
     // Deploy a fresh pool so that we can test initialization
-    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(baseId + '-' + fyTokenId) as Pool
+    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyTokenId) as Pool
     poolFromUser1 = pool.connect(user1Acc)
 
     maturity = BigNumber.from(await fyToken.maturity())

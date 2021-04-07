@@ -30,10 +30,12 @@ describe('PoolRouter', async function () {
   let pool: Pool
 
   const baseId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
-  const fyTokenId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
+  const maturityId = '3M'
+  const fyTokenId = baseId + '-' + maturityId
+  const fyDaiId = DAI + '-' + maturityId
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [fyTokenId], BigNumber.from('0'))
+    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturityId], BigNumber.from('0'))
   }
   before(async () => {
     const signers = await ethers.getSigners()
@@ -46,11 +48,11 @@ describe('PoolRouter', async function () {
     factory = yieldSpace.factory as PoolFactory
     router = yieldSpace.router as PoolRouter
     base = yieldSpace.bases.get(baseId) as Base
-    fyToken = yieldSpace.fyTokens.get(baseId + '-' + fyTokenId) as FYToken
-    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(baseId + '-' + fyTokenId) as Pool
+    fyToken = yieldSpace.fyTokens.get(fyTokenId) as FYToken
+    pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyTokenId) as Pool
 
     dai = yieldSpace.bases.get(DAI) as Base
-    fyDai = yieldSpace.fyTokens.get(DAI + '-' + fyTokenId) as FYToken
+    fyDai = yieldSpace.fyTokens.get(fyDaiId) as FYToken
   })
 
   it('users can use the router to execute permit on an base', async () => {

@@ -29,11 +29,13 @@ describe('PoolRouter', async function () {
   let pool2: Pool
 
   const baseId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
-  const fyToken1Id = ethers.utils.hexlify(ethers.utils.randomBytes(6))
-  const fyToken2Id = ethers.utils.hexlify(ethers.utils.randomBytes(6))
+  const maturity1Id = '3M'
+  const fyToken1Id = baseId + '-' + maturity1Id
+  const maturity2Id = '3M'
+  const fyToken2Id = baseId + '-' + maturity2Id
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [fyToken1Id, fyToken2Id], BigNumber.from('0'))
+    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturity1Id, maturity2Id], BigNumber.from('0'))
   }
   before(async () => {
     const signers = await ethers.getSigners()
@@ -46,10 +48,10 @@ describe('PoolRouter', async function () {
     factory = yieldSpace.factory as PoolFactory
     router = yieldSpace.router as PoolRouter
     base = yieldSpace.bases.get(baseId) as BaseMock
-    fyToken1 = yieldSpace.fyTokens.get(baseId + '-' + fyToken1Id) as FYTokenMock
-    fyToken2 = yieldSpace.fyTokens.get(baseId + '-' + fyToken2Id) as FYTokenMock
-    pool1 = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(baseId + '-' + fyToken1Id) as Pool
-    pool2 = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(baseId + '-' + fyToken2Id) as Pool
+    fyToken1 = yieldSpace.fyTokens.get(fyToken1Id) as FYTokenMock
+    fyToken2 = yieldSpace.fyTokens.get(fyToken2Id) as FYTokenMock
+    pool1 = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyToken1Id) as Pool
+    pool2 = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyToken2Id) as Pool
   })
 
   it('transfers base tokens to a pool', async () => {
