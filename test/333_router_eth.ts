@@ -46,7 +46,7 @@ describe('PoolRouter', async function () {
     yieldSpace = await loadFixture(fixture)
     factory = yieldSpace.factory as PoolFactory
     router = yieldSpace.router as PoolRouter
-    weth = yieldSpace.bases.get(ETH) as unknown as WETH
+    weth = (yieldSpace.bases.get(ETH) as unknown) as WETH
     fyEth = yieldSpace.fyTokens.get(fyEthId) as FYToken
     pool = (yieldSpace.pools.get(ETH) as Map<string, Pool>).get(fyEthId) as Pool
   })
