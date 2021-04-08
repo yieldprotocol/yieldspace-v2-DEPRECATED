@@ -5,11 +5,11 @@ import "./BaseMock.sol";
 import "@yield-protocol/utils/contracts/token/ERC20Permit.sol";
 
 contract FYTokenMock is ERC20Permit {
-    BaseMock public base;
+    BaseMock public asset;
     uint32 public maturity;
 
-    constructor (BaseMock base_, uint32 maturity_) ERC20Permit("Test", "TST") {
-        base = base_;
+    constructor (BaseMock asset_, uint32 maturity_) ERC20Permit("Test", "TST") {
+        asset = asset_;
         maturity = maturity_;
     }
 
@@ -23,6 +23,7 @@ contract FYTokenMock is ERC20Permit {
 
     function redeem(address from, address to, uint256 amount) public {
         _burn(from, amount);
-        base.mint(to, amount);
+        asset.mint(to, amount);
     }
+
 }
