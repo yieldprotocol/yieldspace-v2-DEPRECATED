@@ -12,6 +12,7 @@ import { FYTokenMock } from '../../typechain/FYTokenMock'
 import { SafeERC20Namer } from '../../typechain/SafeERC20Namer'
 import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
+import { isTypeOnlyImportOrExportDeclaration } from 'typescript'
 
 export const THREE_MONTHS: number = 3 * 30 * 24 * 60 * 60
 
@@ -96,6 +97,23 @@ export class YieldSpaceEnvironment {
     const now = (await provider.getBlock(await provider.getBlockNumber())).timestamp
     let count: number = 1
 
+
+    const initPool = async (assetId:string, _pool: Pool) => {
+      if (assetId === ETH) {
+        await weth9.deposit({ value: initialBase })
+        await weth9.transfer(_pool.address, initialBase)
+      } else {
+        const base = (await ethers.getContractAt('BaseMock', await _pool.baseToken())as unknown) as ERC20
+        await base.mint(_pool.address, initialBase)
+      }
+      await _pool.mint(ownerAdd, 0)
+
+      // skew pool to 5% interest rate
+      const fyToken = (await ethers.getContractAt('FYToken', await _pool.fyToken()) as unknown) as FYToken
+      await fyToken.mint(_pool.address, initialFYToken)
+      await _pool.sync()
+    }
+
     if (deployedFyTokens.length) {
       for (let deployedFyToken of deployedFyTokens) { 
 
@@ -122,11 +140,13 @@ export class YieldSpaceEnvironment {
         const baseMap = pools.get(_baseId) || new Map(); 
         pools.set(_baseId, baseMap.set(fyTokenId, pool))
 
+        await initPool(_baseId, pool); 
+
       }
     }
 
 
-    if (deployedFyTokens.length === 0) {
+    else  {
 
       // deploy bases
       for (let baseId of baseIds) {
@@ -163,32 +183,11 @@ export class YieldSpaceEnvironment {
           await factory.createPool(base.address, fyToken.address)
           const pool = (await ethers.getContractAt('Pool', calculatedAddress, owner) as unknown) as Pool
           fyTokenPoolPairs.set(fyTokenId, pool)
+
+          await initPool(baseId, pool);
         }
       }
   }  
-
-  // Init all the pools
-  pools.forEach( async (assetGroup:any, assetId:string)=>{
-
-    assetGroup.forEach( async (_pool:any,_k:any) => {
-
-      if (assetId === ETH) {
-        await weth9.deposit({ value: initialBase })
-        await weth9.transfer(_pool.address, initialBase)
-      } else {
-        const base = (await ethers.getContractAt('BaseMock', await _pool.baseToken())as unknown) as ERC20
-        await base.mint(_pool.address, initialBase)
-      }
-
-      await _pool.mint(ownerAdd, 0)
-
-      // skew pool to 5% interest rate
-      const fyToken = (await ethers.getContractAt('FYToken', await _pool.fyToken()) as unknown) as FYToken
-      await fyToken.mint(_pool.address, initialFYToken)
-      await _pool.sync()
-      // console.log(`pool ${_k} initiated`)
-    })
-  })
   
   return new YieldSpaceEnvironment(owner, router, factory, bases, fyTokens, pools)
 
