@@ -131,7 +131,13 @@ describe('Pool - mint', async function () {
       const supply = await pool.totalSupply()
       const baseIn = WAD
 
-      const [expectedMinted, expectedFYTokenIn] = mint(baseReserves, fyTokenReserves, supply, baseIn, CALCULATE_FROM_BASE)
+      const [expectedMinted, expectedFYTokenIn] = mint(
+        baseReserves,
+        fyTokenReserves,
+        supply,
+        baseIn,
+        CALCULATE_FROM_BASE
+      )
 
       await base.mint(user1, baseIn)
       await fyToken.mint(user1, fyTokenTokens)
@@ -157,7 +163,13 @@ describe('Pool - mint', async function () {
       const supply = await pool.totalSupply()
       const baseIn = WAD
 
-      const [expectedMinted, expectedFYTokenIn] = mint(baseReserves, fyTokenReserves, supply, baseIn, CALCULATE_FROM_BASE)
+      const [expectedMinted, expectedFYTokenIn] = mint(
+        baseReserves,
+        fyTokenReserves,
+        supply,
+        baseIn,
+        CALCULATE_FROM_BASE
+      )
 
       await base.mint(user1, baseIn)
       await fyToken.mint(user1, fyTokenTokens)
@@ -183,7 +195,13 @@ describe('Pool - mint', async function () {
       const supply = await pool.totalSupply()
       const fyTokenIn = WAD
 
-      const [expectedMinted, expectedBaseIn] = mint(baseReserves, fyTokenReserves, supply, fyTokenIn, !CALCULATE_FROM_BASE)
+      const [expectedMinted, expectedBaseIn] = mint(
+        baseReserves,
+        fyTokenReserves,
+        supply,
+        fyTokenIn,
+        !CALCULATE_FROM_BASE
+      )
 
       await base.mint(user1, baseTokens)
       await fyToken.mint(user1, fyTokenIn)
