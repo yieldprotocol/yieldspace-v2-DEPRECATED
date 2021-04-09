@@ -333,18 +333,16 @@ contract Pool is IPool, ERC20Permit, Ownable {
         uint256 fyTokenOut = (tokensBurned * fyTokenReserves) / supply;
 
         if (tradeToBase) {
-            {
-                (int128 _k, int128 _g2) = (k2, g2);
-                tokenOut += YieldMath.baseOutForFYTokenIn(                      // This is a virtual sell
-                    realStoredBaseTokenReserve - tokenOut.u128(),               // Real reserves, minus virtual burn
-                    virtualStoredFYTokenReserve - fyTokenOut.u128(),            // Virtual reserves, minus virtual burn
-                    fyTokenOut.u128(),                                          // Sell the virtual fyToken obtained
-                    maturity - uint32(block.timestamp),                         // This can't be called after maturity
-                    _k,
-                    _g2
-                );
-                fyTokenOut = 0;
-            }
+            (int128 _k, int128 _g2) = (k2, g2);
+            tokenOut += YieldMath.baseOutForFYTokenIn(                      // This is a virtual sell
+                realStoredBaseTokenReserve - tokenOut.u128(),               // Real reserves, minus virtual burn
+                virtualStoredFYTokenReserve - fyTokenOut.u128(),            // Virtual reserves, minus virtual burn
+                fyTokenOut.u128(),                                          // Sell the virtual fyToken obtained
+                maturity - uint32(block.timestamp),                         // This can't be called after maturity
+                _k,
+                _g2
+            );
+            fyTokenOut = 0;
         }
 
         // Slippage
