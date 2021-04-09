@@ -96,7 +96,7 @@ contract PoolFactory is IPoolFactory {
     _nextFYToken = address(0);
 
     pool.transferOwnership(msg.sender);
-
+    
     emit PoolCreated(baseToken, fyToken, address(pool));
 
     return address(pool);

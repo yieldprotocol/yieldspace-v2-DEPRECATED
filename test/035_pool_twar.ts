@@ -41,10 +41,11 @@ describe('Pool - TWAR', async function () {
   let baseFromUser1: Base
 
   const baseId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
-  const fyTokenId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
+  const maturityId = '3M'
+  const fyTokenId = baseId + '-' + maturityId
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [fyTokenId], BigNumber.from('0'))
+    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturityId], BigNumber.from('0'))
   }
 
   before(async () => {

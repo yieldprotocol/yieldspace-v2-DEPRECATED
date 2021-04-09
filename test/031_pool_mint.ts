@@ -1,4 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
+import { WAD, MAX256 as MAX } from './shared/constants'
 
 import { Pool } from '../typechain/Pool'
 import { PoolFactory } from '../typechain/PoolFactory'
@@ -23,14 +24,12 @@ async function currentTimestamp() {
 }
 
 import { mint, mintWithBase, burn, burnForBase } from './shared/yieldspace'
-const WAD = BigNumber.from(10).pow(18)
-const MAX = BigNumber.from(2).pow(256).sub(1)
 
 describe('Pool - mint', async function () {
   this.timeout(0)
 
   // These values impact the pool results
-  const baseTokens = BigNumber.from('1000000000000000000000000')
+  const baseTokens = WAD.mul(1000000)
   const fyTokenTokens = baseTokens
   const initialBase = baseTokens
   const OVERRIDES = { gasLimit: 1_000_000 }
@@ -53,10 +52,11 @@ describe('Pool - mint', async function () {
   let maturity: BigNumber
 
   const baseId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
-  const fyTokenId = ethers.utils.hexlify(ethers.utils.randomBytes(6))
+  const maturityId = '3M'
+  const fyTokenId = baseId + '-' + maturityId
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [fyTokenId], BigNumber.from('0'))
+    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturityId], BigNumber.from('0'))
   }
 
   before(async () => {
