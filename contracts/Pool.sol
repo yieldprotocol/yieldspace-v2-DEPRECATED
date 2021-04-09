@@ -242,25 +242,32 @@ contract Pool is IPool, ERC20Permit, Ownable {
         uint256 baseTokenIn;
         uint256 fyTokenIn;
 
-        uint256 baseTokenToSell;
-        if (fyTokenToBuy > 0) { // This is an optional virtual trade before the mint
-            baseTokenToSell = _buyFYTokenPreview(
-                fyTokenToBuy.u128(),
-                realStoredBaseTokenReserve,
-                virtualStoredFYTokenReserve
-            ); 
-        }
-
-        if (calculateFromBase || supply == 0){                // We use all the available base tokens, surplus is in fyTokens
+        if (supply == 0) {
+            require (calculateFromBase && fyTokenToBuy == 0, "Pool: Initialize only from base");
             baseTokenIn = baseToken.balanceOf(address(this)) - realStoredBaseTokenReserve;
-            tokensMinted = supply > 0 ? (supply * baseTokenIn) / realStoredBaseTokenReserve : baseTokenIn;   // If supply == 0 we are initializing the pool and tokensMinted == baseTokenIn; fyTokenIn == 0
-            fyTokenIn = supply > 0 ? (realStoredFYTokenReserve * tokensMinted) / supply : 0;
-            require(realStoredFYTokenReserve + fyTokenIn <= fyToken.balanceOf(address(this)), "Pool: Not enought fyToken in");
-        } else {                                              // We use all the available fyTokens, surplus is in base tokens
-            fyTokenIn = fyToken.balanceOf(address(this)) - realStoredFYTokenReserve;
-            tokensMinted = (supply * (fyTokenToBuy + fyTokenIn)) / (realStoredFYTokenReserve - fyTokenToBuy);
-            baseTokenIn = baseTokenToSell + ((realStoredBaseTokenReserve + baseTokenToSell) * tokensMinted) / supply;
-            require(baseToken.balanceOf(address(this)) - realStoredBaseTokenReserve >= baseTokenIn, "Pool: Not enough base token in");
+            tokensMinted = baseTokenIn;   // If supply == 0 we are initializing the pool and tokensMinted == baseTokenIn; fyTokenIn == 0
+        } else {
+            // There is an optional virtual trade before the mint
+            uint256 baseTokenToSell;
+            if (fyTokenToBuy > 0) {
+                baseTokenToSell = _buyFYTokenPreview(
+                    fyTokenToBuy.u128(),
+                    realStoredBaseTokenReserve,
+                    virtualStoredFYTokenReserve
+                ); 
+            }
+
+            if (calculateFromBase) {   // We use all the available base tokens, surplus is in fyTokens
+                baseTokenIn = baseToken.balanceOf(address(this)) - realStoredBaseTokenReserve;
+                tokensMinted = supply > 0 ? (supply * baseTokenIn) / realStoredBaseTokenReserve : baseTokenIn;   // If supply == 0 we are initializing the pool and tokensMinted == baseTokenIn; fyTokenIn == 0
+                fyTokenIn = supply > 0 ? (realStoredFYTokenReserve * tokensMinted) / supply : 0;
+                require(realStoredFYTokenReserve + fyTokenIn <= fyToken.balanceOf(address(this)), "Pool: Not enought fyToken in");
+            } else {                   // We use all the available fyTokens, surplus is in base tokens
+                fyTokenIn = fyToken.balanceOf(address(this)) - realStoredFYTokenReserve;
+                tokensMinted = (supply * (fyTokenToBuy + fyTokenIn)) / (realStoredFYTokenReserve - fyTokenToBuy);
+                baseTokenIn = baseTokenToSell + ((realStoredBaseTokenReserve + baseTokenToSell) * tokensMinted) / supply;
+                require(baseToken.balanceOf(address(this)) - realStoredBaseTokenReserve >= baseTokenIn, "Pool: Not enough base token in");
+            }
         }
 
         // Slippage
