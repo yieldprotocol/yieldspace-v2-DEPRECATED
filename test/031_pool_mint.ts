@@ -1,8 +1,9 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { WAD, MAX256 as MAX, CALCULATE_FROM_BASE } from './shared/constants'
+import { WAD, MAX128, MAX256 as MAX, CALCULATE_FROM_BASE, OPS } from './shared/constants'
 
 import { Pool } from '../typechain/Pool'
 import { PoolFactory } from '../typechain/PoolFactory'
+import { PoolRouter } from '../typechain/PoolRouter'
 import { BaseMock as Base } from '../typechain/BaseMock'
 import { FYTokenMock as FYToken } from '../typechain/FYTokenMock'
 import { YieldSpaceEnvironment } from './shared/fixtures'
@@ -43,6 +44,7 @@ describe('Pool - mint', async function () {
 
   let yieldSpace: YieldSpaceEnvironment
   let factory: PoolFactory
+  let router: PoolRouter
 
   let pool: Pool
   let poolFromUser1: Pool
@@ -72,6 +74,7 @@ describe('Pool - mint', async function () {
   beforeEach(async () => {
     yieldSpace = await loadFixture(fixture)
     factory = yieldSpace.factory as PoolFactory
+    router = yieldSpace.router as PoolRouter
     base = yieldSpace.bases.get(baseId) as Base
     fyToken = yieldSpace.fyTokens.get(fyTokenId) as FYToken
 
@@ -221,7 +224,7 @@ describe('Pool - mint', async function () {
       expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
     })
 
-    it('mints liquidity tokens with base only', async () => {
+    it.only('mints liquidity tokens with base only', async () => {
       const baseReserves = await base.balanceOf(pool.address)
       const fyTokenReservesVirtual = await pool.getFYTokenReserves()
       const fyTokenReservesReal = await fyToken.balanceOf(pool.address)
@@ -266,6 +269,62 @@ describe('Pool - mint', async function () {
       almostEqual(baseIn, expectedBaseIn, baseIn.div(10000))
       expect((await pool.getStoredReserves())[0]).to.equal(storedBaseReservesBefore.add(baseIn))
       expect((await pool.getStoredReserves())[1]).to.equal(storedFYTokenReservesBefore.add(minted))
+    })
+
+    it.only('mints liquidity tokens in a batch', async () => {
+      const baseReserves = await base.balanceOf(pool.address)
+      const fyTokenReservesVirtual = await pool.getFYTokenReserves()
+      const fyTokenReservesReal = await fyToken.balanceOf(pool.address)
+      const supply = await pool.totalSupply()
+
+      const timeTillMaturity = maturity.sub(await currentTimestamp())
+      const fyTokenToBuy = WAD.div(1000)
+
+      const [expectedMinted, expectedBaseIn] = mintWithBase(
+        baseReserves,
+        fyTokenReservesVirtual,
+        fyTokenReservesReal,
+        supply,
+        fyTokenToBuy,
+        timeTillMaturity
+      )
+
+      const poolTokensBefore = await pool.balanceOf(user2)
+      const poolSupplyBefore = await pool.totalSupply()
+      const storedBaseReservesBefore = (await pool.getStoredReserves())[0]
+      const storedFYTokenReservesBefore = (await pool.getStoredReserves())[1]
+
+      await base.mint(pool.address, expectedBaseIn)
+
+      const buyFYTokenCall = pool.interface.encodeFunctionData('buyFYToken', [pool.address, fyTokenToBuy, MAX128])
+      const mintCall = pool.interface.encodeFunctionData('mint', [owner, false, 0])
+      await router.batch(
+          [base.address], [fyToken.address],
+          [0, 0],
+          [OPS.ROUTE, OPS.ROUTE],
+          [buyFYTokenCall, mintCall]
+        )
+
+
+      /*await expect(poolFromUser1.mintWithBaseToken(user2, fyTokenToBuy, 0, OVERRIDES))
+        .to.emit(pool, 'Liquidity')
+        .withArgs(
+          maturity,
+          user1,
+          user2,
+          (await pool.getStoredReserves())[0].sub(storedBaseReservesBefore).mul(-1),
+          0,
+          (await pool.totalSupply()).sub(poolSupplyBefore)
+        )*/
+
+      const baseIn = (await pool.getStoredReserves())[0].sub(storedBaseReservesBefore)
+      const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
+
+      /* almostEqual(minted, expectedMinted, minted.div(10000))
+
+      almostEqual(baseIn, expectedBaseIn, baseIn.div(10000))
+      expect((await pool.getStoredReserves())[0]).to.equal(storedBaseReservesBefore.add(baseIn))
+      expect((await pool.getStoredReserves())[1]).to.equal(storedFYTokenReservesBefore.add(minted)) */
     })
 
     it("doesn't mint beyond slippage", async () => {
