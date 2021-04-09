@@ -10,7 +10,6 @@ import "./helpers/Ownable.sol";
 import "./helpers/SafeERC20Namer.sol";
 import "./helpers/TransferHelper.sol";
 import "./YieldMath.sol";
-import "hardhat/console.sol";
 
 
 library SafeCast256 {
@@ -196,13 +195,14 @@ contract Pool is IPool, ERC20Permit, Ownable {
     /// The amount of liquidity tokens to mint is calculated from the amount of unaccounted for base tokens in this contract.
     /// A proportional amount of fyTokens needs to be present in this contract, also unaccounted for.
     /// @param to Wallet receiving the minted liquidity tokens.
+    /// @param calculateFromBase Calculate the amount of tokens to mint from the base tokens available, leaving a fyToken surplus.
     /// @param minTokensMinted Minimum amount of liquidity tokens received.
     /// @return The amount of liquidity tokens minted.
-    function mint(address to, uint256 minTokensMinted)
+    function mint(address to, bool calculateFromBase, uint256 minTokensMinted)
         external override
         returns (uint256, uint256, uint256)
     {
-        return _mintInternal(to, 0, minTokensMinted);
+        return _mintInternal(to, calculateFromBase, 0, minTokensMinted);
     }
 
     /// @dev Mint liquidity tokens in exchange for adding only baseToken
@@ -216,16 +216,17 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external override
         returns (uint256, uint256, uint256)
     {
-        return _mintInternal(to, fyTokenToBuy, minTokensMinted);
+        return _mintInternal(to, false, fyTokenToBuy, minTokensMinted);
     }
 
     /// @dev Mint liquidity tokens in exchange for adding only baseToken, if fyTokenToBuy > 0.
     /// If fyTokenToBuy == 0, mint liquidity tokens for both baseTokena and fyToken.
     /// @param to Wallet receiving the minted liquidity tokens.
+    /// @param calculateFromBase Calculate the amount of tokens to mint from the base tokens available, leaving a fyToken surplus.
     /// @param fyTokenToBuy Amount of `fyToken` being bought in the Pool, from this we calculate how much baseToken it will be taken in.
     /// @param minTokensMinted Minimum amount of liquidity tokens received.
     /// @return The amount of liquidity tokens minted.
-    function _mintInternal(address to, uint256 fyTokenToBuy, uint256 minTokensMinted)
+    function _mintInternal(address to, bool calculateFromBase, uint256 fyTokenToBuy, uint256 minTokensMinted)
         internal
         returns (uint256, uint256, uint256)
     {
@@ -240,22 +241,25 @@ contract Pool is IPool, ERC20Permit, Ownable {
         uint256 tokensMinted;
         uint256 baseTokenIn;
         uint256 fyTokenIn;
-        
-        if (fyTokenToBuy == 0 || supply == 0){                // We use both base token and fyToken
+
+        uint256 baseTokenToSell;
+        if (fyTokenToBuy > 0) { // This is an optional virtual trade before the mint
+            baseTokenToSell = _buyFYTokenPreview(
+                fyTokenToBuy.u128(),
+                realStoredBaseTokenReserve,
+                virtualStoredFYTokenReserve
+            ); 
+        }
+
+        if (calculateFromBase || supply == 0){                // We use all the available base tokens, surplus is in fyTokens
             baseTokenIn = baseToken.balanceOf(address(this)) - realStoredBaseTokenReserve;
             tokensMinted = supply > 0 ? (supply * baseTokenIn) / realStoredBaseTokenReserve : baseTokenIn;   // If supply == 0 we are initializing the pool and tokensMinted == baseTokenIn; fyTokenIn == 0
             fyTokenIn = supply > 0 ? (realStoredFYTokenReserve * tokensMinted) / supply : 0;
             require(realStoredFYTokenReserve + fyTokenIn <= fyToken.balanceOf(address(this)), "Pool: Not enought fyToken in");
-        } else {                                              // Use only base token
-            uint256 tradeBaseTokenIn = _buyFYTokenPreview(
-                fyTokenToBuy.u128(),
-                realStoredBaseTokenReserve,
-                virtualStoredFYTokenReserve
-            ); // This is a virtual buy
-
-            require(fyToken.balanceOf(address(this)) >= fyTokenToBuy, "Pool: Not enough fyToken in the pool");
-            tokensMinted = (supply * fyTokenToBuy) / (realStoredFYTokenReserve - fyTokenToBuy);
-            baseTokenIn = tradeBaseTokenIn + ((realStoredBaseTokenReserve + tradeBaseTokenIn) * tokensMinted) / supply;
+        } else {                                              // We use all the available fyTokens, surplus is in base tokens
+            fyTokenIn = fyToken.balanceOf(address(this)) - realStoredFYTokenReserve;
+            tokensMinted = (supply * (fyTokenToBuy + fyTokenIn)) / (realStoredFYTokenReserve - fyTokenToBuy);
+            baseTokenIn = baseTokenToSell + ((realStoredBaseTokenReserve + baseTokenToSell) * tokensMinted) / supply;
             require(baseToken.balanceOf(address(this)) - realStoredBaseTokenReserve >= baseTokenIn, "Pool: Not enough base token in");
         }
 
