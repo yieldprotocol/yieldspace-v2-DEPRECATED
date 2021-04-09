@@ -161,7 +161,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         returns(uint128 retrieved)
     {
         retrieved = getBaseTokenReserves() - storedBaseTokenReserve; // Stored reserves can never be above actual reserves
-        baseToken.safeTransfer(to, retrieved);
+        if (to != address(this) && retrieved > 0) baseToken.safeTransfer(to, retrieved);
         // Now the current reserves match the stored reserves, so no need to update the TWAR
     }
 
@@ -171,7 +171,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         returns(uint128 retrieved)
     {
         retrieved = getFYTokenReserves() - storedFYTokenReserve; // Stored reserves can never be above actual reserves
-        IERC20(address(fyToken)).safeTransfer(to, retrieved);
+        if (to != address(this) && retrieved > 0) IERC20(address(fyToken)).safeTransfer(to, retrieved);
         // Now the current reserves match the stored reserves, so no need to update the TWAR
     }
 
@@ -353,8 +353,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
         // Transfer assets
         _burn(address(this), tokensBurned);
-        baseToken.safeTransfer(to, tokenOut);
-        if (fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
+        if (to != address(this) && tokenOut > 0) baseToken.safeTransfer(to, tokenOut);
+        if (to != address(this) && fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
 
         // Update TWAR
         _update(
@@ -398,7 +398,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
+        if (to != address(this) && fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
 
         // Update TWAR
         _update(
@@ -483,7 +483,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        baseToken.safeTransfer(to, tokenOut);
+        if (to != address(this) && tokenOut > 0) baseToken.safeTransfer(to, tokenOut);
 
         // Update TWAR
         _update(
@@ -557,7 +557,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        baseToken.safeTransfer(to, baseTokenOut);
+        if (to != address(this) && baseTokenOut > 0) baseToken.safeTransfer(to, baseTokenOut);
 
         // Update TWAR
         _update(
@@ -635,7 +635,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
+        if (to != address(this) && fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
 
         // Update TWAR
         _update(
