@@ -259,10 +259,10 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
             if (calculateFromBase) {   // We use all the available base tokens, surplus is in fyTokens
                 baseTokenIn = baseToken.balanceOf(address(this)) - realStoredBaseTokenReserve;
-                tokensMinted = supply > 0 ? (supply * baseTokenIn) / realStoredBaseTokenReserve : baseTokenIn;   // If supply == 0 we are initializing the pool and tokensMinted == baseTokenIn; fyTokenIn == 0
-                fyTokenIn = supply > 0 ? (realStoredFYTokenReserve * tokensMinted) / supply : 0;
+                tokensMinted = (supply * baseTokenIn) / realStoredBaseTokenReserve;
+                fyTokenIn = (realStoredFYTokenReserve * tokensMinted) / supply;
                 require(realStoredFYTokenReserve + fyTokenIn <= fyToken.balanceOf(address(this)), "Pool: Not enought fyToken in");
-            } else {                   // We use all the available fyTokens, surplus is in base tokens
+            } else {                   // We use all the available fyTokens, plus a virtual trade if it happened, surplus is in base tokens
                 fyTokenIn = fyToken.balanceOf(address(this)) - realStoredFYTokenReserve;
                 tokensMinted = (supply * (fyTokenToBuy + fyTokenIn)) / (realStoredFYTokenReserve - fyTokenToBuy);
                 baseTokenIn = baseTokenToSell + ((realStoredBaseTokenReserve + baseTokenToSell) * tokensMinted) / supply;
