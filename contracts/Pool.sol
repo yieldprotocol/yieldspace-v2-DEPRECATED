@@ -361,8 +361,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
         // Transfer assets
         _burn(address(this), tokensBurned);
-        baseToken.safeTransfer(to, tokenOut); // TODO: Should the interaction be after the effect (twar update)?
-        if (fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(to, fyTokenOut); // TODO: Should the interaction be after the effect (twar update)?
+        baseToken.safeTransfer(to, tokenOut);
+        if (fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
 
         emit Liquidity(maturity, msg.sender, to, tokenOut.i256(), fyTokenOut.i256(), -(tokensBurned.i256()));
         return (tokensBurned, tokenOut, 0);
@@ -406,7 +406,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut); // TODO: Should the interaction be after the effect (twar update)?
+        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
 
         emit Trade(maturity, msg.sender, to, -(baseTokenIn.i128()), fyTokenOut.i128());
         return fyTokenOut;
@@ -491,7 +491,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        baseToken.safeTransfer(to, tokenOut); // TODO: Should the interaction be after the effect (twar update)?
+        baseToken.safeTransfer(to, tokenOut);
 
         emit Trade(maturity, msg.sender, to, tokenOut.i128(), -(fyTokenIn.i128()));
         return fyTokenIn;
@@ -566,7 +566,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        baseToken.safeTransfer(to, baseTokenOut); // TODO: Should the interaction be after the effect (twar update)?
+        baseToken.safeTransfer(to, baseTokenOut);
 
         emit Trade(maturity, msg.sender, to, baseTokenOut.i128(), -(fyTokenIn.i128()));
         return baseTokenOut;
@@ -644,7 +644,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut); // TODO: Should the interaction be after the effect (twar update)?
+        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
 
         emit Trade(maturity, msg.sender, to, -(baseTokenIn.i128()), fyTokenOut.i128());
         return baseTokenIn;
