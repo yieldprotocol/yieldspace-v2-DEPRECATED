@@ -273,9 +273,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
         // Slippage
         require (tokensMinted >= minTokensMinted, "Pool: Not enough tokens minted");
 
-        // Execute mint
-        _mint(to, tokensMinted);
-
         // Update TWAR
         _update(
             (realStoredBaseTokenReserve + baseTokenIn).u128(),
@@ -283,6 +280,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
             realStoredBaseTokenReserve,
             virtualStoredFYTokenReserve
         );
+
+        // Execute mint
+        _mint(to, tokensMinted);
 
         emit Liquidity(maturity, msg.sender, to, -(baseTokenIn.i256()), -(fyTokenIn.i256()), tokensMinted.i256());
         return (baseTokenIn, fyTokenIn, tokensMinted);
@@ -351,11 +351,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
         require (tokenOut >= minBaseTokenOut, "Pool: Not enough base tokens obtained");
         require (fyTokenOut >= minFYTokenOut, "Pool: Not enough fyToken obtained");
 
-        // Transfer assets
-        _burn(address(this), tokensBurned);
-        baseToken.safeTransfer(to, tokenOut); // TODO: Should the interaction be after the effect (twar update)?
-        if (fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(to, fyTokenOut); // TODO: Should the interaction be after the effect (twar update)?
-
         // Update TWAR
         _update(
             (baseTokenReserves - tokenOut).u128(),
@@ -363,6 +358,11 @@ contract Pool is IPool, ERC20Permit, Ownable {
             realStoredBaseTokenReserve,
             virtualStoredFYTokenReserve
         );
+
+        // Transfer assets
+        _burn(address(this), tokensBurned);
+        baseToken.safeTransfer(to, tokenOut); // TODO: Should the interaction be after the effect (twar update)?
+        if (fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(to, fyTokenOut); // TODO: Should the interaction be after the effect (twar update)?
 
         emit Liquidity(maturity, msg.sender, to, tokenOut.i256(), fyTokenOut.i256(), -(tokensBurned.i256()));
         return (tokensBurned, tokenOut, 0);
@@ -397,9 +397,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
             "Pool: Not enough fyToken obtained"
         );
 
-        // Transfer assets
-        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut); // TODO: Should the interaction be after the effect (twar update)?
-
         // Update TWAR
         _update(
             _baseTokenReserves,
@@ -407,6 +404,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
+
+        // Transfer assets
+        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut); // TODO: Should the interaction be after the effect (twar update)?
 
         emit Trade(maturity, msg.sender, to, -(baseTokenIn.i128()), fyTokenOut.i128());
         return fyTokenOut;
@@ -482,9 +482,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
             "Pool: Too much fyToken in"
         );
 
-        // Transfer assets
-        baseToken.safeTransfer(to, tokenOut); // TODO: Should the interaction be after the effect (twar update)?
-
         // Update TWAR
         _update(
             _storedBaseTokenReserve - tokenOut,
@@ -492,6 +489,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
+
+        // Transfer assets
+        baseToken.safeTransfer(to, tokenOut); // TODO: Should the interaction be after the effect (twar update)?
 
         emit Trade(maturity, msg.sender, to, tokenOut.i128(), -(fyTokenIn.i128()));
         return fyTokenIn;
@@ -543,6 +543,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
         uint112 _fyTokenReserves = getFYTokenReserves();
+        uint112 _baseTokenReserves = getBaseTokenReserves();
         uint128 fyTokenIn = _fyTokenReserves - _storedFYTokenReserve;
         uint128 baseTokenOut = _sellFYTokenPreview(
             fyTokenIn,
@@ -556,16 +557,16 @@ contract Pool is IPool, ERC20Permit, Ownable {
             "Pool: Not enough baseToken obtained"
         );
 
-        // Transfer assets
-        baseToken.safeTransfer(to, baseTokenOut); // TODO: Should the interaction be after the effect (twar update)?
-
         // Update TWAR
         _update(
-            getBaseTokenReserves(),
+            _baseTokenReserves - baseTokenOut,
             _fyTokenReserves,
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
+
+        // Transfer assets
+        baseToken.safeTransfer(to, baseTokenOut); // TODO: Should the interaction be after the effect (twar update)?
 
         emit Trade(maturity, msg.sender, to, baseTokenOut.i128(), -(fyTokenIn.i128()));
         return baseTokenOut;
@@ -634,9 +635,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
             "Pool: Too much base token in"
         );
 
-        // Transfer assets
-        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut); // TODO: Should the interaction be after the effect (twar update)?
-
         // Update TWAR
         _update(
             _storedBaseTokenReserve + baseTokenIn,
@@ -644,6 +642,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
+
+        // Transfer assets
+        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut); // TODO: Should the interaction be after the effect (twar update)?
 
         emit Trade(maturity, msg.sender, to, -(baseTokenIn.i128()), fyTokenOut.i128());
         return baseTokenIn;
