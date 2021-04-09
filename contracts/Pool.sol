@@ -342,8 +342,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
         // Transfer assets
         _burn(address(this), tokensBurned);
-        baseToken.safeTransfer(to, tokenOut);
-        if (fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
+        baseToken.safeTransfer(to, tokenOut); // TODO: Should the interaction be after the effect (twar update)?
+        if (fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(to, fyTokenOut); // TODO: Should the interaction be after the effect (twar update)?
 
         // Update TWAR
         _update(
@@ -387,7 +387,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
+        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut); // TODO: Should the interaction be after the effect (twar update)?
 
         // Update TWAR
         _update(
@@ -472,7 +472,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        baseToken.safeTransfer(to, tokenOut);
+        baseToken.safeTransfer(to, tokenOut); // TODO: Should the interaction be after the effect (twar update)?
 
         // Update TWAR
         _update(
@@ -546,7 +546,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        baseToken.safeTransfer(to, baseTokenOut);
+        baseToken.safeTransfer(to, baseTokenOut); // TODO: Should the interaction be after the effect (twar update)?
 
         // Update TWAR
         _update(
@@ -624,7 +624,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         // Transfer assets
-        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
+        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut); // TODO: Should the interaction be after the effect (twar update)?
 
         // Update TWAR
         _update(
