@@ -1,5 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { OPS, WAD, MAX256 as MAX } from './shared/constants'
+import { OPS, WAD, MAX256 as MAX, CALCULATE_FROM_BASE } from './shared/constants'
 
 import { PoolFactory } from '../typechain/PoolFactory'
 import { PoolRouter } from '../typechain/PoolRouter'
@@ -73,7 +73,7 @@ describe('PoolRouter', async function () {
   it('transfers pool tokens to a pool', async () => {
     await base.mint(pool1.address, WAD)
     await fyToken1.mint(pool1.address, WAD)
-    await pool1.mint(owner, WAD)
+    await pool1.mint(owner, CALCULATE_FROM_BASE, WAD)
 
     const poolTokensBefore = await pool1.balanceOf(pool1.address)
     await pool1.approve(router.address, WAD)

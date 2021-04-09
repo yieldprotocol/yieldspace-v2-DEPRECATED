@@ -14,16 +14,25 @@ export function mint(
   baseReserves: BigNumber,
   fyTokenReserves: BigNumber,
   supply: BigNumber,
-  base: BigNumber
+  input: BigNumber,
+  fromBase: boolean
 ): [BigNumber, BigNumber] {
   const Z = tobn(baseReserves)
   const Y = tobn(fyTokenReserves)
   const S = tobn(supply)
-  const z = tobn(base)
-  const m = divide(multiply(S, z), Z)
-  const y = divide(multiply(Y, m), S)
+  const x = tobn(input)
 
-  return [toBN(m), toBN(y)]
+  let m: typeof bignumber
+  let w: typeof bignumber
+  if (fromBase) {
+    m = divide(multiply(S, x), Z) // tokens minted
+    w = divide(multiply(Y, m), S) // input required from opposite token
+  } else {
+    m = divide(multiply(S, x), Y)
+    w = divide(multiply(Z, m), S)
+  }
+
+  return [toBN(m), toBN(w)]
 }
 
 export function mintWithBase(
