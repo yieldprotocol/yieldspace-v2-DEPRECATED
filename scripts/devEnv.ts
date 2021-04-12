@@ -40,14 +40,14 @@ const linkPool = async (pool: Pool) => {
     const ladle = await ethers.getContractAt('Ladle', LADLE_ADDR, ownerAcc);
     const fyToken = (await ethers.getContractAt('FYToken', await pool.fyToken()) as unknown) as FYToken;
     const seriesId = await fyToken.name()
-    ladle.addPool(seriesId, pool.address)
+    await ladle.addPool(seriesId, pool.address)
 }
 
 async function fixture() {
     const [ ownerAcc ] = await ethers.getSigners();
     const seriesList = await getSeriesInfo();
     return await YieldSpaceEnvironment.setup(
-        ownerAcc,[],[], BigNumber.from('0'),
+        ownerAcc,[],[], BigNumber.from('1000000'),
         seriesList
         )
 }
@@ -56,9 +56,9 @@ loadFixture(fixture)
 .then((env:YieldSpaceEnvironment)  => {
     console.log('Pools:')
     env.pools.forEach((value:any, key:any)=>{    
-        value.forEach((v:any,k:any) => {
+        value.forEach(async (v:any,k:any) => {
             /* connect pool to series in ladle */
-            linkPool(v);
+            await linkPool(v);
             console.log(`"${k}" : "${v.address}",`)
         })   
     })   

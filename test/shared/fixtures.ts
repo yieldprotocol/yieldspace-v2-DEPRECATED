@@ -106,7 +106,7 @@ export class YieldSpaceEnvironment {
         const base = (await ethers.getContractAt('BaseMock', await _pool.baseToken())as unknown) as ERC20
         await base.mint(_pool.address, initialBase)
       }
-      await _pool.mint(ownerAdd, 0)
+      await _pool.mint(ownerAdd, initialBase)
 
       // skew pool to 5% interest rate
       const fyToken = (await ethers.getContractAt('FYToken', await _pool.fyToken()) as unknown) as FYToken
