@@ -10,10 +10,10 @@ import "@yield-protocol/yieldspace-interfaces/PoolDataTypes.sol";
 import "@yield-protocol/utils/contracts/token/IERC20.sol";
 import "@yield-protocol/utils/contracts/token/IERC2612.sol";
 import "dss-interfaces/src/dss/DaiAbstract.sol";
-import "./helpers/AllTransferHelper.sol";
-import "./helpers/Multicall.sol";
-import "./helpers/RevertMsgExtractor.sol";
-import "./helpers/IWETH9.sol";
+import "@yield-protocol/utils-v2/contracts/AllTransferHelper.sol";
+import "@yield-protocol/utils-v2/contracts/Multicall.sol";
+import "@yield-protocol/utils-v2/contracts/RevertMsgExtractor.sol";
+import "@yield-protocol/utils-v2/contracts/IWETH9.sol";
 
 
 contract PoolRouter is IPoolRouter, Multicall {
