@@ -12,7 +12,7 @@ import { FYTokenMock } from '../../typechain/FYTokenMock'
 import { SafeERC20Namer } from '../../typechain/SafeERC20Namer'
 import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
-import { isTypeOnlyImportOrExportDeclaration } from 'typescript'
+
 
 export const THREE_MONTHS: number = 3 * 30 * 24 * 60 * 60
 
@@ -47,7 +47,7 @@ export class YieldSpaceEnvironment {
     maturityIds: Array<string>,
     initialLiquidity: BigNumber,
     deployedFyTokens: Array<string>=[],
-    ) {
+  ) {
     const ownerAdd = await owner.getAddress()
 
     let router: PoolRouter
@@ -89,7 +89,6 @@ export class YieldSpaceEnvironment {
 
     const WAD = BigNumber.from(10).pow(18)
     const initialBase = WAD.mul(initialLiquidity)
-    const initialFYToken = initialBase.div(9)
     const bases: Map<string, ERC20> = new Map()
     const fyTokens: Map<string, FYToken|FYTokenMock> = new Map()
     const pools: Map<string, Map<string, Pool>> = new Map()
@@ -97,23 +96,40 @@ export class YieldSpaceEnvironment {
     const now = (await provider.getBlock(await provider.getBlockNumber())).timestamp
     let count: number = 1
 
-
-    const initPool = async (assetId:string, _pool: Pool) => {
-      if (assetId === ETH) {
-        await weth9.deposit({ value: initialBase })
-        await weth9.transfer(_pool.address, initialBase)
-      } else {
-        const base = (await ethers.getContractAt('BaseMock', await _pool.baseToken())as unknown) as ERC20
-        await base.mint(_pool.address, initialBase)
-      }
-      await _pool.mint(ownerAdd, initialBase)
-
-      // skew pool to 5% interest rate
-      const fyToken = (await ethers.getContractAt('FYToken', await _pool.fyToken()) as unknown) as FYToken
-      await fyToken.mint(_pool.address, initialFYToken)
-      await _pool.sync()
+    // deploy bases
+    for (let baseId of baseIds) {
+      const base = (await BaseFactory.deploy() as unknown) as ERC20;
+      await base.deployed()
+      bases.set(baseId, base)
     }
 
+    // add WETH to bases
+    bases.set(ETH, weth9)
+    baseIds.unshift(ETH)
+
+    // add Dai to bases
+    bases.set(DAI, dai)
+    baseIds.unshift(DAI)
+
+    // deploy fyTokens
+    for (let baseId of baseIds) {
+      const base = bases.get(baseId) as ERC20
+      const fyTokenPoolPairs: Map<string, Pool> = new Map()
+      pools.set(baseId, fyTokenPoolPairs)
+
+      for (let maturityId of maturityIds) {
+
+        const fyTokenId = baseId + '-' + maturityId
+        
+        // deploy fyToken
+        const maturity = now + THREE_MONTHS * count++ // We are just assuming that the maturities are '3M', '6M', '9M' and so on
+        const fyToken = (await FYTokenFactory.deploy(base.address, maturity) as unknown) as FYTokenMock
+        await fyToken.deployed()
+        fyTokens.set(fyTokenId, fyToken)
+      }
+    }
+
+    // load any existing bases and fyTokens
     if (deployedFyTokens.length) {
       for (let deployedFyToken of deployedFyTokens) { 
 
@@ -121,76 +137,49 @@ export class YieldSpaceEnvironment {
         const [ assetAddr, maturity ]  = await Promise.all([ fyToken.asset(), fyToken.maturity() ]) ;
 
         const base = (await ethers.getContractAt('BaseMock', assetAddr, owner)as unknown) as ERC20
-        const _symbol = await base.symbol();
+        const symbol = await base.symbol();
 
-        // Add series base to baseMap */
-        const _baseId = ethers.utils.formatBytes32String(_symbol).slice(0, 14);
-        bases.set(_baseId, base) // it is ok if they are duplicated,...it should simply over-write.
+        // Add series base to base mapping
+        const baseId = ethers.utils.formatBytes32String(symbol).slice(0, 14);
+        bases.set(baseId, base) // it is ok if they are duplicated,...it should simply over-write.
        
-        // add fyToken to fyToken Mapping */
-        const fyTokenId = _symbol + '-' + maturity.toString();
+        // add fyToken to fyToken mapping
+        const fyTokenId = symbol + '-' + maturity.toString();
         fyTokens.set(fyTokenId, fyToken)
-
-        // deploy base/fyToken POOL
-        const calculatedAddress = await factory.calculatePoolAddress(base.address, fyToken.address)
-        await factory.createPool(base.address, fyToken.address)
-        const pool = (await ethers.getContractAt('Pool', calculatedAddress, owner) as unknown) as Pool
-
-        // register pool in pools Mapping
-        const baseMap = pools.get(_baseId) || new Map(); 
-        pools.set(_baseId, baseMap.set(fyTokenId, pool))
-
-        await initPool(_baseId, pool); 
-
       }
     }
 
+    // deploy pools
+    for (let baseId of bases.keys()) {
+      const fyTokenPoolPairs: Map<string, Pool> = new Map()
+      pools.set(baseId, fyTokenPoolPairs)
 
-    else  {
-
-      // deploy bases
-      for (let baseId of baseIds) {
-        const base = (await BaseFactory.deploy() as unknown) as ERC20;
-        await base.deployed()
-        bases.set(baseId, base)
-      }
-
-      // add WETH to bases
-      bases.set(ETH, weth9)
-      baseIds.unshift(ETH)
-
-      // add Dai to bases
-      bases.set(DAI, dai)
-      baseIds.unshift(DAI)
-
-      for (let baseId of baseIds) {
+      for (let fyTokenId of fyTokens.keys()) {
         const base = bases.get(baseId) as ERC20
-        const fyTokenPoolPairs: Map<string, Pool> = new Map()
-        pools.set(baseId, fyTokenPoolPairs)
+        const fyToken = fyTokens.get(fyTokenId) as FYToken      
 
-        for (let maturityId of maturityIds) {
+        const calculatedAddress = await factory.calculatePoolAddress(base.address, fyToken.address)
+        await factory.createPool(base.address, fyToken.address)
+        const pool = (await ethers.getContractAt('Pool', calculatedAddress, owner) as unknown) as Pool
+        fyTokenPoolPairs.set(fyTokenId, pool)
 
-          const fyTokenId = baseId + '-' + maturityId
-          
-          // deploy fyToken
-          const maturity = now + THREE_MONTHS * count++ // We are just assuming that the maturities are '3M', '6M', '9M' and so on
-          const fyToken = (await FYTokenFactory.deploy(base.address, maturity) as unknown) as FYTokenMock
-          await fyToken.deployed()
-          fyTokens.set(fyTokenId, fyToken)
-
-          // deploy base/fyToken pool
-          const calculatedAddress = await factory.calculatePoolAddress(base.address, fyToken.address)
-          await factory.createPool(base.address, fyToken.address)
-          const pool = (await ethers.getContractAt('Pool', calculatedAddress, owner) as unknown) as Pool
-          fyTokenPoolPairs.set(fyTokenId, pool)
-
-          await initPool(baseId, pool);
+        // initialize pools
+        if (baseId === ETH) {
+          await weth9.deposit({ value: initialBase })
+          await weth9.transfer(pool.address, initialBase)
+        } else {
+          const base = (await ethers.getContractAt('BaseMock', await pool.baseToken())as unknown) as ERC20
+          await base.mint(pool.address, initialBase)
         }
-      }
-  }  
+        await pool.mint(ownerAdd, initialBase)
   
-  return new YieldSpaceEnvironment(owner, router, factory, bases, fyTokens, pools)
+        // skew pool to 5% interest rate
+        await fyToken.mint(pool.address, initialBase.div(9))
+        await pool.sync()
+      } 
+    }
 
+    return new YieldSpaceEnvironment(owner, router, factory, bases, fyTokens, pools)
   }
 
 }
