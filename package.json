@@ -1,9 +1,13 @@
 {
-  "name": "yieldspace-v2",
-  "version": "1.0",
-  "description": "",
+  "name": "@yield-protocol/yieldspace-v2",
+  "version": "0.0.1",
+  "description": "YieldSpace v2 contracts",
   "main": "index.js",
-  "author": "",
+  "author": "Yield Inc.",
+  "files": [
+    "contracts/*.sol",
+    "contracts/helpers/*.sol"
+  ],
   "scripts": {
     "build": "hardhat compile",
     "test": "hardhat test",
@@ -47,5 +51,14 @@
     "typechain": "^4.0.1",
     "typechain-target-ethers-v5": "^5.0.1",
     "typescript": "^3.9.7"
-  }
+  },
+  "repository": {
+    "url": "git+https://github.com/yieldprotocol/yieldspace-v2.git",
+    "type": "git"
+  },
+  "bugs": {
+    "url": "https://github.com/yieldprotocol/yieldspace-v2/issues"
+  },
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://github.com/yieldprotocol/yieldspace-v2#readme"
 }
