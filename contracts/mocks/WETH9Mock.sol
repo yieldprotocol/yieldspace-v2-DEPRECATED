@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import "@yield-protocol/utils/contracts/token/ERC20.sol";
 
-pragma solidity ^0.8.0;
+pragma solidity >= 0.8.0;
 
 
 contract WETH9Mock is ERC20 {
