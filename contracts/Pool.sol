@@ -6,9 +6,9 @@ import "@yield-protocol/utils/contracts/token/IERC20.sol";
 import "@yield-protocol/vault-interfaces/IFYToken.sol";
 import "@yield-protocol/yieldspace-interfaces/IPool.sol";
 import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
-import "./helpers/Ownable.sol";
-import "./helpers/SafeERC20Namer.sol";
-import "./helpers/TransferHelper.sol";
+import "@yield-protocol/utils-v2/contracts/Ownable.sol";
+import "@yield-protocol/utils-v2/contracts/SafeERC20Namer.sol";
+import "@yield-protocol/utils-v2/contracts/TransferHelper.sol";
 import "./YieldMath.sol";
 
 
