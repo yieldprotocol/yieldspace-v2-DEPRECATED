@@ -1,5 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { WAD, MAX256 as MAX } from './shared/constants'
+import { WAD, MAX256 as MAX, CALCULATE_FROM_BASE } from './shared/constants'
 
 import { Pool } from '../typechain/Pool'
 import { PoolFactory } from '../typechain/PoolFactory'
@@ -91,7 +91,7 @@ describe('Pool - mint', async function () {
   it('adds initial liquidity', async () => {
     await base.mint(pool.address, initialBase)
 
-    await expect(poolFromUser1.mint(user2, 0))
+    await expect(poolFromUser1.mint(user2, CALCULATE_FROM_BASE, 0))
       .to.emit(pool, 'Liquidity')
       .withArgs(maturity, user1, user2, initialBase.mul(-1), 0, initialBase)
 
@@ -117,7 +117,7 @@ describe('Pool - mint', async function () {
   describe('with initial liquidity', () => {
     beforeEach(async () => {
       await base.mint(pool.address, initialBase)
-      await poolFromUser1.mint(user1, 0)
+      await poolFromUser1.mint(user1, CALCULATE_FROM_BASE, 0)
 
       const additionalFYTokenReserves = initialBase.div(9)
       // Skew the reserves without using trading functions
@@ -131,7 +131,13 @@ describe('Pool - mint', async function () {
       const supply = await pool.totalSupply()
       const baseIn = WAD
 
-      const [expectedMinted, expectedFYTokenIn] = mint(baseReserves, fyTokenReserves, supply, baseIn)
+      const [expectedMinted, expectedFYTokenIn] = mint(
+        baseReserves,
+        fyTokenReserves,
+        supply,
+        baseIn,
+        CALCULATE_FROM_BASE
+      )
 
       await base.mint(user1, baseIn)
       await fyToken.mint(user1, fyTokenTokens)
@@ -140,7 +146,7 @@ describe('Pool - mint', async function () {
 
       await base.connect(user1Acc).transfer(pool.address, WAD)
       await fyToken.connect(user1Acc).transfer(pool.address, expectedFYTokenIn)
-      await expect(poolFromUser1.mint(user2, 0))
+      await expect(poolFromUser1.mint(user2, CALCULATE_FROM_BASE, 0))
         .to.emit(pool, 'Liquidity')
         .withArgs(maturity, user1, user2, WAD.mul(-1), expectedFYTokenIn.mul(-1), expectedMinted)
 
@@ -148,6 +154,70 @@ describe('Pool - mint', async function () {
 
       almostEqual(minted, expectedMinted, baseIn.div(10000))
       expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
+      expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
+    })
+
+    it('mints liquidity tokens, leaving fyToken surplus', async () => {
+      const baseReserves = await base.balanceOf(pool.address)
+      const fyTokenReserves = await fyToken.balanceOf(pool.address)
+      const supply = await pool.totalSupply()
+      const baseIn = WAD
+
+      const [expectedMinted, expectedFYTokenIn] = mint(
+        baseReserves,
+        fyTokenReserves,
+        supply,
+        baseIn,
+        CALCULATE_FROM_BASE
+      )
+
+      await base.mint(user1, baseIn)
+      await fyToken.mint(user1, fyTokenTokens)
+
+      const poolTokensBefore = await pool.balanceOf(user2)
+
+      await base.connect(user1Acc).transfer(pool.address, WAD)
+      await fyToken.connect(user1Acc).transfer(pool.address, expectedFYTokenIn.add(WAD))
+      await expect(poolFromUser1.mint(user2, CALCULATE_FROM_BASE, 0))
+        .to.emit(pool, 'Liquidity')
+        .withArgs(maturity, user1, user2, WAD.mul(-1), expectedFYTokenIn.mul(-1), expectedMinted)
+
+      const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
+
+      almostEqual(minted, expectedMinted, baseIn.div(10000))
+      expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
+      expect((await pool.getStoredReserves())[1]).to.equal((await pool.getFYTokenReserves()).sub(WAD))
+    })
+
+    it('mints liquidity tokens, leaving base surplus', async () => {
+      const baseReserves = await base.balanceOf(pool.address)
+      const fyTokenReserves = await fyToken.balanceOf(pool.address)
+      const supply = await pool.totalSupply()
+      const fyTokenIn = WAD
+
+      const [expectedMinted, expectedBaseIn] = mint(
+        baseReserves,
+        fyTokenReserves,
+        supply,
+        fyTokenIn,
+        !CALCULATE_FROM_BASE
+      )
+
+      await base.mint(user1, baseTokens)
+      await fyToken.mint(user1, fyTokenIn)
+
+      const poolTokensBefore = await pool.balanceOf(user2)
+
+      await base.connect(user1Acc).transfer(pool.address, expectedBaseIn.add(WAD))
+      await fyToken.connect(user1Acc).transfer(pool.address, fyTokenIn)
+      await expect(poolFromUser1.mint(user2, !CALCULATE_FROM_BASE, 0))
+        .to.emit(pool, 'Liquidity')
+        .withArgs(maturity, user1, user2, expectedBaseIn.mul(-1), fyTokenIn.mul(-1), expectedMinted)
+
+      const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
+
+      almostEqual(minted, expectedMinted, fyTokenIn.div(10000))
+      expect((await pool.getStoredReserves())[0]).to.equal((await pool.getBaseTokenReserves()).sub(WAD))
       expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
     })
 
