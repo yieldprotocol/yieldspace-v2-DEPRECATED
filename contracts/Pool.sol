@@ -272,9 +272,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
         // Slippage
         require (tokensMinted >= minTokensMinted, "Pool: Not enough tokens minted");
 
-        // Execute mint
-        _mint(to, tokensMinted);
-
         // Update TWAR
         _update(
             (realStoredBaseTokenReserve + baseTokenIn).u128(),
@@ -282,6 +279,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
             realStoredBaseTokenReserve,
             virtualStoredFYTokenReserve
         );
+
+        // Execute mint
+        _mint(to, tokensMinted);
 
         emit Liquidity(maturity, msg.sender, to, -(baseTokenIn.i256()), -(fyTokenIn.i256()), tokensMinted.i256());
         return (baseTokenIn, fyTokenIn, tokensMinted);
@@ -332,28 +332,21 @@ contract Pool is IPool, ERC20Permit, Ownable {
         uint256 fyTokenOut = (tokensBurned * fyTokenReserves) / supply;
 
         if (tradeToBase) {
-            {
-                (int128 _k, int128 _g2) = (k2, g2);
-                tokenOut += YieldMath.baseOutForFYTokenIn(                      // This is a virtual sell
-                    realStoredBaseTokenReserve - tokenOut.u128(),               // Real reserves, minus virtual burn
-                    virtualStoredFYTokenReserve - fyTokenOut.u128(),            // Virtual reserves, minus virtual burn
-                    fyTokenOut.u128(),                                          // Sell the virtual fyToken obtained
-                    maturity - uint32(block.timestamp),                         // This can't be called after maturity
-                    _k,
-                    _g2
-                );
-                fyTokenOut = 0;
-            }
+            (int128 _k, int128 _g2) = (k2, g2);
+            tokenOut += YieldMath.baseOutForFYTokenIn(                      // This is a virtual sell
+                realStoredBaseTokenReserve - tokenOut.u128(),               // Real reserves, minus virtual burn
+                virtualStoredFYTokenReserve - fyTokenOut.u128(),            // Virtual reserves, minus virtual burn
+                fyTokenOut.u128(),                                          // Sell the virtual fyToken obtained
+                maturity - uint32(block.timestamp),                         // This can't be called after maturity
+                _k,
+                _g2
+            );
+            fyTokenOut = 0;
         }
 
         // Slippage
         require (tokenOut >= minBaseTokenOut, "Pool: Not enough base tokens obtained");
         require (fyTokenOut >= minFYTokenOut, "Pool: Not enough fyToken obtained");
-
-        // Transfer assets
-        _burn(address(this), tokensBurned);
-        baseToken.safeTransfer(to, tokenOut);
-        if (fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
 
         // Update TWAR
         _update(
@@ -362,6 +355,11 @@ contract Pool is IPool, ERC20Permit, Ownable {
             realStoredBaseTokenReserve,
             virtualStoredFYTokenReserve
         );
+
+        // Transfer assets
+        _burn(address(this), tokensBurned);
+        baseToken.safeTransfer(to, tokenOut);
+        if (fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
 
         emit Liquidity(maturity, msg.sender, to, tokenOut.i256(), fyTokenOut.i256(), -(tokensBurned.i256()));
         return (tokensBurned, tokenOut, 0);
@@ -396,9 +394,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
             "Pool: Not enough fyToken obtained"
         );
 
-        // Transfer assets
-        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
-
         // Update TWAR
         _update(
             _baseTokenReserves,
@@ -406,6 +401,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
+
+        // Transfer assets
+        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
 
         emit Trade(maturity, msg.sender, to, -(baseTokenIn.i128()), fyTokenOut.i128());
         return fyTokenOut;
@@ -481,9 +479,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
             "Pool: Too much fyToken in"
         );
 
-        // Transfer assets
-        baseToken.safeTransfer(to, tokenOut);
-
         // Update TWAR
         _update(
             _storedBaseTokenReserve - tokenOut,
@@ -491,6 +486,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
+
+        // Transfer assets
+        baseToken.safeTransfer(to, tokenOut);
 
         emit Trade(maturity, msg.sender, to, tokenOut.i128(), -(fyTokenIn.i128()));
         return fyTokenIn;
@@ -542,6 +540,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         (uint112 _storedBaseTokenReserve, uint112 _storedFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
         uint112 _fyTokenReserves = getFYTokenReserves();
+        uint112 _baseTokenReserves = getBaseTokenReserves();
         uint128 fyTokenIn = _fyTokenReserves - _storedFYTokenReserve;
         uint128 baseTokenOut = _sellFYTokenPreview(
             fyTokenIn,
@@ -555,16 +554,16 @@ contract Pool is IPool, ERC20Permit, Ownable {
             "Pool: Not enough baseToken obtained"
         );
 
-        // Transfer assets
-        baseToken.safeTransfer(to, baseTokenOut);
-
         // Update TWAR
         _update(
-            getBaseTokenReserves(),
+            _baseTokenReserves - baseTokenOut,
             _fyTokenReserves,
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
+
+        // Transfer assets
+        baseToken.safeTransfer(to, baseTokenOut);
 
         emit Trade(maturity, msg.sender, to, baseTokenOut.i128(), -(fyTokenIn.i128()));
         return baseTokenOut;
@@ -633,9 +632,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
             "Pool: Too much base token in"
         );
 
-        // Transfer assets
-        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
-
         // Update TWAR
         _update(
             _storedBaseTokenReserve + baseTokenIn,
@@ -643,6 +639,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
             _storedBaseTokenReserve,
             _storedFYTokenReserve
         );
+
+        // Transfer assets
+        IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
 
         emit Trade(maturity, msg.sender, to, -(baseTokenIn.i128()), fyTokenOut.i128());
         return baseTokenIn;
