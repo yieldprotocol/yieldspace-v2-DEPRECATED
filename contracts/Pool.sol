@@ -230,7 +230,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
         internal
         returns (uint256, uint256, uint256)
     {
-
         // Gather data
         uint256 supply = totalSupply();
         (uint112 realStoredBaseTokenReserve, uint112 virtualStoredFYTokenReserve) =
@@ -249,7 +248,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         } else {
             // There is an optional virtual trade before the mint
             uint256 baseTokenToSell;
-            if (fyTokenToBuy > 0) {
+            if (fyTokenToBuy > 0) {     // calculateFromBase == true and fyTokenToBuy > 0 can't happen in this implementation. To implement a virtual trade and calculateFromBase the trade would need to be a BaseToBuy parameter.
                 baseTokenToSell = _buyFYTokenPreview(
                     fyTokenToBuy.u128(),
                     realStoredBaseTokenReserve,
