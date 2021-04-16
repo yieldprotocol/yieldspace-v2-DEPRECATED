@@ -1,12 +1,11 @@
 {
   "name": "@yield-protocol/yieldspace-v2",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "YieldSpace v2 contracts",
   "main": "index.js",
   "author": "Yield Inc.",
   "files": [
-    "contracts/*.sol",
-    "contracts/helpers/*.sol"
+    "contracts/*.sol"
   ],
   "scripts": {
     "build": "hardhat compile",
