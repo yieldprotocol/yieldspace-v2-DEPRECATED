@@ -1,5 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { WAD, MAX128 as MAX } from './shared/constants'
+import { WAD, MAX128 as MAX, CALCULATE_FROM_BASE } from './shared/constants'
 
 import { Pool } from '../typechain/Pool'
 import { BaseMock as Base } from '../typechain/BaseMock'
@@ -90,7 +90,7 @@ describe('Pool - trade', async function () {
     maturity1 = BigNumber.from(await fyToken1.maturity())
 
     await base.mint(pool.address, initialBase)
-    await poolFromUser1.mint(user1, 0)
+    await poolFromUser1.mint(user1, CALCULATE_FROM_BASE, 0)
   })
 
   it('sells fyToken', async () => {
