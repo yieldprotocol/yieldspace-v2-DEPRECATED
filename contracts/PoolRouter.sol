@@ -47,8 +47,8 @@ contract PoolRouter is IPoolRouter, Multicall {
         PoolDataTypes.Operation[] calldata operations,
         bytes[] calldata data
     ) external payable override {
-        require(bases.length == fyTokens.length, "Unmatched bases and fyTokens");
-        require(targets.length == operations.length && operations.length == data.length, "Unmatched operation data");
+        require(bases.length == fyTokens.length, "Mismatched bases and fyTokens");
+        require(targets.length == operations.length && operations.length == data.length, "Mismatched operation data");
         PoolAddresses[] memory pools = new PoolAddresses[](bases.length);
         for (uint256 i = 0; i < bases.length; i += 1) {
             pools[i] = PoolAddresses(bases[i], fyTokens[i], findPool(bases[i], fyTokens[i]));
@@ -117,7 +117,7 @@ contract PoolRouter is IPoolRouter, Multicall {
         private
         returns (bool)
     {
-        require(token == addresses.base || token == addresses.fyToken || token == addresses.pool);
+        require(token == addresses.base || token == addresses.fyToken || token == addresses.pool, "Mismatched token");
         IERC20(token).safeTransferFrom(msg.sender, address(addresses.pool), wad);
         return true;
     }
