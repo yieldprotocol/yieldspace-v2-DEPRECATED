@@ -55,6 +55,10 @@ export class YieldSpaceEnvironment {
     const dai = ((await DaiFactory.deploy('DAI', 'DAI')) as unknown) as unknown as ERC20
     await dai.deployed()
 
+    const USDCFactory = await ethers.getContractFactory('USDCMock')
+    const usdc = ((await USDCFactory.deploy('USDC', 'USDC')) as unknown) as unknown as ERC20
+    await usdc.deployed()
+
     const BaseFactory = await ethers.getContractFactory('BaseMock')
     const FYTokenFactory = await ethers.getContractFactory('FYTokenMock')
     const YieldMathFactory = await ethers.getContractFactory('YieldMath')
@@ -102,6 +106,10 @@ export class YieldSpaceEnvironment {
     // add Dai to bases
     bases.set(DAI, dai)
     baseIds.unshift(DAI)
+
+    // add USDC to bases
+    bases.set(USDC, usdc)
+    baseIds.unshift(USDC)
 
     for (let baseId of baseIds) {
       const base = bases.get(baseId) as ERC20
