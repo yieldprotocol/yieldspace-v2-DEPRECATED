@@ -1,12 +1,11 @@
 {
   "name": "@yield-protocol/yieldspace-v2",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "YieldSpace v2 contracts",
   "main": "index.js",
   "author": "Yield Inc.",
   "files": [
-    "contracts/*.sol",
-    "contracts/helpers/*.sol"
+    "contracts/*.sol"
   ],
   "scripts": {
     "build": "hardhat compile",
@@ -26,7 +25,7 @@
     "@truffle/hdwallet-provider": "^1.0.40",
     "@types/mocha": "^8.0.0",
     "@yield-protocol/utils": "^1.2.2",
-    "@yield-protocol/utils-v2": "^2.0.2",
+    "@yield-protocol/utils-v2": "^2.1.0",
     "@yield-protocol/vault-interfaces": "^2.0.14",
     "@yield-protocol/yieldspace-interfaces": "^2.0.10",
     "chai": "4.2.0",
