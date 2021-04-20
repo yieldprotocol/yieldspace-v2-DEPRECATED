@@ -4,7 +4,7 @@ import { constants } from '@yield-protocol/utils-v2'
 const { WAD, MAX256 } = constants
 const MAX = MAX256
 
-import { OPS, CALCULATE_FROM_BASE } from './shared/constants'
+import { OPS, CALCULATE_FROM_BASE } from '../src/constants'
 
 import { PoolFactory } from '../typechain/PoolFactory'
 import { PoolRouter } from '../typechain/PoolRouter'

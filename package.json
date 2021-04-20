@@ -2,11 +2,13 @@
   "name": "@yield-protocol/yieldspace-v2",
   "version": "0.2.1",
   "description": "YieldSpace v2 contracts",
-  "main": "index.js",
   "author": "Yield Inc.",
   "files": [
-    "contracts/*.sol"
+    "contracts/*.sol",
+    "dist"
   ],
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
   "scripts": {
     "build": "hardhat compile",
     "test": "hardhat test",

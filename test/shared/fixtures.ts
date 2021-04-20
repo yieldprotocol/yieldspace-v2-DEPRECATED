@@ -4,7 +4,7 @@ import { BaseProvider } from '@ethersproject/providers'
 import { constants } from '@yield-protocol/utils-v2'
 const { DAI, ETH, USDC, THREE_MONTHS } = constants
 
-import { CALCULATE_FROM_BASE } from './constants'
+import { CALCULATE_FROM_BASE } from '../../src/constants'
 
 import { YieldMath } from '../../typechain/YieldMath'
 import { Pool } from '../../typechain/Pool'
