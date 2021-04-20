@@ -1,6 +1,10 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 import { BaseProvider } from '@ethersproject/providers'
-import { DAI, ETH, USDC, CALCULATE_FROM_BASE } from './constants'
+
+import { constants } from '@yield-protocol/utils-v2'
+const { DAI, ETH, USDC, THREE_MONTHS } = constants
+
+import { CALCULATE_FROM_BASE } from './constants'
 
 import { YieldMath } from '../../typechain/YieldMath'
 import { Pool } from '../../typechain/Pool'
@@ -11,8 +15,6 @@ import { FYTokenMock as FYToken } from '../../typechain/FYTokenMock'
 import { SafeERC20Namer } from '../../typechain/SafeERC20Namer'
 import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
-
-export const THREE_MONTHS: number = 3 * 30 * 24 * 60 * 60
 
 export class YieldSpaceEnvironment {
   owner: SignerWithAddress

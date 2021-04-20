@@ -1,6 +1,11 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 import { signatures } from '@yield-protocol/utils'
-import { OPS, WAD, MAX256 as MAX, DAI } from './shared/constants'
+
+import { constants } from '@yield-protocol/utils-v2'
+const { WAD, MAX256, DAI } = constants
+const MAX = MAX256
+
+import { OPS } from './shared/constants'
 
 import { PoolFactory } from '../typechain/PoolFactory'
 import { PoolRouter } from '../typechain/PoolRouter'
