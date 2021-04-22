@@ -2295,6 +2295,7 @@
   version "2.2.1"
   resolved "https://registry.yarnpkg.com/@yield-protocol/utils-v2/-/utils-v2-2.2.1.tgz#a6ee16f0132d967225cfcc5b112d1062a732b1c1"
   integrity sha512-IFWOdVJUC3phhRsmTozIl27NDqRI5VYalXfALNzXLRgDjOJa20gZ4CbUzaQK5wP3yceR2xSoo5Oi6fiKkzdmnQ==
+
   dependencies:
     ethereumjs-util "^7.0.8"
     ethers "^5.0.7"
