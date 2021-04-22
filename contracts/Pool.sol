@@ -262,7 +262,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
                 baseTokenIn = baseToken.balanceOf(address(this)) - realStoredBaseTokenReserve;
                 tokensMinted = (supply * baseTokenIn) / realStoredBaseTokenReserve;
                 fyTokenIn = (realStoredFYTokenReserve * tokensMinted) / supply;
-                require(realStoredFYTokenReserve + fyTokenIn <= fyToken.balanceOf(address(this)), "Pool: Not enought fyToken in");
+                require(realStoredFYTokenReserve + fyTokenIn <= fyToken.balanceOf(address(this)), "Pool: Not enough fyToken in");
             } else {                   // We use all the available fyTokens, plus a virtual trade if it happened, surplus is in base tokens
                 fyTokenIn = fyToken.balanceOf(address(this)) - realStoredFYTokenReserve;
                 tokensMinted = (supply * (fyTokenToBuy + fyTokenIn)) / (realStoredFYTokenReserve - fyTokenToBuy);
@@ -471,8 +471,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
             _storedFYTokenReserve
         );
         require(
-            fyTokenReserves - _storedFYTokenReserve > fyTokenIn,
-            "Pool: Not enought fyToken in"
+            fyTokenReserves - _storedFYTokenReserve >= fyTokenIn,
+            "Pool: Not enough fyToken in"
         );
 
         // Slippage check
@@ -624,8 +624,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
             _storedFYTokenReserve
         );
         require(
-            baseTokenReserves - _storedBaseTokenReserve > baseTokenIn,
-            "Pool: Not enought base token in"
+            baseTokenReserves - _storedBaseTokenReserve >= baseTokenIn,
+            "Pool: Not enough base token in"
         );
 
         // Slippage check
