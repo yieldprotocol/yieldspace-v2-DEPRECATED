@@ -1,12 +1,14 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { signatures } from '@yield-protocol/utils'
-import { OPS, WAD, MAX256 as MAX, ETH } from './shared/constants'
+
+import { constants } from '@yield-protocol/utils-v2'
+const { WAD, ETH } = constants
+
+import { OPS } from '../src/constants'
 
 import { PoolFactory } from '../typechain/PoolFactory'
 import { PoolRouter } from '../typechain/PoolRouter'
 import { Pool } from '../typechain/Pool'
 import { WETH9Mock as WETH } from '../typechain/WETH9Mock'
-import { BaseMock as Base } from '../typechain/BaseMock'
 import { FYTokenMock as FYToken } from '../typechain/FYTokenMock'
 
 import { YieldSpaceEnvironment } from './shared/fixtures'

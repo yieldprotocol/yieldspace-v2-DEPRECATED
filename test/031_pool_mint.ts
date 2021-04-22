@@ -1,5 +1,10 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { WAD, MAX256 as MAX, CALCULATE_FROM_BASE } from './shared/constants'
+
+import { constants } from '@yield-protocol/utils-v2'
+const { WAD, MAX256 } = constants
+const MAX = MAX256
+
+import { CALCULATE_FROM_BASE } from '../src/constants'
 
 import { Pool } from '../typechain/Pool'
 import { PoolFactory } from '../typechain/PoolFactory'
