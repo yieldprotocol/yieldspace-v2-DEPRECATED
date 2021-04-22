@@ -16,7 +16,8 @@ function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
   expect(diff.div(p)).to.eq(0) // Hack to avoid silly conversions. BigNumber truncates decimals off.
 }
 
-describe('YieldMath - Surface', async () => {
+describe('YieldMath - Surface', async function () {
+  this.timeout(0)
   let yieldMathLibrary: YieldMath
   let yieldMath: YieldMathWrapper
 

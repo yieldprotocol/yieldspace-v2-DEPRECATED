@@ -97,7 +97,7 @@ describe('PoolRouter', async function () {
       base.address,
       WAD,
     ])
-    await router.multicall([transferToPoolCall])
+    await router.multicall([transferToPoolCall], true)
 
     expect(await base.balanceOf(pool1.address)).to.equal(baseBefore.add(WAD))
   })
