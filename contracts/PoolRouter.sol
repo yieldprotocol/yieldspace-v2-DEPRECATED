@@ -1,22 +1,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 pragma solidity >= 0.8.0;
-pragma abicoder v2;
 
+import "@yield-protocol/utils-v2/contracts/token/IERC20.sol";
+import "@yield-protocol/utils-v2/contracts/token/IERC2612.sol";
+import "@yield-protocol/utils-v2/contracts/token/AllTransferHelper.sol";
+import "@yield-protocol/utils-v2/contracts/utils/RevertMsgExtractor.sol";
+import "@yield-protocol/utils-v2/contracts/interfaces/IWETH9.sol";
 import "@yield-protocol/yieldspace-interfaces/IPool.sol";
 import "@yield-protocol/yieldspace-interfaces/IPoolRouter.sol";
 import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
 import "@yield-protocol/yieldspace-interfaces/PoolDataTypes.sol";
-import "@yield-protocol/utils/contracts/token/IERC20.sol";
-import "@yield-protocol/utils/contracts/token/IERC2612.sol";
 import "dss-interfaces/src/dss/DaiAbstract.sol";
-import "@yield-protocol/utils-v2/contracts/AllTransferHelper.sol";
-import "@yield-protocol/utils-v2/contracts/Multicall.sol";
-import "@yield-protocol/utils-v2/contracts/RevertMsgExtractor.sol";
-import "@yield-protocol/utils-v2/contracts/IWETH9.sol";
 
 
-contract PoolRouter is IPoolRouter, Multicall {
+contract PoolRouter is IPoolRouter {
     using AllTransferHelper for IERC20;
     using AllTransferHelper for address payable;
 

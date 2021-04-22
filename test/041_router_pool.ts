@@ -1,16 +1,15 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 
 import { constants } from '@yield-protocol/utils-v2'
-const { WAD, MAX256 } = constants
-const MAX = MAX256
+const { WAD } = constants
 
 import { OPS, CALCULATE_FROM_BASE } from '../src/constants'
 
 import { PoolFactory } from '../typechain/PoolFactory'
 import { PoolRouter } from '../typechain/PoolRouter'
 import { Pool } from '../typechain/Pool'
-import { BaseMock as Base, BaseMock } from '../typechain/BaseMock'
-import { FYTokenMock as FYToken, FYTokenMock } from '../typechain/FYTokenMock'
+import { BaseMock } from '../typechain/BaseMock'
+import { FYTokenMock } from '../typechain/FYTokenMock'
 
 import { YieldSpaceEnvironment } from './shared/fixtures'
 
@@ -84,22 +83,6 @@ describe('PoolRouter', async function () {
     await pool1.approve(router.address, WAD)
     await router.transferToPool(base.address, fyToken1.address, pool1.address, WAD)
     expect(await pool1.balanceOf(pool1.address)).to.equal(poolTokensBefore.add(WAD))
-  })
-
-  it('transfers tokens to a pool with multicall', async () => {
-    const baseBefore = await base.balanceOf(pool1.address)
-    await base.mint(owner, WAD)
-    await base.approve(router.address, WAD)
-
-    const transferToPoolCall = router.interface.encodeFunctionData('transferToPool', [
-      base.address,
-      fyToken1.address,
-      base.address,
-      WAD,
-    ])
-    await router.multicall([transferToPoolCall])
-
-    expect(await base.balanceOf(pool1.address)).to.equal(baseBefore.add(WAD))
   })
 
   it('transfers tokens to a pool with batch', async () => {
