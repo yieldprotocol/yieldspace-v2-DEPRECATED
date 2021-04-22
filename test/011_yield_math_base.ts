@@ -15,7 +15,8 @@ function assert(message: string, condition: boolean) {
   if (!condition) throw message
 }
 
-describe('YieldMath - Base', async () => {
+describe('YieldMath - Base', async function () {
+  this.timeout(0)
   let yieldMathLibrary: YieldMath
   let yieldMath: YieldMathWrapper
 

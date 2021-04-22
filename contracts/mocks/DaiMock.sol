@@ -15,7 +15,7 @@ contract DaiMock is ERC20  {
     constructor(
         string memory name,
         string memory symbol
-    ) ERC20(name, symbol) {
+    ) ERC20(name, symbol, 18) {
         uint256 chainId;
         assembly {
             chainId := chainid()

@@ -6,7 +6,8 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 
-describe('YieldMath - Reverts', async () => {
+describe('YieldMath - Reverts', async function () {
+  this.timeout(0)
   let yieldMathLibrary: YieldMath
   let yieldMath: YieldMathWrapper
 

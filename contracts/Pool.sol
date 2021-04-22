@@ -3,6 +3,7 @@ pragma solidity >= 0.8.0;
 
 import "@yield-protocol/utils/contracts/token/ERC20Permit.sol";
 import "@yield-protocol/utils/contracts/token/IERC20.sol";
+import "@yield-protocol/utils/contracts/token/IERC20Metadata.sol";
 import "@yield-protocol/vault-interfaces/IFYToken.sol";
 import "@yield-protocol/yieldspace-interfaces/IPool.sol";
 import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
@@ -76,7 +77,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
     constructor()
         ERC20Permit(
             string(abi.encodePacked("Yield ", SafeERC20Namer.tokenName(IPoolFactory(msg.sender).nextFYToken()), " LP Token")),
-            string(abi.encodePacked(SafeERC20Namer.tokenSymbol(IPoolFactory(msg.sender).nextFYToken()), "LP"))
+            string(abi.encodePacked(SafeERC20Namer.tokenSymbol(IPoolFactory(msg.sender).nextFYToken()), "LP")),
+            SafeERC20Namer.tokenDecimals(IPoolFactory(msg.sender).nextToken())
         )
     {
         IFYToken _fyToken = IFYToken(IPoolFactory(msg.sender).nextFYToken());
