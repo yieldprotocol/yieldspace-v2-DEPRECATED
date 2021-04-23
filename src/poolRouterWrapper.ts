@@ -1,5 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { ethers, BigNumberish, ContractTransaction } from 'ethers'
+import { ethers, BigNumberish, ContractTransaction, BytesLike, PayableOverrides } from 'ethers'
 import { PoolRouter } from '../typechain/PoolRouter'
 import { OPS } from './constants'
 
@@ -30,8 +30,15 @@ export class PoolRouterWrapper {
     return new PoolRouterWrapper(this.router.connect(account))
   }
 
-  public async batch(bases: Array<string>, fyTokens: Array<string>, targets: Array<BigNumberish>, ops: Array<BigNumberish>, data: Array<string>): Promise<ContractTransaction> {
-    return this.router.batch(bases, fyTokens, targets, ops, data)
+  public async batch(bases: Array<string>, fyTokens: Array<string>, targets: Array<BigNumberish>, actions: Array<BatchAction>, overrides?: PayableOverrides): Promise<ContractTransaction> {
+    const ops = new Array<BigNumberish>()
+    const data = new Array<BytesLike>()
+    actions.forEach(action => {
+      ops.push(action.op)
+      data.push(action.data)
+    });
+    if (overrides === undefined) return this.router.batch(bases, fyTokens, targets, ops, data)
+    else return this.router.batch(bases, fyTokens, targets, ops, data, overrides)
   }
 
   public forwardPermitData(token: string, spender: string, amount: BigNumberish, deadline: BigNumberish, v: BigNumberish, r: Buffer, s: Buffer): BatchAction {
@@ -42,8 +49,7 @@ export class PoolRouterWrapper {
   }
 
   public async forwardPermit(base: string, fyToken: string, token: string, spender: string, amount: BigNumberish, deadline: BigNumberish, v: BigNumberish, r: Buffer, s: Buffer): Promise<ContractTransaction> {
-    const action = this.forwardPermitData(token, spender, amount, deadline, v, r, s)
-    return this.router.batch([base], [fyToken], [0], [action.op], [action.data])
+    return this.batch([base], [fyToken], [0], [this.forwardPermitData(token, spender, amount, deadline, v, r, s)])
   }
 
   public forwardDaiPermitData(spender: string, nonce: BigNumberish, deadline: BigNumberish, allowed: boolean, v: BigNumberish, r: Buffer, s: Buffer): BatchAction {
@@ -54,9 +60,7 @@ export class PoolRouterWrapper {
   }
 
   public async forwardDaiPermit(base: string, fyToken: string, spender: string, nonce: BigNumberish, deadline: BigNumberish, allowed: boolean, v: BigNumberish, r: Buffer, s: Buffer): Promise<ContractTransaction> {
-    // The vaultId parameter is irrelevant to forwardDaiPermit, but necessary when included in a batch
-    const action = this.forwardDaiPermitData(spender, nonce, deadline, allowed, v, r, s)
-    return this.router.batch([base], [fyToken], [0], [action.op], [action.data])
+    return this.batch([base], [fyToken], [0], [this.forwardDaiPermitData(spender, nonce, deadline, allowed, v, r, s)])
   }
 
   public joinEtherData(): BatchAction {
@@ -64,8 +68,7 @@ export class PoolRouterWrapper {
   }
 
   public async joinEther(base: string, fyToken: string, overrides?: any): Promise<ContractTransaction> {
-    const action = this.joinEtherData()
-    return this.router.batch([base], [fyToken], [0], [action.op], [action.data], overrides)
+    return this.batch([base], [fyToken], [0], [this.joinEtherData()], overrides)
   }
 
   public exitEtherData(to: string): BatchAction {
@@ -73,8 +76,7 @@ export class PoolRouterWrapper {
   }
 
   public async exitEther(base: string, fyToken: string, to: string): Promise<ContractTransaction> {
-    const action = this.exitEtherData(to)
-    return this.router.batch([base], [fyToken], [0], [action.op], [action.data])
+    return this.batch([base], [fyToken], [0], [this.exitEtherData(to)])
   }
 
   public transferToPoolData(token: string, wad: BigNumberish): BatchAction {
@@ -82,8 +84,7 @@ export class PoolRouterWrapper {
   }
 
   public async transferToPool(base: string, fyToken: string, token: string, wad: BigNumberish): Promise<ContractTransaction> {
-    const action = this.transferToPoolData(token, wad)
-    return this.router.batch([base], [fyToken], [0], [action.op], [action.data])
+    return this.batch([base], [fyToken], [0], [this.transferToPoolData(token, wad)])
   }
 
   public routeData(call: string): BatchAction {
@@ -91,8 +92,7 @@ export class PoolRouterWrapper {
   }
 
   public async route(base: string, fyToken: string, innerCall: string): Promise<ContractTransaction> {
-    const action = this.routeData(innerCall)
-    return this.router.batch([base], [fyToken], [0], [action.op], [action.data])
+    return this.batch([base], [fyToken], [0], [this.routeData(innerCall)])
   }
 }
   

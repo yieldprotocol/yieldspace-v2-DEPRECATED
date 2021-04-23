@@ -90,8 +90,7 @@ describe('PoolRouter', async function () {
     await base.mint(owner, WAD)
     await base.approve(router.address, WAD)
 
-    const transferToPoolData = router.transferToPoolData(base.address, WAD)
-    await router.batch([base.address], [fyToken1.address], [0], [transferToPoolData.op], [transferToPoolData.data])
+    await router.batch([base.address], [fyToken1.address], [0], [router.transferToPoolData(base.address, WAD)])
 
     expect(await base.balanceOf(pool1.address)).to.equal(baseBefore.add(WAD))
   })
@@ -113,8 +112,7 @@ describe('PoolRouter', async function () {
     it('wraps a route in a batch', async () => {
       const baseBefore = await base.balanceOf(owner)
       const retrieveTokenCall = pool1.interface.encodeFunctionData('retrieveBaseToken', [owner])
-      const routeData = router.routeData(retrieveTokenCall)
-      await router.batch([base.address], [fyToken1.address], [0], [routeData.op], [routeData.data])
+      await router.batch([base.address], [fyToken1.address], [0], [router.routeData(retrieveTokenCall)])
       expect(await base.balanceOf(owner)).to.equal(baseBefore.add(WAD))
     })
   })

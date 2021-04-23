@@ -151,8 +151,7 @@ describe('PoolRouter', async function () {
 
     const { v, r, s } = signatures.sign(permitDigest, signatures.privateKey0)
 
-    const forwardPermitData = router.forwardPermitData(base.address, router.address, amount, deadline, v, r, s)
-    expect(await router.batch([base.address], [fyToken.address], [0], [forwardPermitData.op], [forwardPermitData.data]))
+    expect(await router.batch([base.address], [fyToken.address], [0], [router.forwardPermitData(base.address, router.address, amount, deadline, v, r, s)]))
       .to.emit(base, 'Approval')
       .withArgs(owner, router.address, WAD)
 
@@ -192,9 +191,8 @@ describe('PoolRouter', async function () {
 
     const { v, r, s } = signatures.sign(daiPermitDigest, signatures.privateKey0)
 
-    const forwardDaiPermitData = router.forwardDaiPermitData(router.address, nonce, deadline, true, v, r, s)
     expect(
-      await router.batch([dai.address], [fyDai.address], [0], [forwardDaiPermitData.op], [forwardDaiPermitData.data])
+      await router.batch([dai.address], [fyDai.address], [0], [router.forwardDaiPermitData(router.address, nonce, deadline, true, v, r, s)])
     )
       .to.emit(dai, 'Approval')
       .withArgs(owner, router.address, MAX)
