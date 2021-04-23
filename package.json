@@ -1,6 +1,6 @@
 {
   "name": "@yield-protocol/yieldspace-v2",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "YieldSpace v2 contracts",
   "author": "Yield Inc.",
   "files": [
