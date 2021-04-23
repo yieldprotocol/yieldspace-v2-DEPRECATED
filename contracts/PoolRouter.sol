@@ -131,26 +131,6 @@ contract PoolRouter is IPoolRouter {
 
     // ---- Permit management ----
 
-    /// @dev Execute an ERC2612 permit for the selected asset or fyToken, to be used with multicall
-    function forwardPermit(address base, address fyToken, address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-        external payable
-    {
-        _forwardPermit(
-            PoolAddresses(base, fyToken, findPool(base, fyToken)),
-            token, spender, amount, deadline, v, r, s
-        );
-    }
-
-    /// @dev Execute a Dai-style permit for the selected asset or fyToken, to be used with multicall
-    function forwardDaiPermit(address base, address fyToken, address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s)
-        external payable
-    {
-        _forwardDaiPermit(
-            PoolAddresses(base, fyToken, findPool(base, fyToken)),
-            spender, nonce, deadline, allowed, v, r, s
-        );
-    }
-
     /// @dev Execute an ERC2612 permit for the selected asset or fyToken, to be used with batch
     function _forwardPermit(PoolAddresses memory addresses, address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
         private
@@ -172,22 +152,6 @@ contract PoolRouter is IPoolRouter {
     /// @dev The WETH9 contract will send ether to the PoolRouter on `weth.withdraw` using this function.
     receive() external payable {
         require (msg.sender == address(weth), "Only Weth contract allowed");
-    }
-
-    /// @dev Accept Ether, wrap it and forward it to a pool
-    function joinEther(address base, address fyToken)
-        external payable
-        returns (uint256 ethTransferred)
-    {
-        return _joinEther(findPool(base, fyToken));
-    }
-
-    /// @dev Unwrap Wrapped Ether held by this Router, and send the Ether
-    function exitEther(address to)
-        external payable
-        returns (uint256 ethTransferred)
-    {
-        return _exitEther(to);
     }
 
     /// @dev Accept Ether, wrap it and forward it to the to a pool

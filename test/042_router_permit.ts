@@ -6,12 +6,12 @@ const MAX = MAX256
 import { OPS } from '../src/constants'
 
 import { PoolFactory } from '../typechain/PoolFactory'
-import { PoolRouter } from '../typechain/PoolRouter'
 import { Pool } from '../typechain/Pool'
 import { BaseMock as Base } from '../typechain/BaseMock'
 import { FYTokenMock as FYToken } from '../typechain/FYTokenMock'
 
 import { YieldSpaceEnvironment } from './shared/fixtures'
+import { PoolRouterWrapper } from '../src/poolRouterWrapper'
 
 import { ethers, waffle } from 'hardhat'
 import { BigNumber } from 'ethers'
@@ -25,7 +25,7 @@ describe('PoolRouter', async function () {
   let owner: string
   let yieldSpace: YieldSpaceEnvironment
   let factory: PoolFactory
-  let router: PoolRouter
+  let router: PoolRouterWrapper
   let base: Base
   let fyToken: FYToken
   let dai: Base
@@ -49,7 +49,7 @@ describe('PoolRouter', async function () {
   beforeEach(async () => {
     yieldSpace = await loadFixture(fixture)
     factory = yieldSpace.factory as PoolFactory
-    router = yieldSpace.router as PoolRouter
+    router = yieldSpace.router as PoolRouterWrapper
     base = yieldSpace.bases.get(baseId) as Base
     fyToken = yieldSpace.fyTokens.get(fyTokenId) as FYToken
     pool = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyTokenId) as Pool
@@ -151,11 +151,8 @@ describe('PoolRouter', async function () {
 
     const { v, r, s } = signatures.sign(permitDigest, signatures.privateKey0)
 
-    const forwardPermitData = ethers.utils.defaultAbiCoder.encode(
-      ['address', 'address', 'uint256', 'uint256', 'uint8', 'bytes32', 'bytes32'],
-      [base.address, router.address, amount, deadline, v, r, s]
-    )
-    expect(await router.batch([base.address], [fyToken.address], [0], [OPS.FORWARD_PERMIT], [forwardPermitData]))
+    const forwardPermitData = router.forwardPermitData(base.address, router.address, amount, deadline, v, r, s)
+    expect(await router.batch([base.address], [fyToken.address], [0], [forwardPermitData.op], [forwardPermitData.data]))
       .to.emit(base, 'Approval')
       .withArgs(owner, router.address, WAD)
 
@@ -195,11 +192,10 @@ describe('PoolRouter', async function () {
 
     const { v, r, s } = signatures.sign(daiPermitDigest, signatures.privateKey0)
 
-    const forwardDaiPermitData = ethers.utils.defaultAbiCoder.encode(
-      ['address', 'uint256', 'uint256', 'bool', 'uint8', 'bytes32', 'bytes32'],
-      [router.address, nonce, deadline, true, v, r, s]
+    const forwardDaiPermitData = router.forwardDaiPermitData(router.address, nonce, deadline, true, v, r, s)
+    expect(
+      await router.batch([dai.address], [fyDai.address], [0], [forwardDaiPermitData.op], [forwardDaiPermitData.data])
     )
-    expect(await router.batch([dai.address], [fyDai.address], [0], [OPS.FORWARD_DAI_PERMIT], [forwardDaiPermitData]))
       .to.emit(dai, 'Approval')
       .withArgs(owner, router.address, MAX)
 
