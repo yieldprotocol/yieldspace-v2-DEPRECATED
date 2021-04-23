@@ -16,9 +16,11 @@ import { SafeERC20Namer } from '../../typechain/SafeERC20Namer'
 import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
 
+import { PoolRouterWrapper } from '../../src/poolRouterWrapper'
+
 export class YieldSpaceEnvironment {
   owner: SignerWithAddress
-  router: PoolRouter
+  router: PoolRouterWrapper
   factory: PoolFactory
   bases: Map<string, ERC20>
   fyTokens: Map<string, FYToken>
@@ -26,7 +28,7 @@ export class YieldSpaceEnvironment {
 
   constructor(
     owner: SignerWithAddress,
-    router: PoolRouter,
+    router: PoolRouterWrapper,
     factory: PoolFactory,
     bases: Map<string, ERC20>,
     fyTokens: Map<string, FYToken>,
@@ -44,7 +46,8 @@ export class YieldSpaceEnvironment {
   public static async setup(owner: SignerWithAddress, baseIds: Array<string>, maturityIds: Array<string>, initialLiquidity: BigNumber) {
     const ownerAdd = await owner.getAddress()
 
-    let router: PoolRouter
+    let innerRouter: PoolRouter
+    let router: PoolRouterWrapper
     let yieldMathLibrary: YieldMath
     let safeERC20NamerLibrary: SafeERC20Namer
     let factory: PoolFactory
@@ -81,8 +84,9 @@ export class YieldSpaceEnvironment {
     await factory.deployed()
     
     const PoolRouterFactory = await ethers.getContractFactory('PoolRouter')
-    router = ((await PoolRouterFactory.deploy(factory.address, weth9.address)) as unknown) as PoolRouter
-    await router.deployed()
+    innerRouter = ((await PoolRouterFactory.deploy(factory.address, weth9.address)) as unknown) as PoolRouter
+    await innerRouter.deployed()
+    router = new PoolRouterWrapper(innerRouter)
 
     const WAD = BigNumber.from(10).pow(18)
     const initialBase = WAD.mul(initialLiquidity)
