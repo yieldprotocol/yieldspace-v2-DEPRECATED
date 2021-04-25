@@ -8,13 +8,12 @@ import "@yield-protocol/utils-v2/contracts/token/AllTransferHelper.sol";
 import "@yield-protocol/utils-v2/contracts/utils/RevertMsgExtractor.sol";
 import "@yield-protocol/utils-v2/contracts/interfaces/IWETH9.sol";
 import "@yield-protocol/yieldspace-interfaces/IPool.sol";
-import "@yield-protocol/yieldspace-interfaces/IPoolRouter.sol";
 import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
 import "@yield-protocol/yieldspace-interfaces/PoolDataTypes.sol";
 import "dss-interfaces/src/dss/DaiAbstract.sol";
 
 
-contract PoolRouter is IPoolRouter {
+contract PoolRouter {
     using AllTransferHelper for IERC20;
     using AllTransferHelper for address payable;
 
@@ -39,41 +38,46 @@ contract PoolRouter is IPoolRouter {
     ///  - `operation` is a numerical identifier for the call to be executed, from the enum `Operation`
     ///  - `data` is an abi-encoded group of parameters, to be consumed by the function encoded in `operation`.
     function batch(
-        address[] calldata bases,
-        address[] calldata fyTokens,
-        uint8[] calldata targets,
         PoolDataTypes.Operation[] calldata operations,
         bytes[] calldata data
-    ) external payable override {
-        require(bases.length == fyTokens.length, "Mismatched bases and fyTokens");
-        require(targets.length == operations.length && operations.length == data.length, "Mismatched operation data");
-        PoolAddresses[] memory pools = new PoolAddresses[](bases.length);
-        for (uint256 i = 0; i < bases.length; i += 1) {
-            pools[i] = PoolAddresses(bases[i], fyTokens[i], findPool(bases[i], fyTokens[i]));
-        }
+    ) external payable {
+        require(operations.length == data.length, "Mismatched operation data");
+        PoolAddresses memory cache;
 
         for (uint256 i = 0; i < operations.length; i += 1) {
             PoolDataTypes.Operation operation = operations[i];
-            PoolAddresses memory addresses = pools[targets[i]];
             
             if (operation == PoolDataTypes.Operation.ROUTE) {
-                _route(addresses, data[i]);
+                (address base, address fyToken, bytes memory poolcall) = abi.decode(data[i], (address, address, bytes));
+                if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
+                _route(cache, poolcall);
+
             } else if (operation == PoolDataTypes.Operation.TRANSFER_TO_POOL) {
-                (address token, uint128 wad) = abi.decode(data[i], (address, uint128));
-                _transferToPool(addresses, token, wad);
+                (address base, address fyToken, address token, uint128 wad) = abi.decode(data[i], (address, address, address, uint128));
+                if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
+                _transferToPool(cache, token, wad);
+
             } else if (operation == PoolDataTypes.Operation.FORWARD_PERMIT) {
-                (address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s) = 
-                    abi.decode(data[i], (address, address, uint256, uint256, uint8, bytes32, bytes32));
-                _forwardPermit(addresses, token, spender, amount, deadline, v, r, s);
+                (address base, address fyToken, address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s) = 
+                    abi.decode(data[i], (address, address, address, address, uint256, uint256, uint8, bytes32, bytes32));
+                if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
+                _forwardPermit(cache, token, spender, amount, deadline, v, r, s);
+
             } else if (operation == PoolDataTypes.Operation.FORWARD_DAI_PERMIT) {
-                        (address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s) = 
-                    abi.decode(data[i], (address, uint256, uint256, bool, uint8, bytes32, bytes32));
-                _forwardDaiPermit(addresses, spender, nonce, deadline, allowed, v, r, s);
+                        (address base, address fyToken, address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s) = 
+                    abi.decode(data[i], (address, address, address, uint256, uint256, bool, uint8, bytes32, bytes32));
+                if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
+                _forwardDaiPermit(cache, spender, nonce, deadline, allowed, v, r, s);
+
             } else if (operation == PoolDataTypes.Operation.JOIN_ETHER) {
-                _joinEther(addresses.pool);
+                (address base, address fyToken) = abi.decode(data[i], (address, address));
+                if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
+                _joinEther(cache.pool);
+
             } else if (operation == PoolDataTypes.Operation.EXIT_ETHER) {
                 (address to) = abi.decode(data[i], (address));
                 _exitEther(to);
+
             } else {
                 revert("Invalid operation");
             }
@@ -87,17 +91,6 @@ contract PoolRouter is IPoolRouter {
         pool = factory.getPool(base, fyToken);
         require (pool != address(0), "Pool not found");
     }
-
-    /// @dev Allow users to route calls to a pool, to be used with multicall
-    function route(address base, address fyToken, bytes memory data)
-        external payable override
-        returns (bool success, bytes memory result)
-    {
-        return _route(
-            PoolAddresses(base, fyToken, findPool(base, fyToken)),
-            data
-        );
-    }    
 
     /// @dev Allow users to trigger a token transfer to a pool, to be used with multicall
     function transferToPool(address base, address fyToken, address token, uint128 wad)

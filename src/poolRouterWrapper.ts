@@ -30,69 +30,81 @@ export class PoolRouterWrapper {
     return new PoolRouterWrapper(this.router.connect(account))
   }
 
-  public async batch(bases: Array<string>, fyTokens: Array<string>, targets: Array<BigNumberish>, actions: Array<BatchAction>, overrides?: PayableOverrides): Promise<ContractTransaction> {
+  public async batch(actions: Array<BatchAction>, overrides?: PayableOverrides): Promise<ContractTransaction> {
     const ops = new Array<BigNumberish>()
     const data = new Array<BytesLike>()
     actions.forEach(action => {
       ops.push(action.op)
       data.push(action.data)
     });
-    if (overrides === undefined) return this.router.batch(bases, fyTokens, targets, ops, data)
-    else return this.router.batch(bases, fyTokens, targets, ops, data, overrides)
+    if (overrides === undefined) return this.router.batch(ops, data)
+    else return this.router.batch(ops, data, overrides)
   }
 
-  public forwardPermitData(token: string, spender: string, amount: BigNumberish, deadline: BigNumberish, v: BigNumberish, r: Buffer, s: Buffer): BatchAction {
+  public forwardPermitData(base: string, fyToken: string, token: string, spender: string, amount: BigNumberish, deadline: BigNumberish, v: BigNumberish, r: Buffer, s: Buffer): BatchAction {
     return new BatchAction(OPS.FORWARD_PERMIT, ethers.utils.defaultAbiCoder.encode(
-      ['address', 'address', 'uint256', 'uint256', 'uint8', 'bytes32', 'bytes32'],
-      [token, spender, amount, deadline, v, r, s]
+      ['address', 'address', 'address', 'address', 'uint256', 'uint256', 'uint8', 'bytes32', 'bytes32'],
+      [base, fyToken, token, spender, amount, deadline, v, r, s]
     ))
   }
 
   public async forwardPermit(base: string, fyToken: string, token: string, spender: string, amount: BigNumberish, deadline: BigNumberish, v: BigNumberish, r: Buffer, s: Buffer): Promise<ContractTransaction> {
-    return this.batch([base], [fyToken], [0], [this.forwardPermitData(token, spender, amount, deadline, v, r, s)])
+    return this.batch([this.forwardPermitData(base, fyToken, token, spender, amount, deadline, v, r, s)])
   }
 
-  public forwardDaiPermitData(spender: string, nonce: BigNumberish, deadline: BigNumberish, allowed: boolean, v: BigNumberish, r: Buffer, s: Buffer): BatchAction {
+  public forwardDaiPermitData(base: string, fyToken: string, spender: string, nonce: BigNumberish, deadline: BigNumberish, allowed: boolean, v: BigNumberish, r: Buffer, s: Buffer): BatchAction {
     return new BatchAction(OPS.FORWARD_DAI_PERMIT, ethers.utils.defaultAbiCoder.encode(
-      ['address', 'uint256', 'uint256', 'bool', 'uint8', 'bytes32', 'bytes32'],
-      [spender, nonce, deadline, allowed, v, r, s]
+      ['address', 'address', 'address', 'uint256', 'uint256', 'bool', 'uint8', 'bytes32', 'bytes32'],
+      [base, fyToken, spender, nonce, deadline, allowed, v, r, s]
     ))
   }
 
   public async forwardDaiPermit(base: string, fyToken: string, spender: string, nonce: BigNumberish, deadline: BigNumberish, allowed: boolean, v: BigNumberish, r: Buffer, s: Buffer): Promise<ContractTransaction> {
-    return this.batch([base], [fyToken], [0], [this.forwardDaiPermitData(spender, nonce, deadline, allowed, v, r, s)])
+    return this.batch([this.forwardDaiPermitData(base, fyToken, spender, nonce, deadline, allowed, v, r, s)])
   }
 
-  public joinEtherData(): BatchAction {
-    return new BatchAction(OPS.JOIN_ETHER, ethers.utils.defaultAbiCoder.encode(['uint256'], [0]))
+  public joinEtherData(base: string, fyToken: string): BatchAction {
+    return new BatchAction(OPS.JOIN_ETHER, ethers.utils.defaultAbiCoder.encode(
+      ['address', 'address'],
+      [base, fyToken]
+    ))
   }
 
   public async joinEther(base: string, fyToken: string, overrides?: any): Promise<ContractTransaction> {
-    return this.batch([base], [fyToken], [0], [this.joinEtherData()], overrides)
+    return this.batch([this.joinEtherData(base, fyToken)], overrides)
   }
 
   public exitEtherData(to: string): BatchAction {
-    return new BatchAction(OPS.EXIT_ETHER, ethers.utils.defaultAbiCoder.encode(['address'], [to]))
+    return new BatchAction(OPS.EXIT_ETHER, ethers.utils.defaultAbiCoder.encode(
+      ['address'],
+      [to]
+    ))
   }
 
-  public async exitEther(base: string, fyToken: string, to: string): Promise<ContractTransaction> {
-    return this.batch([base], [fyToken], [0], [this.exitEtherData(to)])
+  public async exitEther(to: string): Promise<ContractTransaction> {
+    return this.batch([this.exitEtherData(to)])
   }
 
-  public transferToPoolData(token: string, wad: BigNumberish): BatchAction {
-    return new BatchAction(OPS.TRANSFER_TO_POOL, ethers.utils.defaultAbiCoder.encode(['address', 'uint128'], [token, wad]))
+  public transferToPoolData(base: string, fyToken: string, token: string, wad: BigNumberish): BatchAction {
+    return new BatchAction(OPS.TRANSFER_TO_POOL, ethers.utils.defaultAbiCoder.encode(
+      ['address', 'address', 'address', 'uint128'],
+      [base, fyToken, token, wad]
+    ))
   }
 
   public async transferToPool(base: string, fyToken: string, token: string, wad: BigNumberish): Promise<ContractTransaction> {
-    return this.batch([base], [fyToken], [0], [this.transferToPoolData(token, wad)])
+    return this.batch([this.transferToPoolData(base, fyToken, token, wad)])
   }
 
-  public routeData(call: string): BatchAction {
-    return new BatchAction(OPS.ROUTE, call)  // `call` is already an encoded function call, no need to abi-encode it again
+  public routeData(base: string, fyToken: string, poolcall: string): BatchAction {
+    return new BatchAction(OPS.ROUTE, ethers.utils.defaultAbiCoder.encode(
+      ['address', 'address', 'bytes'],
+      [base, fyToken, poolcall]
+    ))
   }
 
-  public async route(base: string, fyToken: string, innerCall: string): Promise<ContractTransaction> {
-    return this.batch([base], [fyToken], [0], [this.routeData(innerCall)])
+  public async route(base: string, fyToken: string, poolcall: string): Promise<ContractTransaction> {
+    return this.batch([this.routeData(base, fyToken, poolcall)])
   }
 }
   
