@@ -59,7 +59,12 @@ describe('PoolRouter', async function () {
   })
 
   it('users can join ETH to a WETH pool in a batch', async () => {
-    await router.batch([router.joinEtherData(weth.address, fyEth.address)], { value: WAD })
+    await router.batch(
+      [
+        router.joinEtherData(weth.address, fyEth.address)
+      ],
+      { value: WAD }
+    )
 
     expect(await weth.balanceOf(pool.address)).to.equal(WAD)
   })
@@ -78,7 +83,11 @@ describe('PoolRouter', async function () {
 
     it('users can withdraw ETH in a batch', async () => {
       const balanceBefore = await ethers.provider.getBalance(other)
-      await router.batch([router.exitEtherData(other)])
+      await router.batch(
+        [
+          router.exitEtherData(other)
+        ]
+      )
       expect(await ethers.provider.getBalance(other)).to.equal(balanceBefore.add(WAD))
     })
   })
