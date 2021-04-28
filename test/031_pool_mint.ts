@@ -328,7 +328,7 @@ describe('Pool - mint', async function () {
       )
 
       await poolFromUser1.transfer(pool.address, lpTokensIn)
-      await expect(poolFromUser1.burnForBaseToken(user2, 0, 0, OVERRIDES))
+      await expect(poolFromUser1.burnForBaseToken(user2, 0, OVERRIDES))
         .to.emit(pool, 'Liquidity')
         .withArgs(maturity, user1, user2, baseReserves.sub(await base.balanceOf(pool.address)), 0, lpTokensIn.mul(-1))
 
@@ -342,11 +342,8 @@ describe('Pool - mint', async function () {
     it("doesn't burn beyond slippage", async () => {
       const lpTokensIn = WAD.mul(2)
       await poolFromUser1.transfer(pool.address, lpTokensIn)
-      await expect(poolFromUser1.burnForBaseToken(user2, MAX, 0, OVERRIDES)).to.be.revertedWith(
+      await expect(poolFromUser1.burnForBaseToken(user2, MAX, OVERRIDES)).to.be.revertedWith(
         'Pool: Not enough base tokens obtained'
-      )
-      await expect(poolFromUser1.burnForBaseToken(user2, 0, MAX, OVERRIDES)).to.be.revertedWith(
-        'Pool: Not enough fyToken obtained'
       )
     })
   })
