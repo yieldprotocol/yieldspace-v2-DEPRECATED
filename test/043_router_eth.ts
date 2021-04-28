@@ -3,8 +3,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { constants } from '@yield-protocol/utils-v2'
 const { WAD, ETH } = constants
 
-import { OPS } from '../src/constants'
-
 import { PoolFactory } from '../typechain/PoolFactory'
 import { Pool } from '../typechain/Pool'
 import { WETH9Mock as WETH } from '../typechain/WETH9Mock'
@@ -59,7 +57,7 @@ describe('PoolRouter', async function () {
   })
 
   it('users can join ETH to a WETH pool in a batch', async () => {
-    await router.batch([router.joinEtherData(weth.address, fyEth.address)], { value: WAD })
+    await router.batch([router.joinEtherAction(weth.address, fyEth.address)], { value: WAD })
 
     expect(await weth.balanceOf(pool.address)).to.equal(WAD)
   })
@@ -78,7 +76,7 @@ describe('PoolRouter', async function () {
 
     it('users can withdraw ETH in a batch', async () => {
       const balanceBefore = await ethers.provider.getBalance(other)
-      await router.batch([router.exitEtherData(other)])
+      await router.batch([router.exitEtherAction(other)])
       expect(await ethers.provider.getBalance(other)).to.equal(balanceBefore.add(WAD))
     })
   })

@@ -43,7 +43,7 @@ export class YieldSpaceEnvironment {
   }
 
   // Set up a test environment with pools according to the cartesian product of the base ids and the fyToken ids
-  public static async setup(owner: SignerWithAddress, baseIds: Array<string>, maturityIds: Array<string>, initialLiquidity: BigNumber) {
+  public static async setup(owner: SignerWithAddress, baseIds: Array<string>, maturityIds: Array<string>, initialBase: BigNumber) {
     const ownerAdd = await owner.getAddress()
 
     let innerRouter: PoolRouter
@@ -89,7 +89,6 @@ export class YieldSpaceEnvironment {
     router = new PoolRouterWrapper(innerRouter)
 
     const WAD = BigNumber.from(10).pow(18)
-    const initialBase = WAD.mul(initialLiquidity)
     const initialFYToken = initialBase.div(9)
     const bases: Map<string, ERC20> = new Map()
     const fyTokens: Map<string, FYToken> = new Map()
