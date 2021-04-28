@@ -303,12 +303,13 @@ contract Pool is IPool, ERC20Permit, Ownable {
     /// @dev Burn liquidity tokens in exchange for baseToken.
     /// The liquidity provider needs to have called `pool.approve`.
     /// @param to Wallet receiving the baseToken and fyToken.
-    /// @return The amount of base tokens returned.
-    function burnForBaseToken(address to, uint256 minBaseTokenOut, uint256 minFYTokenOut)
+    /// @return tokensBurned The amount of lp tokens burned.
+    /// @return baseTokenOut The amount of base tokens returned.
+    function burnForBaseToken(address to, uint256 minBaseTokenOut)
         external override
-        returns (uint256, uint256, uint256)
+        returns (uint256 tokensBurned, uint256 baseTokenOut)
     {
-        return _burnInternal(to, true, minBaseTokenOut, minFYTokenOut);
+        (tokensBurned, baseTokenOut, ) = _burnInternal(to, true, minBaseTokenOut, 0);
     }
 
 
