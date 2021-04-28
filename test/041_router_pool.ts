@@ -101,7 +101,7 @@ describe('PoolRouter', async function () {
     await base.approve(router.address, WAD)
     await router.batch([
       router.transferToPoolAction(base.address, fyToken1.address, base.address, WAD),
-      router.sellBaseTokenAction(base.address, fyToken1.address, owner, 0)
+      router.sellBaseTokenAction(base.address, fyToken1.address, owner, 0),
     ])
   })
 
@@ -111,7 +111,7 @@ describe('PoolRouter', async function () {
     await fyToken1.approve(router.address, WAD)
     await router.batch([
       router.transferToPoolAction(base.address, fyToken1.address, fyToken1.address, WAD),
-      router.sellFYTokenAction(base.address, fyToken1.address, owner, 0)
+      router.sellFYTokenAction(base.address, fyToken1.address, owner, 0),
     ])
   })
 
@@ -121,7 +121,7 @@ describe('PoolRouter', async function () {
     await base.approve(router.address, WAD)
     await router.batch([
       router.transferToPoolAction(base.address, fyToken1.address, base.address, WAD),
-      router.mintWithBaseTokenAction(base.address, fyToken1.address, owner, WAD.div(100), 0)
+      router.mintWithBaseTokenAction(base.address, fyToken1.address, owner, WAD.div(100), 0),
     ])
   })
 
@@ -129,7 +129,7 @@ describe('PoolRouter', async function () {
     await pool1.approve(router.address, WAD)
     await router.batch([
       router.transferToPoolAction(base.address, fyToken1.address, pool1.address, WAD),
-      router.burnForBaseTokenAction(base.address, fyToken1.address, owner, 0)
+      router.burnForBaseTokenAction(base.address, fyToken1.address, owner, 0),
     ])
   })
 
