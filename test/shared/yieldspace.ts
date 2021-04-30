@@ -1,5 +1,5 @@
 import { BigNumber } from 'ethers'
-import { secondsInFourYears } from '../../src/constants'
+import { secondsInTenYears } from '../../src/constants'
 
 const { bignumber, add, subtract, multiply, divide, pow, floor } = require('mathjs')
 
@@ -11,7 +11,7 @@ function tobn(x: BigNumber): typeof bignumber {
   return bignumber(x.toString())
 }
 
-const k = divide(bignumber(1), bignumber(secondsInFourYears.toString()))
+const k = divide(bignumber(1), bignumber(secondsInTenYears.toString()))
 
 // https://www.desmos.com/calculator/mllhtohxfx
 export function mint(

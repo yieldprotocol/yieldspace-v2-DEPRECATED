@@ -7,7 +7,7 @@ import { constants } from '@yield-protocol/utils-v2'
 const { WAD, MAX128 } = constants
 const MAX = MAX128
 
-import { secondsInOneYear, secondsInFourYears, k, g0 } from '../src/constants'
+import { secondsInOneYear, secondsInTenYears, k, g0 } from '../src/constants'
 
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
@@ -42,7 +42,7 @@ describe('YieldMath - Reverts', async function () {
           WAD.mul(10),
           WAD.mul(10),
           WAD,
-          secondsInFourYears.add(BigNumber.from(60 * 60)),
+          secondsInTenYears.add(BigNumber.from(60 * 60)),
           k,
           g0
         )
@@ -82,7 +82,7 @@ describe('YieldMath - Reverts', async function () {
           WAD.mul(10),
           WAD.mul(10),
           WAD,
-          secondsInFourYears.add(BigNumber.from(60 * 60)),
+          secondsInTenYears.add(BigNumber.from(60 * 60)),
           k,
           g0
         )
@@ -105,7 +105,7 @@ describe('YieldMath - Reverts', async function () {
 
     /* it("Rounding induced error", async () => {
       await expect(
-        yieldMath.baseOutForFYTokenIn(WAD, WAD, 0, secondsInOneYear, k, g0)
+        yieldMath.baseOutForFYTokenIn(MAX, WAD, WAD, 1, k, g0)
       ).to.be.revertedWith(
         'YieldMath: Rounding induced error'
       )
@@ -122,7 +122,7 @@ describe('YieldMath - Reverts', async function () {
           WAD.mul(10),
           WAD.mul(10),
           WAD,
-          secondsInFourYears.add(BigNumber.from(60 * 60)),
+          secondsInTenYears.add(BigNumber.from(60 * 60)),
           k,
           g0
         )
@@ -136,22 +136,20 @@ describe('YieldMath - Reverts', async function () {
     })
 
     // If the base to be obtained exceeds the base reserves, the trade reverts
-    /* TODO: It correctly reverts, why do I get an UnhandledPromiseRejectionWarning?
     it('Resulting fyToken reserves too high', async () => {
       await expect(
-        yieldMath.fyTokenInForBaseOut(WAD.mul(10), MAX, WAD, secondsInOneYear, k, g0),
+        yieldMath.fyTokenInForBaseOut(WAD.mul(10), MAX, WAD, secondsInOneYear.mul(4), k, g0),
         'YieldMath: Resulting fyToken reserves too high'
-      )
+      ).to.be.revertedWith('YieldMath: Resulting fyToken reserves too high')
     })
-    */
 
-    /* it("Rounding induced error", async () => {
+    it("Rounding induced error", async () => {
       await expect(
-        yieldMath.fyTokenInForBaseOut(WAD, WAD, 0, secondsInOneYear, k, g0)
+        yieldMath.fyTokenInForBaseOut(WAD.mul(10), MAX, WAD, 1, k, g0)
       ).to.be.revertedWith(
         'YieldMath: Rounding induced error'
       )
-    }) */
+    })
   })
 
   describe('baseInForFYBaseOut reverts', () => {
@@ -164,7 +162,7 @@ describe('YieldMath - Reverts', async function () {
           WAD.mul(10),
           WAD.mul(10),
           WAD,
-          secondsInFourYears.add(BigNumber.from(60 * 60)),
+          secondsInTenYears.add(BigNumber.from(60 * 60)),
           k,
           g0
         )
@@ -180,16 +178,16 @@ describe('YieldMath - Reverts', async function () {
     // If the base to be traded in makes the base reserves to go over 2**128, the trade reverts
     it('Resulting base reserves too high', async () => {
       await expect(
-        yieldMath.baseInForFYTokenOut(MAX.sub(WAD), WAD.mul(10), WAD, secondsInOneYear, k, g0)
+        yieldMath.baseInForFYTokenOut(MAX, WAD.mul(10), WAD, secondsInOneYear.mul(4), k, g0)
       ).to.be.revertedWith('YieldMath: Resulting base reserves too high')
     })
 
-    /* it('Rounding induced error', async () => {
+    it('Rounding induced error', async () => {
       await expect(
-        yieldMath.baseInForFYTokenOut(WAD, WAD, 0, secondsInOneYear, k, g0)
+        yieldMath.baseInForFYTokenOut(MAX, WAD, WAD, 1, k, g0) // Why does it revert? No idea.
       ).to.be.revertedWith(
         'YieldMath: Rounding induced error'
       )
-    }) */
+    })
   })
 })

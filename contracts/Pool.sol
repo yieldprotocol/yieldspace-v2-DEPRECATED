@@ -59,9 +59,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
     event Sync(uint112 baseTokenReserve, uint112 storedFYTokenReserve, uint256 cumulativeReserveRatio);
     event ParameterSet(bytes32 parameter, int128 k);
 
-    int128 private k1 = int128(uint128(uint256((1 << 64))) / 126230400); // 1 / Seconds in 4 years, in 64.64
+    int128 private k1 = int128(uint128(uint256((1 << 64))) / 315576000); // 1 / Seconds in 10 years, in 64.64
     int128 private g1 = int128(uint128(uint256((950 << 64))) / 1000); // To be used when selling baseToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
-    int128 private k2 = int128(uint128(uint256((1 << 64))) / 126230400); // k is stored twice to be able to recover with 1 SLOAD alongside both g1 and g2
+    int128 private k2 = int128(uint128(uint256((1 << 64))) / 315576000); // k is stored twice to be able to recover with 1 SLOAD alongside both g1 and g2
     int128 private g2 = int128(uint128(uint256((1000 << 64))) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
     uint32 public immutable override maturity;
 

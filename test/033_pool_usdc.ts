@@ -194,10 +194,10 @@ describe('Pool - usdc', async function () {
       const poolTokensBefore = await pool.balanceOf(user2)
 
       await base.connect(user1Acc).transfer(pool.address, WAD)
-      await fyToken.connect(user1Acc).transfer(pool.address, expectedFYTokenIn.sub(1)) // yieldspace.mint rounds up somewhere
+      await fyToken.connect(user1Acc).transfer(pool.address, expectedFYTokenIn)
       await expect(poolFromUser1.mint(user2, CALCULATE_FROM_BASE, 0))
         .to.emit(pool, 'Liquidity')
-        .withArgs(maturity, user1, user2, WAD.mul(-1), expectedFYTokenIn.sub(1).mul(-1), expectedMinted)
+        .withArgs(maturity, user1, user2, WAD.mul(-1), expectedFYTokenIn.mul(-1), expectedMinted)
 
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
 
