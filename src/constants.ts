@@ -12,7 +12,7 @@ export const OPS = {
   }
 
   export const ONE64 = BigNumber.from('18446744073709551616') // In 64.64 format
-  export const secondsInOneYear = BigNumber.from(60 * 60 * 24 * 365) // Seconds in 4 years
+  export const secondsInOneYear = BigNumber.from(31557600)
   export const secondsInFourYears = secondsInOneYear.mul(4) // Seconds in 4 years
   export const k = ONE64.div(secondsInFourYears)
 

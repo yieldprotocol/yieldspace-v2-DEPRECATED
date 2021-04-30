@@ -1,4 +1,6 @@
 import { BigNumber } from 'ethers'
+import { secondsInFourYears } from '../../src/constants'
+
 const { bignumber, add, subtract, multiply, divide, pow, floor } = require('mathjs')
 
 function toBN(x: typeof bignumber): BigNumber {
@@ -8,6 +10,8 @@ function toBN(x: typeof bignumber): BigNumber {
 function tobn(x: BigNumber): typeof bignumber {
   return bignumber(x.toString())
 }
+
+const k = divide(bignumber(1), bignumber(secondsInFourYears.toString()))
 
 // https://www.desmos.com/calculator/mllhtohxfx
 export function mint(
@@ -108,7 +112,6 @@ export function sellBase(
   const Y = tobn(fyTokenReserves)
   const T = tobn(timeTillMaturity)
   const x = tobn(base)
-  const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(950 / 1000)
   const t = multiply(k, T)
   const a = subtract(1, multiply(g, t))
@@ -135,7 +138,6 @@ export function sellFYToken(
   const Y = tobn(fyTokenReserves)
   const T = tobn(timeTillMaturity)
   const x = tobn(fyToken)
-  const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(1000 / 950)
   const t = multiply(k, T)
   const a = subtract(1, multiply(g, t))
@@ -162,7 +164,6 @@ export function buyBase(
   const Y = tobn(fyTokenReserves)
   const T = tobn(timeTillMaturity)
   const x = tobn(base)
-  const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(1000 / 950)
   const t = multiply(k, T)
   const a = subtract(1, multiply(g, t))
@@ -189,7 +190,6 @@ export function buyFYToken(
   const Y = tobn(fyTokenReserves)
   const T = tobn(timeTillMaturity)
   const x = tobn(fyToken)
-  const k = bignumber(1 / (4 * 365 * 24 * 60 * 60)) // 1 / seconds in four years
   const g = bignumber(950 / 1000)
   const t = multiply(k, T)
   const a = subtract(1, multiply(g, t))

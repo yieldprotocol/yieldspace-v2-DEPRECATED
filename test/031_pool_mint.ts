@@ -87,12 +87,6 @@ describe('Pool - mint', async function () {
     maturity = BigNumber.from(await fyToken.maturity())
   })
 
-  it('should setup pool', async () => {
-    const b = BigNumber.from('18446744073709551615')
-    const k = b.div('126144000')
-    expect(await pool.getK()).to.be.equal(k)
-  })
-
   it('adds initial liquidity', async () => {
     await base.mint(pool.address, initialBase)
 
