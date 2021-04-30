@@ -6,6 +6,8 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 
+import { k, g1, g2 } from '../src/constants'
+
 import { sellBase, sellFYToken, buyBase, buyFYToken } from './shared/yieldspace'
 
 const PRECISION = BigNumber.from('100000000000000') // 1e14
@@ -20,15 +22,6 @@ describe('YieldMath - Surface', async function () {
   this.timeout(0)
   let yieldMathLibrary: YieldMath
   let yieldMath: YieldMathWrapper
-
-  const ONE64 = BigNumber.from('18446744073709551616') // In 64.64 format
-  const secondsInOneYear = BigNumber.from(60 * 60 * 24 * 365) // Seconds in 4 years
-  const secondsInFourYears = secondsInOneYear.mul(4) // Seconds in 4 years
-  const k = ONE64.div(secondsInFourYears)
-
-  const g0 = ONE64 // No fees
-  const g1 = BigNumber.from('950').mul(ONE64).div(BigNumber.from('1000')) // Sell base to the pool
-  const g2 = BigNumber.from('1000').mul(ONE64).div(BigNumber.from('950')) // Sell fyToken to the pool
 
   const baseReserves = [
     // BigNumber.from('100000000000000000000000'),
