@@ -241,6 +241,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         // Calculate trade
         uint256 tokensMinted;
         uint256 baseTokenIn;
+        uint256 baseTokenReturned;
         uint256 fyTokenIn;
 
         if (supply == 0) {
@@ -267,7 +268,11 @@ contract Pool is IPool, ERC20Permit, Ownable {
                 fyTokenIn = fyToken.balanceOf(address(this)) - realStoredFYTokenReserve;
                 tokensMinted = (supply * (fyTokenToBuy + fyTokenIn)) / (realStoredFYTokenReserve - fyTokenToBuy);
                 baseTokenIn = baseTokenToSell + ((realStoredBaseTokenReserve + baseTokenToSell) * tokensMinted) / supply;
-                require(baseToken.balanceOf(address(this)) - realStoredBaseTokenReserve >= baseTokenIn, "Pool: Not enough base token in");
+                uint256 _baseTokenReserves = baseToken.balanceOf(address(this));
+                require(_baseTokenReserves - realStoredBaseTokenReserve >= baseTokenIn, "Pool: Not enough base token in");
+                
+                // If we did a trade means we came in through `mintWithBase`, and want to return the base token surplus
+                if (fyTokenToBuy > 0) baseTokenReturned = (_baseTokenReserves - realStoredBaseTokenReserve) - baseTokenIn;
             }
         }
 
@@ -284,6 +289,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
         // Execute mint
         _mint(to, tokensMinted);
+
+        // Return any unused base if we did a trade, meaning slippage was involved.
+        if (supply > 0 && fyTokenToBuy > 0) baseToken.safeTransfer(to, baseTokenReturned);
 
         emit Liquidity(maturity, msg.sender, to, -(baseTokenIn.i256()), -(fyTokenIn.i256()), tokensMinted.i256());
         return (baseTokenIn, fyTokenIn, tokensMinted);

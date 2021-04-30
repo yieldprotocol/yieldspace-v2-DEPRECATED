@@ -248,7 +248,6 @@ describe('Pool - mint', async function () {
       const poolSupplyBefore = await pool.totalSupply()
       const storedBaseReservesBefore = (await pool.getStoredReserves())[0]
       const storedFYTokenReservesBefore = (await pool.getStoredReserves())[1]
-      // const baseBefore = await base.balanceOf(user1)
 
       await base.mint(pool.address, expectedBaseIn)
 
@@ -262,6 +261,8 @@ describe('Pool - mint', async function () {
           0,
           (await pool.totalSupply()).sub(poolSupplyBefore)
         )
+        .to.emit(base, 'Transfer')
+        .withArgs(pool.address, user2, await base.balanceOf(user2)) // Surplus base is given to the receiver of LP tokens
 
       const baseIn = (await pool.getStoredReserves())[0].sub(storedBaseReservesBefore)
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
