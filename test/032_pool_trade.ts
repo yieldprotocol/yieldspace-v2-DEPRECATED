@@ -4,7 +4,7 @@ import { constants } from '@yield-protocol/utils-v2'
 const { WAD, MAX128 } = constants
 const MAX = MAX128
 
-import { PoolWrapper } from './shared/poolWrapper'
+import { PoolEstimator } from './shared/poolEstimator'
 import { Pool } from '../typechain/Pool'
 import { BaseMock as Base } from '../typechain/BaseMock'
 import { FYTokenMock as FYToken } from '../typechain/FYTokenMock'
@@ -20,10 +20,6 @@ function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
   // Check that abs(x - y) < p:
   const diff = x.gt(y) ? BigNumber.from(x).sub(y) : BigNumber.from(y).sub(x) // Not sure why I have to convert x and y to BigNumber
   expect(diff.div(p)).to.eq(0) // Hack to avoid silly conversions. BigNumber truncates decimals off.
-}
-
-async function currentTimestamp() {
-  return (await ethers.provider.getBlock(await ethers.provider.getBlockNumber())).timestamp
 }
 
 describe('Pool - trade', async function () {
@@ -42,7 +38,7 @@ describe('Pool - trade', async function () {
   let user2: string
 
   let yieldSpace: YieldSpaceEnvironment
-  let poolWrapper: PoolWrapper
+  let poolEstimator: PoolEstimator
   let pool: Pool
   let base: Base
   let fyToken: FYToken
@@ -71,7 +67,7 @@ describe('Pool - trade', async function () {
     base = yieldSpace.bases.get(baseId) as Base
     fyToken = yieldSpace.fyTokens.get(fyTokenId) as FYToken
     pool = ((yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyTokenId) as Pool).connect(user1Acc)
-    poolWrapper = new PoolWrapper(pool)
+    poolEstimator = new PoolEstimator(pool)
     maturity = BigNumber.from(await pool.maturity())
   })
 
@@ -84,7 +80,7 @@ describe('Pool - trade', async function () {
 
     // Test preview since we are here
     const baseOutPreview = await pool.sellFYTokenPreview(fyTokenIn)
-    const expectedBaseOut = await poolWrapper.sellFYTokenOffChain()
+    const expectedBaseOut = await poolEstimator.sellFYTokenOffChain()
 
     await expect(pool.sellFYToken(user2, 0))
       .to.emit(pool, 'Trade')
@@ -126,7 +122,7 @@ describe('Pool - trade', async function () {
     const baseOut = WAD
 
     const fyTokenInPreview = await pool.buyBaseTokenPreview(baseOut) // Test preview since we are here
-    const expectedFYTokenIn = await poolWrapper.buyBaseTokenOffChain(baseOut)
+    const expectedFYTokenIn = await poolEstimator.buyBaseTokenOffChain(baseOut)
 
     await fyToken.mint(pool.address, fyTokens)
 
@@ -159,7 +155,7 @@ describe('Pool - trade', async function () {
     const baseBefore = await base.balanceOf(user2)
     const baseOut = WAD
 
-    const expectedFYTokenIn = await poolWrapper.buyBaseTokenOffChain(baseOut)
+    const expectedFYTokenIn = await poolEstimator.buyBaseTokenOffChain(baseOut)
 
     await fyToken.mint(pool.address, fyTokens)
 
@@ -214,7 +210,7 @@ describe('Pool - trade', async function () {
       await base.mint(pool.address, baseIn)
 
       const fyTokenOutPreview = await pool.sellBaseTokenPreview(baseIn) // Test preview since we are here
-      const expectedFYTokenOut = await poolWrapper.sellBaseTokenOffChain()
+      const expectedFYTokenOut = await poolEstimator.sellBaseTokenOffChain()
 
       await expect(pool.sellBaseToken(user2, 0, OVERRIDES))
         .to.emit(pool, 'Trade')
@@ -258,7 +254,7 @@ describe('Pool - trade', async function () {
       const fyTokenOut = WAD
 
       const baseInPreview = await pool.buyFYTokenPreview(fyTokenOut) // Test preview since we are here
-      const expectedBaseIn = await poolWrapper.buyFYTokenOffChain(fyTokenOut)
+      const expectedBaseIn = await poolEstimator.buyFYTokenOffChain(fyTokenOut)
 
       await base.mint(pool.address, baseTokens)
 

@@ -18,25 +18,11 @@ export class BatchAction {
   }
 }
 
-export class PoolWrapper {
+export class PoolEstimator {
   pool: Pool
-  address: string
 
   constructor(pool: Pool) {
     this.pool = pool
-    this.address = pool.address
-  }
-
-  public static async setup(pool: Pool) {
-    return new PoolWrapper(pool)
-  }
-
-  public connect(account: SignerWithAddress): PoolWrapper {
-    return new PoolWrapper(this.pool.connect(account))
-  }
-
-  public async sellBaseToken(receiver: string, min: BigNumberish): Promise<ContractTransaction> {
-    return this.pool.sellBaseToken(receiver, min)
   }
 
   public async sellBaseTokenOffChain(): Promise<BigNumber> {
@@ -48,10 +34,6 @@ export class PoolWrapper {
     )
   }
 
-  public async sellFYToken(receiver: string, min: BigNumberish): Promise<ContractTransaction> {
-    return this.pool.sellFYToken(receiver, min)
-  }
-
   public async sellFYTokenOffChain(): Promise<BigNumber> {
     return sellFYToken(
       await this.pool.getBaseTokenReserves(),
@@ -59,10 +41,6 @@ export class PoolWrapper {
       (await this.pool.getFYTokenReserves()).sub((await this.pool.getStoredReserves())[1]),
       BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp()),
     )
-  }
-
-  public async buyBaseToken(receiver: string, tokenOut: BigNumberish, max: BigNumberish): Promise<ContractTransaction> {
-    return this.pool.buyBaseToken(receiver, tokenOut, max)
   }
 
   public async buyBaseTokenOffChain(tokenOut: BigNumberish): Promise<BigNumber> {
@@ -74,10 +52,6 @@ export class PoolWrapper {
     )
   }
 
-  public async buyFYToken(receiver: string, tokenOut: BigNumberish, max: BigNumberish): Promise<ContractTransaction> {
-    return this.pool.buyFYToken(receiver, tokenOut, max)
-  }
-  
   public async buyFYTokenOffChain(tokenOut: BigNumberish): Promise<BigNumber> {
     return buyFYToken(
       await this.pool.getBaseTokenReserves(),
