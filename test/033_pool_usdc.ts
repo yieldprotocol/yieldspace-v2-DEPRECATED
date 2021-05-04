@@ -140,7 +140,6 @@ describe('Pool - usdc', async function () {
       const baseIn = WAD
 
       let [expectedMinted, expectedFYTokenIn] = await poolEstimator.mint(baseIn, CALCULATE_FROM_BASE)
-      expectedMinted = expectedMinted.sub(1)
 
       await base.mint(pool.address, baseIn)
       await fyToken.mint(pool.address, fyTokens)
