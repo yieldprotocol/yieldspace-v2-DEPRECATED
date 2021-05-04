@@ -1,4 +1,5 @@
 import { ethers, BigNumber } from 'ethers';
+import { secondsInTenYears } from '../../src/constants'
 import { Decimal } from 'decimal.js';
 
 Decimal.set({ precision: 64 });
@@ -13,7 +14,7 @@ export const SECONDS_PER_YEAR: number = (365 * 24 * 60 * 60);
 const ZERO = ZERO_DEC;
 const ONE = ONE_DEC;
 const TWO = TWO_DEC;
-const k = new Decimal(1 / 126144000); // inv of seconds in 4 years
+const k = new Decimal(1 / secondsInTenYears.toNumber()); // inv of seconds in 4 years
 const g1 = new Decimal(950 / 1000);
 const g2 = new Decimal(1000 / 950);
 const precisionFee = new Decimal(1000000000000);
@@ -218,7 +219,7 @@ export function sellBase(
   const baseReserves_ = new Decimal(baseReserves.toString());
   const fyTokenReserves_ = new Decimal(fyTokenReserves.toString());
   const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
-  const dai_ = new Decimal(base.toString());
+  const x = new Decimal(base.toString());
 
   const g = withNoFee ? ONE : g1;
   const t = k.mul(timeTillMaturity_);
@@ -227,7 +228,7 @@ export function sellBase(
 
   const Za = baseReserves_.pow(a);
   const Ya = fyTokenReserves_.pow(a);
-  const Zxa = (baseReserves_.add(dai_)).pow(a);
+  const Zxa = (baseReserves_.add(x)).pow(a);
   const sum = (Za.add(Ya)).sub(Zxa);
   const y = fyTokenReserves_.sub(sum.pow(invA));
   const yFee = y.sub(precisionFee);
@@ -288,7 +289,7 @@ export function buyBase(
   const baseReserves_ = new Decimal(baseReserves.toString());
   const fyTokenReserves_ = new Decimal(fyTokenReserves.toString());
   const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
-  const dai_ = new Decimal(base.toString());
+  const x = new Decimal(base.toString());
 
   const g = withNoFee ? ONE : g2;
   const t = k.mul(timeTillMaturity_);
@@ -297,7 +298,7 @@ export function buyBase(
 
   const Za = baseReserves_.pow(a);
   const Ya = fyTokenReserves_.pow(a);
-  const Zxa = (baseReserves_.sub(dai_)).pow(a);
+  const Zxa = (baseReserves_.sub(x)).pow(a);
   const sum = (Za.add(Ya)).sub(Zxa);
   const y = (sum.pow(invA)).sub(fyTokenReserves_);
   const yFee = y.add(precisionFee);
@@ -378,10 +379,10 @@ export function getFee(
 //   const baseReserves_ = new Decimal(baseReserves.toString());
 //   const fyDaiRealReserves_ = new Decimal(fyDaiRealReserves.toString());
 //   const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
-//   const dai_ = new Decimal(base.toString());
+//   const x = new Decimal(base.toString());
 
 //   let min = ZERO;
-//   let max = dai_;
+//   let max = x;
 //   let yOut = Decimal.floor((min.add(max)).div(TWO));
 
 //   let i = 0;
@@ -396,7 +397,7 @@ export function getFee(
 //     );
 //     const Z_1 = baseReserves_.add(zIn); // New base reserves
 //     const Y_1 = fyDaiRealReserves_.sub(yOut); // New fyToken reserves
-//     const pz = (dai_.sub(zIn)).div((dai_.sub(zIn)).add(yOut)); // base proportion in my assets
+//     const pz = (x.sub(zIn)).div((x.sub(zIn)).add(yOut)); // base proportion in my assets
 //     const PZ = Z_1.div(Z_1.add(Y_1)); // base proportion in the reserves
 
 //     // The base proportion in my assets needs to be higher than but very close to the base proportion in the reserves, to make sure all the fyToken is used.

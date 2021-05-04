@@ -8,7 +8,8 @@ import { expect } from 'chai'
 
 import { k, g1, g2 } from '../src/constants'
 
-import { sellBase, sellFYToken, buyBase, buyFYToken } from './shared/yieldspace'
+import { sellFYToken, buyBase, buyFYToken } from './shared/yieldspace'
+import { sellBase } from './shared/yieldspace2'
 
 const PRECISION = BigNumber.from('100000000000000') // 1e14
 
