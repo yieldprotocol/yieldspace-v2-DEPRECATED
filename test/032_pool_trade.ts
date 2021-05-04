@@ -78,7 +78,7 @@ describe('Pool - trade', async function () {
     // Transfer fyToken for sale to the pool
     await fyToken.mint(pool.address, fyTokenIn)
 
-    // Test preview since we are here
+    
     const baseOutPreview = await pool.sellFYTokenPreview(fyTokenIn)
     const expectedBaseOut = await poolEstimator.sellFYToken()
 
@@ -121,7 +121,7 @@ describe('Pool - trade', async function () {
     const baseBefore = await base.balanceOf(user2)
     const baseOut = WAD
 
-    const fyTokenInPreview = await pool.buyBaseTokenPreview(baseOut) // Test preview since we are here
+    const fyTokenInPreview = await pool.buyBaseTokenPreview(baseOut) 
     const expectedFYTokenIn = await poolEstimator.buyBaseToken(baseOut)
 
     await fyToken.mint(pool.address, fyTokens)
@@ -209,7 +209,7 @@ describe('Pool - trade', async function () {
       // Transfer base for sale to the pool
       await base.mint(pool.address, baseIn)
 
-      const fyTokenOutPreview = await pool.sellBaseTokenPreview(baseIn) // Test preview since we are here
+      const fyTokenOutPreview = await pool.sellBaseTokenPreview(baseIn) 
       const expectedFYTokenOut = await poolEstimator.sellBaseToken()
 
       await expect(pool.sellBaseToken(user2, 0, OVERRIDES))
@@ -253,7 +253,7 @@ describe('Pool - trade', async function () {
       const fyTokenBefore = await fyToken.balanceOf(user2)
       const fyTokenOut = WAD
 
-      const baseInPreview = await pool.buyFYTokenPreview(fyTokenOut) // Test preview since we are here
+      const baseInPreview = await pool.buyFYTokenPreview(fyTokenOut) 
       const expectedBaseIn = await poolEstimator.buyFYToken(fyTokenOut)
 
       await base.mint(pool.address, baseTokens)
