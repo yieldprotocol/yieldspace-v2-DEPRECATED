@@ -18,7 +18,7 @@ import { ethers, waffle } from 'hardhat'
 import { expect } from 'chai'
 const { loadFixture } = waffle
 
-describe('PoolRouter', async function () {
+describe('PoolRouter - Pool', async function () {
   this.timeout(0)
 
   let ownerAcc: SignerWithAddress
