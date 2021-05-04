@@ -89,10 +89,7 @@ describe('Pool - mint', async function () {
       .to.emit(pool, 'Liquidity')
       .withArgs(maturity, user1, user2, initialBase.mul(-1), 0, initialBase)
 
-    expect(await pool.balanceOf(user2)).to.equal(
-      initialBase,
-      'User2 should have ' + initialBase + ' liquidity tokens'
-    )
+    expect(await pool.balanceOf(user2)).to.equal(initialBase, 'User2 should have ' + initialBase + ' liquidity tokens')
 
     expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
     expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())

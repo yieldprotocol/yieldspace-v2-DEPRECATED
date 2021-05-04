@@ -78,7 +78,6 @@ describe('Pool - trade', async function () {
     // Transfer fyToken for sale to the pool
     await fyToken.mint(pool.address, fyTokenIn)
 
-    
     const baseOutPreview = await pool.sellFYTokenPreview(fyTokenIn)
     const expectedBaseOut = await poolEstimator.sellFYToken()
 
@@ -98,9 +97,7 @@ describe('Pool - trade', async function () {
     const fyTokenIn = WAD
 
     await fyToken.mint(pool.address, fyTokenIn)
-    await expect(pool.sellFYToken(user2, MAX, OVERRIDES)).to.be.revertedWith(
-      'Pool: Not enough baseToken obtained'
-    )
+    await expect(pool.sellFYToken(user2, MAX, OVERRIDES)).to.be.revertedWith('Pool: Not enough baseToken obtained')
   })
 
   it('donates base and sells fyToken', async () => {
@@ -121,7 +118,7 @@ describe('Pool - trade', async function () {
     const baseBefore = await base.balanceOf(user2)
     const baseOut = WAD
 
-    const fyTokenInPreview = await pool.buyBaseTokenPreview(baseOut) 
+    const fyTokenInPreview = await pool.buyBaseTokenPreview(baseOut)
     const expectedFYTokenIn = await poolEstimator.buyBaseToken(baseOut)
 
     await fyToken.mint(pool.address, fyTokens)
@@ -146,9 +143,7 @@ describe('Pool - trade', async function () {
     const baseOut = WAD
 
     await fyToken.mint(pool.address, fyTokens)
-    await expect(pool.buyBaseToken(user2, baseOut, 0, OVERRIDES)).to.be.revertedWith(
-      'Pool: Too much fyToken in'
-    )
+    await expect(pool.buyBaseToken(user2, baseOut, 0, OVERRIDES)).to.be.revertedWith('Pool: Too much fyToken in')
   })
 
   it('buys base and retrieves change', async () => {
@@ -209,7 +204,7 @@ describe('Pool - trade', async function () {
       // Transfer base for sale to the pool
       await base.mint(pool.address, baseIn)
 
-      const fyTokenOutPreview = await pool.sellBaseTokenPreview(baseIn) 
+      const fyTokenOutPreview = await pool.sellBaseTokenPreview(baseIn)
       const expectedFYTokenOut = await poolEstimator.sellBaseToken()
 
       await expect(pool.sellBaseToken(user2, 0, OVERRIDES))
@@ -230,9 +225,7 @@ describe('Pool - trade', async function () {
       const baseIn = WAD
 
       await base.mint(pool.address, baseIn)
-      await expect(pool.sellBaseToken(user2, MAX, OVERRIDES)).to.be.revertedWith(
-        'Pool: Not enough fyToken obtained'
-      )
+      await expect(pool.sellBaseToken(user2, MAX, OVERRIDES)).to.be.revertedWith('Pool: Not enough fyToken obtained')
     })
 
     it('donates fyToken and sells base', async () => {
@@ -253,7 +246,7 @@ describe('Pool - trade', async function () {
       const fyTokenBefore = await fyToken.balanceOf(user2)
       const fyTokenOut = WAD
 
-      const baseInPreview = await pool.buyFYTokenPreview(fyTokenOut) 
+      const baseInPreview = await pool.buyFYTokenPreview(fyTokenOut)
       const expectedBaseIn = await poolEstimator.buyFYToken(fyTokenOut)
 
       await base.mint(pool.address, baseTokens)
@@ -287,9 +280,7 @@ describe('Pool - trade', async function () {
       const fyTokenOut = WAD
 
       await base.mint(pool.address, baseTokens)
-      await expect(pool.buyFYToken(user2, fyTokenOut, 0, OVERRIDES)).to.be.revertedWith(
-        'Pool: Too much base token in'
-      )
+      await expect(pool.buyFYToken(user2, fyTokenOut, 0, OVERRIDES)).to.be.revertedWith('Pool: Too much base token in')
     })
 
     it('buys fyToken and retrieves change', async () => {
