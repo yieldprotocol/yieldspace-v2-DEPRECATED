@@ -1,5 +1,5 @@
 import { ethers, BigNumber } from 'ethers';
-import { secondsInTenYears } from '../../src/constants'
+import { secondsInTenYears } from './constants'
 import { Decimal } from 'decimal.js';
 
 Decimal.set({ precision: 64 });

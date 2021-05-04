@@ -1,8 +1,7 @@
 import { BigNumber, BigNumberish } from 'ethers'
 import { IERC20 } from '../../typechain/IERC20'
 import { Pool } from '../../typechain/Pool'
-import { mintWithBase, burnForBase } from './yieldspace'
-import { mint, burn, sellBase, sellFYToken, buyBase, buyFYToken } from './yieldspace2'
+import { mint, burn, sellBase, sellFYToken, buyBase, buyFYToken, mintWithBase, burnForBase } from '../../src/yieldspace'
 import { ethers } from 'hardhat'
 
 async function currentTimestamp() {
