@@ -16,7 +16,7 @@ import { BigNumber } from 'ethers'
 import { expect } from 'chai'
 const { loadFixture } = waffle
 
-describe('PoolRouter', async function () {
+describe('PoolRouter - Ether', async function () {
   this.timeout(0)
 
   let ownerAcc: SignerWithAddress
