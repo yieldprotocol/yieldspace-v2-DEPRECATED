@@ -88,7 +88,6 @@ export class YieldSpaceEnvironment {
     await innerRouter.deployed()
     router = new PoolRouterWrapper(innerRouter)
 
-    const WAD = BigNumber.from(10).pow(18)
     const initialFYToken = initialBase.div(9)
     const bases: Map<string, ERC20> = new Map()
     const fyTokens: Map<string, FYToken> = new Map()
@@ -138,6 +137,7 @@ export class YieldSpaceEnvironment {
 
         // init pool
         if (baseId === ETH) {
+          break; // TODO: Fix when we can give `initialBase` ether to the deployer
           await weth9.deposit({ value: initialBase })
           await weth9.transfer(pool.address, initialBase)
         } else {
