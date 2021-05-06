@@ -1,15 +1,17 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { signatures } from '@yield-protocol/utils'
-import { OPS, WAD, MAX256 as MAX, ETH } from './shared/constants'
+
+import { constants } from '@yield-protocol/utils-v2'
+const { WAD, ETH } = constants
+
+import { OPS } from '../src/constants'
 
 import { PoolFactory } from '../typechain/PoolFactory'
-import { PoolRouter } from '../typechain/PoolRouter'
 import { Pool } from '../typechain/Pool'
 import { WETH9Mock as WETH } from '../typechain/WETH9Mock'
-import { BaseMock as Base } from '../typechain/BaseMock'
 import { FYTokenMock as FYToken } from '../typechain/FYTokenMock'
 
 import { YieldSpaceEnvironment } from './shared/fixtures'
+import { PoolRouterWrapper } from '../src/poolRouterWrapper'
 
 import { ethers, waffle } from 'hardhat'
 import { BigNumber } from 'ethers'
@@ -24,7 +26,7 @@ describe('PoolRouter', async function () {
   let other: string
   let yieldSpace: YieldSpaceEnvironment
   let factory: PoolFactory
-  let router: PoolRouter
+  let router: PoolRouterWrapper
   let weth: WETH
   let fyEth: FYToken
   let pool: Pool
@@ -45,7 +47,7 @@ describe('PoolRouter', async function () {
   beforeEach(async () => {
     yieldSpace = await loadFixture(fixture)
     factory = yieldSpace.factory as PoolFactory
-    router = yieldSpace.router as PoolRouter
+    router = yieldSpace.router as PoolRouterWrapper
     weth = (yieldSpace.bases.get(ETH) as unknown) as WETH
     fyEth = yieldSpace.fyTokens.get(fyEthId) as FYToken
     pool = (yieldSpace.pools.get(ETH) as Map<string, Pool>).get(fyEthId) as Pool
@@ -57,8 +59,7 @@ describe('PoolRouter', async function () {
   })
 
   it('users can join ETH to a WETH pool in a batch', async () => {
-    const joinEtherData = ethers.utils.defaultAbiCoder.encode([], [])
-    await router.batch([weth.address], [fyEth.address], [0], [OPS.JOIN_ETHER], [joinEtherData], { value: WAD })
+    await router.batch([router.joinEtherData(weth.address, fyEth.address)], { value: WAD })
 
     expect(await weth.balanceOf(pool.address)).to.equal(WAD)
   })
@@ -71,14 +72,13 @@ describe('PoolRouter', async function () {
 
     it('users can withdraw ETH', async () => {
       const balanceBefore = await ethers.provider.getBalance(other)
-      await router.exitEther(other, { value: WAD })
+      await router.exitEther(other)
       expect(await ethers.provider.getBalance(other)).to.equal(balanceBefore.add(WAD))
     })
 
     it('users can withdraw ETH in a batch', async () => {
       const balanceBefore = await ethers.provider.getBalance(other)
-      const exitEtherData = ethers.utils.defaultAbiCoder.encode(['address'], [other])
-      await router.batch([weth.address], [fyEth.address], [0], [OPS.EXIT_ETHER], [exitEtherData])
+      await router.batch([router.exitEtherData(other)])
       expect(await ethers.provider.getBalance(other)).to.equal(balanceBefore.add(WAD))
     })
   })

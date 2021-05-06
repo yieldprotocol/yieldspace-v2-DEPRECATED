@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity >= 0.8.0;
 
-import "@yield-protocol/utils/contracts/token/ERC20Permit.sol";
+import "@yield-protocol/utils-v2/contracts/token/ERC20Permit.sol";
 
 
-contract BaseMock is ERC20Permit("Base", "BASE") {
+contract BaseMock is ERC20Permit("Base", "BASE", 18) {
   function mint(address to, uint256 amount) public {
     _mint(to, amount);
   }

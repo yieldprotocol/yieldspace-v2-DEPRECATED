@@ -4,21 +4,26 @@
 *.swp
 *.swo
 
-# Secrets
-.etherscanKey
-.infuraKey
-.secret
+# Packaging
+*.tar.gz
+*.tgz
+package/
 
-# Hardhat files
+# Buidler files
 cache
 artifacts
 node_modules/
-output/
-build/
 abi/
-
-# Typescript
+output/
 typechain/
+deployments/
+
+# Secret files
+.etherscanKey
+.infuraKey
+.mythxKey
+.secret
+build/
 
 # Solidity-coverage
 coverage/
@@ -33,3 +38,7 @@ package-lock.json
 
 # Crytic
 crytic-export/
+
+# Typescript
+dist/
+

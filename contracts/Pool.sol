@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity >= 0.8.0;
 
-import "@yield-protocol/utils/contracts/token/ERC20Permit.sol";
-import "@yield-protocol/utils/contracts/token/IERC20.sol";
-import "@yield-protocol/vault-interfaces/IFYToken.sol";
+import "@yield-protocol/utils-v2/contracts/access/Ownable.sol";
+import "@yield-protocol/utils-v2/contracts/token/IERC20.sol";
+import "@yield-protocol/utils-v2/contracts/token/IERC20Metadata.sol";
+import "@yield-protocol/utils-v2/contracts/token/ERC20Permit.sol";
+import "@yield-protocol/utils-v2/contracts/token/SafeERC20Namer.sol";
+import "@yield-protocol/utils-v2/contracts/token/TransferHelper.sol";
 import "@yield-protocol/yieldspace-interfaces/IPool.sol";
 import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
-import "@yield-protocol/utils-v2/contracts/Ownable.sol";
-import "@yield-protocol/utils-v2/contracts/SafeERC20Namer.sol";
-import "@yield-protocol/utils-v2/contracts/TransferHelper.sol";
+import "@yield-protocol/vault-interfaces/IFYToken.sol";
 import "./YieldMath.sol";
 
 
@@ -76,7 +77,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
     constructor()
         ERC20Permit(
             string(abi.encodePacked("Yield ", SafeERC20Namer.tokenName(IPoolFactory(msg.sender).nextFYToken()), " LP Token")),
-            string(abi.encodePacked(SafeERC20Namer.tokenSymbol(IPoolFactory(msg.sender).nextFYToken()), "LP"))
+            string(abi.encodePacked(SafeERC20Namer.tokenSymbol(IPoolFactory(msg.sender).nextFYToken()), "LP")),
+            SafeERC20Namer.tokenDecimals(IPoolFactory(msg.sender).nextToken())
         )
     {
         IFYToken _fyToken = IFYToken(IPoolFactory(msg.sender).nextFYToken());
@@ -144,7 +146,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         public view override
         returns(uint112)
     {
-        return (fyToken.balanceOf(address(this)) + totalSupply()).u112();
+        return (fyToken.balanceOf(address(this)) + _totalSupply).u112();
     }
 
     /// @dev Returns the baseToken reserves
@@ -231,7 +233,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         returns (uint256, uint256, uint256)
     {
         // Gather data
-        uint256 supply = totalSupply();
+        uint256 supply = _totalSupply;
         (uint112 realStoredBaseTokenReserve, uint112 virtualStoredFYTokenReserve) =
             (storedBaseTokenReserve, storedFYTokenReserve);
         uint256 realStoredFYTokenReserve = virtualStoredFYTokenReserve - supply;    // The stored fyToken reserves include the virtual fyToken, equal to the supply
@@ -260,7 +262,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
                 baseTokenIn = baseToken.balanceOf(address(this)) - realStoredBaseTokenReserve;
                 tokensMinted = (supply * baseTokenIn) / realStoredBaseTokenReserve;
                 fyTokenIn = (realStoredFYTokenReserve * tokensMinted) / supply;
-                require(realStoredFYTokenReserve + fyTokenIn <= fyToken.balanceOf(address(this)), "Pool: Not enought fyToken in");
+                require(realStoredFYTokenReserve + fyTokenIn <= fyToken.balanceOf(address(this)), "Pool: Not enough fyToken in");
             } else {                   // We use all the available fyTokens, plus a virtual trade if it happened, surplus is in base tokens
                 fyTokenIn = fyToken.balanceOf(address(this)) - realStoredFYTokenReserve;
                 tokensMinted = (supply * (fyTokenToBuy + fyTokenIn)) / (realStoredFYTokenReserve - fyTokenToBuy);
@@ -321,7 +323,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
     {
         
         uint256 tokensBurned = _balanceOf[address(this)];
-        uint256 supply = totalSupply();
+        uint256 supply = _totalSupply;
         uint256 fyTokenReserves = fyToken.balanceOf(address(this));             // use the actual reserves rather than the virtual reserves
         uint256 baseTokenReserves = baseToken.balanceOf(address(this));
         (uint112 realStoredBaseTokenReserve, uint112 virtualStoredFYTokenReserve) =
@@ -469,8 +471,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
             _storedFYTokenReserve
         );
         require(
-            fyTokenReserves - _storedFYTokenReserve > fyTokenIn,
-            "Pool: Not enought fyToken in"
+            fyTokenReserves - _storedFYTokenReserve >= fyTokenIn,
+            "Pool: Not enough fyToken in"
         );
 
         // Slippage check
@@ -622,8 +624,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
             _storedFYTokenReserve
         );
         require(
-            baseTokenReserves - _storedBaseTokenReserve > baseTokenIn,
-            "Pool: Not enought base token in"
+            baseTokenReserves - _storedBaseTokenReserve >= baseTokenIn,
+            "Pool: Not enough base token in"
         );
 
         // Slippage check

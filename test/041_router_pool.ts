@@ -1,13 +1,17 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { OPS, WAD, MAX256 as MAX, CALCULATE_FROM_BASE } from './shared/constants'
+
+import { constants } from '@yield-protocol/utils-v2'
+const { WAD } = constants
+
+import { OPS, CALCULATE_FROM_BASE } from '../src/constants'
 
 import { PoolFactory } from '../typechain/PoolFactory'
-import { PoolRouter } from '../typechain/PoolRouter'
 import { Pool } from '../typechain/Pool'
-import { BaseMock as Base, BaseMock } from '../typechain/BaseMock'
-import { FYTokenMock as FYToken, FYTokenMock } from '../typechain/FYTokenMock'
+import { BaseMock } from '../typechain/BaseMock'
+import { FYTokenMock } from '../typechain/FYTokenMock'
 
 import { YieldSpaceEnvironment } from './shared/fixtures'
+import { PoolRouterWrapper } from '../src/poolRouterWrapper'
 
 import { ethers, waffle } from 'hardhat'
 import { BigNumber } from 'ethers'
@@ -21,7 +25,7 @@ describe('PoolRouter', async function () {
   let owner: string
   let yieldSpace: YieldSpaceEnvironment
   let factory: PoolFactory
-  let router: PoolRouter
+  let router: PoolRouterWrapper
   let base: BaseMock
   let fyToken1: FYTokenMock
   let fyToken2: FYTokenMock
@@ -46,7 +50,7 @@ describe('PoolRouter', async function () {
   beforeEach(async () => {
     yieldSpace = await loadFixture(fixture)
     factory = yieldSpace.factory as PoolFactory
-    router = yieldSpace.router as PoolRouter
+    router = yieldSpace.router as PoolRouterWrapper
     base = yieldSpace.bases.get(baseId) as BaseMock
     fyToken1 = yieldSpace.fyTokens.get(fyToken1Id) as FYTokenMock
     fyToken2 = yieldSpace.fyTokens.get(fyToken2Id) as FYTokenMock
@@ -81,29 +85,12 @@ describe('PoolRouter', async function () {
     expect(await pool1.balanceOf(pool1.address)).to.equal(poolTokensBefore.add(WAD))
   })
 
-  it('transfers tokens to a pool with multicall', async () => {
-    const baseBefore = await base.balanceOf(pool1.address)
-    await base.mint(owner, WAD)
-    await base.approve(router.address, WAD)
-
-    const transferToPoolCall = router.interface.encodeFunctionData('transferToPool', [
-      base.address,
-      fyToken1.address,
-      base.address,
-      WAD,
-    ])
-    await router.multicall([transferToPoolCall])
-
-    expect(await base.balanceOf(pool1.address)).to.equal(baseBefore.add(WAD))
-  })
-
   it('transfers tokens to a pool with batch', async () => {
     const baseBefore = await base.balanceOf(pool1.address)
     await base.mint(owner, WAD)
     await base.approve(router.address, WAD)
 
-    const transferToPoolData = ethers.utils.defaultAbiCoder.encode(['address', 'uint128'], [base.address, WAD])
-    await router.batch([base.address], [fyToken1.address], [0], [OPS.TRANSFER_TO_POOL], [transferToPoolData])
+    await router.batch([router.transferToPoolData(base.address, fyToken1.address, base.address, WAD)])
 
     expect(await base.balanceOf(pool1.address)).to.equal(baseBefore.add(WAD))
   })
@@ -125,7 +112,7 @@ describe('PoolRouter', async function () {
     it('wraps a route in a batch', async () => {
       const baseBefore = await base.balanceOf(owner)
       const retrieveTokenCall = pool1.interface.encodeFunctionData('retrieveBaseToken', [owner])
-      await router.batch([base.address], [fyToken1.address], [0], [OPS.ROUTE], [retrieveTokenCall])
+      await router.batch([router.routeData(base.address, fyToken1.address, retrieveTokenCall)])
       expect(await base.balanceOf(owner)).to.equal(baseBefore.add(WAD))
     })
   })

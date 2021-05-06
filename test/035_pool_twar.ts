@@ -1,5 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { CALCULATE_FROM_BASE } from './shared/constants'
+import { CALCULATE_FROM_BASE } from '../src/constants'
 
 import { Pool } from '../typechain/Pool'
 import { BaseMock as Base } from '../typechain/BaseMock'

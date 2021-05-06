@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity >= 0.8.0;
-import "@yield-protocol/utils/contracts/token/ERC20.sol";
+import "@yield-protocol/utils-v2/contracts/token/ERC20.sol";
 
 
 contract DaiMock is ERC20  {
@@ -15,7 +15,7 @@ contract DaiMock is ERC20  {
     constructor(
         string memory name,
         string memory symbol
-    ) ERC20(name, symbol) {
+    ) ERC20(name, symbol, 18) {
         uint256 chainId;
         assembly {
             chainId := chainid()

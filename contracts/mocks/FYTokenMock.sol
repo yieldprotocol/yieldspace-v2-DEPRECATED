@@ -2,13 +2,18 @@
 pragma solidity >= 0.8.0;
 
 import "./BaseMock.sol";
-import "@yield-protocol/utils/contracts/token/ERC20Permit.sol";
+import "@yield-protocol/utils-v2/contracts/token/ERC20Permit.sol";
 
 contract FYTokenMock is ERC20Permit {
     BaseMock public base;
     uint32 public maturity;
 
-    constructor (BaseMock base_, uint32 maturity_) ERC20Permit("Test", "TST") {
+    constructor (BaseMock base_, uint32 maturity_) 
+        ERC20Permit(
+            "Test",
+            "TST",
+            IERC20Metadata(address(base_)).decimals()
+    ) {
         base = base_;
         maturity = maturity_;
     }

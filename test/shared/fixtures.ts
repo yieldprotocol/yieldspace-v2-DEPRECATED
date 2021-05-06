@@ -1,6 +1,10 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 import { BaseProvider } from '@ethersproject/providers'
-import { DAI, ETH, USDC, CALCULATE_FROM_BASE } from './constants'
+
+import { constants } from '@yield-protocol/utils-v2'
+const { DAI, ETH, USDC, THREE_MONTHS } = constants
+
+import { CALCULATE_FROM_BASE } from '../../src/constants'
 
 import { YieldMath } from '../../typechain/YieldMath'
 import { Pool } from '../../typechain/Pool'
@@ -12,11 +16,11 @@ import { SafeERC20Namer } from '../../typechain/SafeERC20Namer'
 import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
 
-export const THREE_MONTHS: number = 3 * 30 * 24 * 60 * 60
+import { PoolRouterWrapper } from '../../src/poolRouterWrapper'
 
 export class YieldSpaceEnvironment {
   owner: SignerWithAddress
-  router: PoolRouter
+  router: PoolRouterWrapper
   factory: PoolFactory
   bases: Map<string, ERC20>
   fyTokens: Map<string, FYToken>
@@ -24,7 +28,7 @@ export class YieldSpaceEnvironment {
 
   constructor(
     owner: SignerWithAddress,
-    router: PoolRouter,
+    router: PoolRouterWrapper,
     factory: PoolFactory,
     bases: Map<string, ERC20>,
     fyTokens: Map<string, FYToken>,
@@ -42,7 +46,8 @@ export class YieldSpaceEnvironment {
   public static async setup(owner: SignerWithAddress, baseIds: Array<string>, maturityIds: Array<string>, initialLiquidity: BigNumber) {
     const ownerAdd = await owner.getAddress()
 
-    let router: PoolRouter
+    let innerRouter: PoolRouter
+    let router: PoolRouterWrapper
     let yieldMathLibrary: YieldMath
     let safeERC20NamerLibrary: SafeERC20Namer
     let factory: PoolFactory
@@ -54,6 +59,10 @@ export class YieldSpaceEnvironment {
     const DaiFactory = await ethers.getContractFactory('DaiMock')
     const dai = ((await DaiFactory.deploy('DAI', 'DAI')) as unknown) as unknown as ERC20
     await dai.deployed()
+
+    const USDCFactory = await ethers.getContractFactory('USDCMock')
+    const usdc = ((await USDCFactory.deploy('USDC', 'USDC')) as unknown) as unknown as ERC20
+    await usdc.deployed()
 
     const BaseFactory = await ethers.getContractFactory('BaseMock')
     const FYTokenFactory = await ethers.getContractFactory('FYTokenMock')
@@ -75,8 +84,9 @@ export class YieldSpaceEnvironment {
     await factory.deployed()
     
     const PoolRouterFactory = await ethers.getContractFactory('PoolRouter')
-    router = ((await PoolRouterFactory.deploy(factory.address, weth9.address)) as unknown) as PoolRouter
-    await router.deployed()
+    innerRouter = ((await PoolRouterFactory.deploy(factory.address, weth9.address)) as unknown) as PoolRouter
+    await innerRouter.deployed()
+    router = new PoolRouterWrapper(innerRouter)
 
     const WAD = BigNumber.from(10).pow(18)
     const initialBase = WAD.mul(initialLiquidity)
@@ -102,6 +112,10 @@ export class YieldSpaceEnvironment {
     // add Dai to bases
     bases.set(DAI, dai)
     baseIds.unshift(DAI)
+
+    // add USDC to bases
+    bases.set(USDC, usdc)
+    baseIds.unshift(USDC)
 
     for (let baseId of baseIds) {
       const base = bases.get(baseId) as ERC20
