@@ -3,8 +3,6 @@ import { constants, signatures } from '@yield-protocol/utils-v2'
 const { WAD, MAX256, DAI } = constants
 const MAX = MAX256
 
-import { OPS } from '../src/constants'
-
 import { PoolFactory } from '../typechain/PoolFactory'
 import { Pool } from '../typechain/Pool'
 import { BaseMock as Base } from '../typechain/BaseMock'
@@ -18,7 +16,7 @@ import { BigNumber } from 'ethers'
 import { expect } from 'chai'
 const { loadFixture } = waffle
 
-describe('PoolRouter', async function () {
+describe('PoolRouter - Permit', async function () {
   this.timeout(0)
 
   let ownerAcc: SignerWithAddress
@@ -153,7 +151,7 @@ describe('PoolRouter', async function () {
 
     expect(
       await router.batch([
-        router.forwardPermitData(
+        router.forwardPermitAction(
           base.address,
           fyToken.address,
           base.address,
@@ -207,7 +205,7 @@ describe('PoolRouter', async function () {
 
     expect(
       await router.batch([
-        router.forwardDaiPermitData(dai.address, fyDai.address, router.address, nonce, deadline, true, v, r, s),
+        router.forwardDaiPermitAction(dai.address, fyDai.address, router.address, nonce, deadline, true, v, r, s),
       ])
     )
       .to.emit(dai, 'Approval')

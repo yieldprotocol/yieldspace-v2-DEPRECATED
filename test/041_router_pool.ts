@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { constants } from '@yield-protocol/utils-v2'
 const { WAD } = constants
 
-import { OPS, CALCULATE_FROM_BASE } from '../src/constants'
+import { CALCULATE_FROM_BASE } from '../src/constants'
 
 import { PoolFactory } from '../typechain/PoolFactory'
 import { Pool } from '../typechain/Pool'
@@ -14,11 +14,11 @@ import { YieldSpaceEnvironment } from './shared/fixtures'
 import { PoolRouterWrapper } from '../src/poolRouterWrapper'
 
 import { ethers, waffle } from 'hardhat'
-import { BigNumber } from 'ethers'
+
 import { expect } from 'chai'
 const { loadFixture } = waffle
 
-describe('PoolRouter', async function () {
+describe('PoolRouter - Pool', async function () {
   this.timeout(0)
 
   let ownerAcc: SignerWithAddress
@@ -39,7 +39,7 @@ describe('PoolRouter', async function () {
   const fyToken2Id = baseId + '-' + maturity2Id
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturity1Id, maturity2Id], BigNumber.from('0'))
+    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturity1Id, maturity2Id], WAD.mul(100))
   }
   before(async () => {
     const signers = await ethers.getSigners()
@@ -90,9 +90,47 @@ describe('PoolRouter', async function () {
     await base.mint(owner, WAD)
     await base.approve(router.address, WAD)
 
-    await router.batch([router.transferToPoolData(base.address, fyToken1.address, base.address, WAD)])
+    await router.batch([router.transferToPoolAction(base.address, fyToken1.address, base.address, WAD)])
 
     expect(await base.balanceOf(pool1.address)).to.equal(baseBefore.add(WAD))
+  })
+
+  it('transfers base tokens and sells them', async () => {
+    await base.mint(owner, WAD)
+
+    await base.approve(router.address, WAD)
+    await router.batch([
+      router.transferToPoolAction(base.address, fyToken1.address, base.address, WAD),
+      router.sellBaseTokenAction(base.address, fyToken1.address, owner, 0),
+    ])
+  })
+
+  it('transfers fyTokens and sells them', async () => {
+    await fyToken1.mint(owner, WAD)
+
+    await fyToken1.approve(router.address, WAD)
+    await router.batch([
+      router.transferToPoolAction(base.address, fyToken1.address, fyToken1.address, WAD),
+      router.sellFYTokenAction(base.address, fyToken1.address, owner, 0),
+    ])
+  })
+
+  it('transfers base and mints lp', async () => {
+    await base.mint(owner, WAD)
+
+    await base.approve(router.address, WAD)
+    await router.batch([
+      router.transferToPoolAction(base.address, fyToken1.address, base.address, WAD),
+      router.mintWithBaseTokenAction(base.address, fyToken1.address, owner, WAD.div(100), 0),
+    ])
+  })
+
+  it('transfers lp and burns for base', async () => {
+    await pool1.approve(router.address, WAD)
+    await router.batch([
+      router.transferToPoolAction(base.address, fyToken1.address, pool1.address, WAD),
+      router.burnForBaseTokenAction(base.address, fyToken1.address, owner, 0),
+    ])
   })
 
   describe('with unaccounted tokens in a pool', () => {
@@ -112,7 +150,7 @@ describe('PoolRouter', async function () {
     it('wraps a route in a batch', async () => {
       const baseBefore = await base.balanceOf(owner)
       const retrieveTokenCall = pool1.interface.encodeFunctionData('retrieveBaseToken', [owner])
-      await router.batch([router.routeData(base.address, fyToken1.address, retrieveTokenCall)])
+      await router.batch([router.routeAction(base.address, fyToken1.address, retrieveTokenCall)])
       expect(await base.balanceOf(owner)).to.equal(baseBefore.add(WAD))
     })
   })

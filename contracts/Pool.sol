@@ -59,9 +59,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
     event Sync(uint112 baseTokenReserve, uint112 storedFYTokenReserve, uint256 cumulativeReserveRatio);
     event ParameterSet(bytes32 parameter, int128 k);
 
-    int128 private k1 = int128(uint128(uint256((1 << 64))) / 126144000); // 1 / Seconds in 4 years, in 64.64
+    int128 private k1 = int128(uint128(uint256((1 << 64))) / 315576000); // 1 / Seconds in 10 years, in 64.64
     int128 private g1 = int128(uint128(uint256((950 << 64))) / 1000); // To be used when selling baseToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
-    int128 private k2 = int128(uint128(uint256((1 << 64))) / 126144000); // k is stored twice to be able to recover with 1 SLOAD alongside both g1 and g2
+    int128 private k2 = int128(uint128(uint256((1 << 64))) / 315576000); // k is stored twice to be able to recover with 1 SLOAD alongside both g1 and g2
     int128 private g2 = int128(uint128(uint256((1000 << 64))) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
     uint32 public immutable override maturity;
 
@@ -241,6 +241,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         // Calculate trade
         uint256 tokensMinted;
         uint256 baseTokenIn;
+        uint256 baseTokenReturned;
         uint256 fyTokenIn;
 
         if (supply == 0) {
@@ -267,7 +268,11 @@ contract Pool is IPool, ERC20Permit, Ownable {
                 fyTokenIn = fyToken.balanceOf(address(this)) - realStoredFYTokenReserve;
                 tokensMinted = (supply * (fyTokenToBuy + fyTokenIn)) / (realStoredFYTokenReserve - fyTokenToBuy);
                 baseTokenIn = baseTokenToSell + ((realStoredBaseTokenReserve + baseTokenToSell) * tokensMinted) / supply;
-                require(baseToken.balanceOf(address(this)) - realStoredBaseTokenReserve >= baseTokenIn, "Pool: Not enough base token in");
+                uint256 _baseTokenReserves = baseToken.balanceOf(address(this));
+                require(_baseTokenReserves - realStoredBaseTokenReserve >= baseTokenIn, "Pool: Not enough base token in");
+                
+                // If we did a trade means we came in through `mintWithBase`, and want to return the base token surplus
+                if (fyTokenToBuy > 0) baseTokenReturned = (_baseTokenReserves - realStoredBaseTokenReserve) - baseTokenIn;
             }
         }
 
@@ -284,6 +289,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
         // Execute mint
         _mint(to, tokensMinted);
+
+        // Return any unused base if we did a trade, meaning slippage was involved.
+        if (supply > 0 && fyTokenToBuy > 0) baseToken.safeTransfer(to, baseTokenReturned);
 
         emit Liquidity(maturity, msg.sender, to, -(baseTokenIn.i256()), -(fyTokenIn.i256()), tokensMinted.i256());
         return (baseTokenIn, fyTokenIn, tokensMinted);
@@ -303,12 +311,13 @@ contract Pool is IPool, ERC20Permit, Ownable {
     /// @dev Burn liquidity tokens in exchange for baseToken.
     /// The liquidity provider needs to have called `pool.approve`.
     /// @param to Wallet receiving the baseToken and fyToken.
-    /// @return The amount of base tokens returned.
-    function burnForBaseToken(address to, uint256 minBaseTokenOut, uint256 minFYTokenOut)
+    /// @return tokensBurned The amount of lp tokens burned.
+    /// @return baseTokenOut The amount of base tokens returned.
+    function burnForBaseToken(address to, uint256 minBaseTokenOut)
         external override
-        returns (uint256, uint256, uint256)
+        returns (uint256 tokensBurned, uint256 baseTokenOut)
     {
-        return _burnInternal(to, true, minBaseTokenOut, minFYTokenOut);
+        (tokensBurned, baseTokenOut, ) = _burnInternal(to, true, minBaseTokenOut, 0);
     }
 
 

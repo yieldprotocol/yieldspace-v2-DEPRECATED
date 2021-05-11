@@ -1,10 +1,10 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
+import { constants } from '@yield-protocol/utils-v2'
+const { WAD } = constants
 
 import { Pool } from '../typechain/Pool'
 import { PoolFactory } from '../typechain/PoolFactory'
 import { YieldSpaceEnvironment } from './shared/fixtures'
-
-import { BigNumber } from 'ethers'
 
 import { ethers, waffle } from 'hardhat'
 import { expect } from 'chai'
@@ -26,7 +26,7 @@ describe('Pool - set', async function () {
   const fyTokenId = baseId + '-' + maturityId
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturityId], BigNumber.from('100'))
+    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturityId], WAD.mul(100))
   }
 
   before(async () => {
