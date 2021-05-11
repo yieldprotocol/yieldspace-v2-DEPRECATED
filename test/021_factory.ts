@@ -47,7 +47,7 @@ describe('PoolFactory', async function () {
     await factory.createPool(base.address, fyToken1.address)
 
     const pool = await ethers.getContractAt('Pool', calculatedAddress)
-    expect(await pool.baseToken()).to.equal(base.address, 'Pool has the wrong base address')
+    expect(await pool.base()).to.equal(base.address, 'Pool has the wrong base address')
     expect(await pool.fyToken()).to.equal(fyToken1.address, 'Pool has the wrong fyToken address')
     expect(await pool.name()).to.equal('Yield Test LP Token', 'Pool has the wrong name')
     expect(await pool.symbol()).to.equal('TSTLP', 'Pool has the wrong symbol')

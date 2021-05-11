@@ -23,14 +23,14 @@ describe('YieldMath - Surface', async function () {
   let yieldMathLibrary: YieldMath
   let yieldMath: YieldMathWrapper
 
-  const baseReserves = [
+  const baseBalances = [
     // BigNumber.from('100000000000000000000000'),
     // BigNumber.from('1000000000000000000000000'),
     BigNumber.from('10000000000000000000000000'),
     BigNumber.from('100000000000000000000000000'),
     BigNumber.from('1000000000000000000000000000'),
   ]
-  const fyTokenReserveDeltas = [
+  const fyTokenBalanceDeltas = [
     // BigNumber.from('10000000000000000000'),
     // BigNumber.from('1000000000000000000000'),
     BigNumber.from('100000000000000000000000'),
@@ -71,18 +71,18 @@ describe('YieldMath - Surface', async function () {
     it('Compare a lattice of on-chain vs off-chain yieldspace trades', async function () {
       this.timeout(0)
 
-      for (var baseReserve of baseReserves) {
-        for (var fyTokenReserveDelta of fyTokenReserveDeltas) {
+      for (var baseBalance of baseBalances) {
+        for (var fyTokenBalanceDelta of fyTokenBalanceDeltas) {
           for (var tradeSize of tradeSizes) {
             for (var timeTillMaturity of timesTillMaturity) {
-              console.log(`baseReserve, fyTokenReserveDelta, tradeSize, timeTillMaturity`)
-              console.log(`${baseReserve}, ${fyTokenReserveDelta}, ${tradeSize}, ${timeTillMaturity}`)
-              const fyTokenReserve = baseReserve.add(fyTokenReserveDelta)
+              console.log(`baseBalance, fyTokenBalanceDelta, tradeSize, timeTillMaturity`)
+              console.log(`${baseBalance}, ${fyTokenBalanceDelta}, ${tradeSize}, ${timeTillMaturity}`)
+              const fyTokenBalance = baseBalance.add(fyTokenBalanceDelta)
               let offChain, onChain
-              offChain = sellFYToken(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              offChain = sellFYToken(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity)
               onChain = await yieldMath.baseOutForFYTokenIn(
-                baseReserve,
-                fyTokenReserve,
+                baseBalance,
+                fyTokenBalance,
                 tradeSize,
                 timeTillMaturity,
                 k,
@@ -92,10 +92,10 @@ describe('YieldMath - Surface', async function () {
               console.log(`onChain sellFYToken: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = sellBase(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              offChain = sellBase(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity)
               onChain = await yieldMath.fyTokenOutForBaseIn(
-                baseReserve,
-                fyTokenReserve,
+                baseBalance,
+                fyTokenBalance,
                 tradeSize,
                 timeTillMaturity,
                 k,
@@ -105,10 +105,10 @@ describe('YieldMath - Surface', async function () {
               console.log(`onChain sellBase: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = buyBase(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              offChain = buyBase(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity)
               onChain = await yieldMath.fyTokenInForBaseOut(
-                baseReserve,
-                fyTokenReserve,
+                baseBalance,
+                fyTokenBalance,
                 tradeSize,
                 timeTillMaturity,
                 k,
@@ -118,10 +118,10 @@ describe('YieldMath - Surface', async function () {
               console.log(`onChain buyBase: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = buyFYToken(baseReserve, fyTokenReserve, tradeSize, timeTillMaturity)
+              offChain = buyFYToken(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity)
               onChain = await yieldMath.baseInForFYTokenOut(
-                baseReserve,
-                fyTokenReserve,
+                baseBalance,
+                fyTokenBalance,
                 tradeSize,
                 timeTillMaturity,
                 k,

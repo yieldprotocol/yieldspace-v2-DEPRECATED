@@ -11,7 +11,7 @@ contract PoolFactory is IPoolFactory {
   /// makes client-side address calculation easier
   bytes32 public constant override POOL_BYTECODE_HASH = keccak256(type(Pool).creationCode);
 
-  address private _nextBaseToken;
+  address private _nextBase;
   address private _nextFYToken;
 
   /// @dev Returns true if `account` is a contract.
@@ -27,31 +27,31 @@ contract PoolFactory is IPoolFactory {
   }
 
   /// @dev Calculate the deterministic addreess of a pool, based on the base token & fy token.
-  /// @param baseToken Address of the base token (such as Base).
+  /// @param base Address of the base token (such as Base).
   /// @param fyToken Address of the fixed yield token (such as fyToken).
   /// @return The calculated pool address.
-  function calculatePoolAddress(address baseToken, address fyToken) external view override returns (address) {
-    return _calculatePoolAddress(baseToken, fyToken);
+  function calculatePoolAddress(address base, address fyToken) external view override returns (address) {
+    return _calculatePoolAddress(base, fyToken);
   }
 
   /// @dev Create2 calculation
-  function _calculatePoolAddress(address baseToken, address fyToken)
+  function _calculatePoolAddress(address base, address fyToken)
     private view returns (address calculatedAddress)
   {
     calculatedAddress = address(uint160(uint256(keccak256(abi.encodePacked(
       bytes1(0xff),
       address(this),
-      keccak256(abi.encodePacked(baseToken, fyToken)),
+      keccak256(abi.encodePacked(base, fyToken)),
       POOL_BYTECODE_HASH
     )))));
   }
 
   /// @dev Calculate the addreess of a pool, and return address(0) if not deployed.
-  /// @param baseToken Address of the base token (such as Base).
+  /// @param base Address of the base token (such as Base).
   /// @param fyToken Address of the fixed yield token (such as fyToken).
   /// @return pool The deployed pool address.
-  function getPool(address baseToken, address fyToken) external view override returns (address pool) {
-    pool = _calculatePoolAddress(baseToken, fyToken);
+  function getPool(address base, address fyToken) external view override returns (address pool) {
+    pool = _calculatePoolAddress(base, fyToken);
 
     if(!isContract(pool)) {
       pool = address(0);
@@ -59,30 +59,30 @@ contract PoolFactory is IPoolFactory {
   }
 
   /// @dev Deploys a new pool.
-  /// baseToken & fyToken are written to temporary storage slots to allow for simpler
+  /// base & fyToken are written to temporary storage slots to allow for simpler
   /// address calculation, while still allowing the Pool contract to store the values as
   /// immutable.
-  /// @param baseToken Address of the base token (such as Base).
+  /// @param base Address of the base token (such as Base).
   /// @param fyToken Address of the fixed yield token (such as fyToken).
   /// @return pool The pool address.
-  function createPool(address baseToken, address fyToken) external override returns (address) {
-      _nextBaseToken = baseToken;
+  function createPool(address base, address fyToken) external override returns (address) {
+    _nextBase = base;
     _nextFYToken = fyToken;
-    Pool pool = new Pool{salt: keccak256(abi.encodePacked(baseToken, fyToken))}();
-    _nextBaseToken = address(0);
+    Pool pool = new Pool{salt: keccak256(abi.encodePacked(base, fyToken))}();
+    _nextBase = address(0);
     _nextFYToken = address(0);
 
     pool.transferOwnership(msg.sender);
     
-    emit PoolCreated(baseToken, fyToken, address(pool));
+    emit PoolCreated(base, fyToken, address(pool));
 
     return address(pool);
   }
 
   /// @dev Only used by the Pool constructor.
   /// @return The base token for the currently-constructing pool.
-  function nextToken() external view override returns (address) {
-    return _nextBaseToken;
+  function nextBase() external view override returns (address) {
+    return _nextBase;
   }
 
   /// @dev Only used by the Pool constructor.

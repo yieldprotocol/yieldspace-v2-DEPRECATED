@@ -48,13 +48,13 @@ describe('YieldMath - Curve', async function () {
   describe('Test trading functions', async () => {
     it('A higher g means more fyToken out with `fyTokenOutForBaseIn`', async () => {
       for (var i = 0; i < values.length; i++) {
-        var baseReservesValue = values[i][0]
-        var fyTokenReservesValue = values[i][1]
+        var baseBalanceValue = values[i][0]
+        var fyTokenBalanceValue = values[i][1]
         var baseAmountValue = values[i][2]
         var timeTillMaturityValue = values[i][3]
 
-        var baseReserves = BigNumber.from(baseReservesValue)
-        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseBalance = BigNumber.from(baseBalanceValue)
+        var fyTokenBalance = BigNumber.from(fyTokenBalanceValue)
         var baseAmount = BigNumber.from(baseAmountValue)
         var timeTillMaturity = BigNumber.from(timeTillMaturityValue)
         var g = [
@@ -66,14 +66,7 @@ describe('YieldMath - Curve', async function () {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.fyTokenOutForBaseIn(
-            baseReserves,
-            fyTokenReserves,
-            baseAmount,
-            timeTillMaturity,
-            k,
-            g_
-          )
+          result = await yieldMath.fyTokenOutForBaseIn(baseBalance, fyTokenBalance, baseAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.gt(previousResult)
@@ -84,12 +77,12 @@ describe('YieldMath - Curve', async function () {
     it('As we approach maturity, price grows to 1 for `fyTokenOutForBaseIn`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
-        var baseReservesValue = values[i][0]
-        var fyTokenReservesValue = values[i][1]
+        var baseBalanceValue = values[i][0]
+        var fyTokenBalanceValue = values[i][1]
         var baseAmountValue = values[i][2]
 
-        var baseReserves = BigNumber.from(baseReservesValue)
-        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseBalance = BigNumber.from(baseBalanceValue)
+        var fyTokenBalance = BigNumber.from(fyTokenBalanceValue)
         var baseAmount = BigNumber.from(baseAmountValue)
 
         const flatFee = BigNumber.from('1000000000000')
@@ -99,7 +92,7 @@ describe('YieldMath - Curve', async function () {
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
 
-          result = await yieldMath.fyTokenOutForBaseIn(baseReserves, fyTokenReserves, baseAmount, t, k, g1)
+          result = await yieldMath.fyTokenOutForBaseIn(baseBalance, fyTokenBalance, baseAmount, t, k, g1)
 
           // console.log("      " + result.toString())
           if (j == 0) {
@@ -116,13 +109,13 @@ describe('YieldMath - Curve', async function () {
 
     it('A lower g means more Base out with `baseOutForFYTokenIn`', async () => {
       for (var i = 0; i < values.length; i++) {
-        var baseReservesValue = values[i][0]
-        var fyTokenReservesValue = values[i][1]
+        var baseBalanceValue = values[i][0]
+        var fyTokenBalanceValue = values[i][1]
         var baseAmountValue = values[i][2]
         var timeTillMaturityValue = values[i][3]
 
-        var baseReserves = BigNumber.from(baseReservesValue)
-        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseBalance = BigNumber.from(baseBalanceValue)
+        var fyTokenBalance = BigNumber.from(fyTokenBalanceValue)
         var baseAmount = BigNumber.from(baseAmountValue)
         var timeTillMaturity = BigNumber.from(timeTillMaturityValue)
 
@@ -135,14 +128,7 @@ describe('YieldMath - Curve', async function () {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.baseOutForFYTokenIn(
-            baseReserves,
-            fyTokenReserves,
-            baseAmount,
-            timeTillMaturity,
-            k,
-            g_
-          )
+          result = await yieldMath.baseOutForFYTokenIn(baseBalance, fyTokenBalance, baseAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.gt(previousResult)
@@ -153,12 +139,12 @@ describe('YieldMath - Curve', async function () {
     it('As we approach maturity, price drops to 1 for `baseOutForFYTokenIn`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
-        var baseReservesValue = values[i][0]
-        var fyTokenReservesValue = values[i][1]
+        var baseBalanceValue = values[i][0]
+        var fyTokenBalanceValue = values[i][1]
         var baseAmountValue = values[i][2]
 
-        var baseReserves = BigNumber.from(baseReservesValue)
-        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseBalance = BigNumber.from(baseBalanceValue)
+        var fyTokenBalance = BigNumber.from(fyTokenBalanceValue)
         var baseAmount = BigNumber.from(baseAmountValue)
 
         const flatFee = BigNumber.from('1000000000000')
@@ -167,7 +153,7 @@ describe('YieldMath - Curve', async function () {
         var previousResult = minimum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          result = await yieldMath.baseOutForFYTokenIn(baseReserves, fyTokenReserves, baseAmount, t, k, g2)
+          result = await yieldMath.baseOutForFYTokenIn(baseBalance, fyTokenBalance, baseAmount, t, k, g2)
 
           // console.log("      " + result.toString())
           if (j == 0) {
@@ -184,13 +170,13 @@ describe('YieldMath - Curve', async function () {
 
     it('A higher g means more fyToken in with `fyTokenInForBaseOut`', async () => {
       for (var i = 0; i < values.length; i++) {
-        var baseReservesValue = values[i][0]
-        var fyTokenReservesValue = values[i][1]
+        var baseBalanceValue = values[i][0]
+        var fyTokenBalanceValue = values[i][1]
         var baseAmountValue = values[i][2]
         var timeTillMaturityValue = values[i][3]
 
-        var baseReserves = BigNumber.from(baseReservesValue)
-        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseBalance = BigNumber.from(baseBalanceValue)
+        var fyTokenBalance = BigNumber.from(fyTokenBalanceValue)
         var baseAmount = BigNumber.from(baseAmountValue)
         var timeTillMaturity = BigNumber.from(timeTillMaturityValue)
 
@@ -203,14 +189,7 @@ describe('YieldMath - Curve', async function () {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.fyTokenInForBaseOut(
-            baseReserves,
-            fyTokenReserves,
-            baseAmount,
-            timeTillMaturity,
-            k,
-            g_
-          )
+          result = await yieldMath.fyTokenInForBaseOut(baseBalance, fyTokenBalance, baseAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.gt(previousResult)
@@ -221,12 +200,12 @@ describe('YieldMath - Curve', async function () {
     it('As we approach maturity, price grows to 1 for `fyTokenInForBaseOut`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
-        var baseReservesValue = values[i][0]
-        var fyTokenReservesValue = values[i][1]
+        var baseBalanceValue = values[i][0]
+        var fyTokenBalanceValue = values[i][1]
         var baseAmountValue = values[i][2]
 
-        var baseReserves = BigNumber.from(baseReservesValue)
-        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseBalance = BigNumber.from(baseBalanceValue)
+        var fyTokenBalance = BigNumber.from(fyTokenBalanceValue)
         var baseAmount = BigNumber.from(baseAmountValue)
 
         const flatFee = BigNumber.from('1000000000000')
@@ -235,7 +214,7 @@ describe('YieldMath - Curve', async function () {
         var previousResult = maximum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          result = await yieldMath.fyTokenInForBaseOut(baseReserves, fyTokenReserves, baseAmount, t, k, g2)
+          result = await yieldMath.fyTokenInForBaseOut(baseBalance, fyTokenBalance, baseAmount, t, k, g2)
 
           // console.log("      " + result.toString())
           if (j == 0) {
@@ -252,13 +231,13 @@ describe('YieldMath - Curve', async function () {
 
     it('A lower g means more Base in with `baseInForFYTokenOut`', async () => {
       for (var i = 0; i < values.length; i++) {
-        var baseReservesValue = values[i][0]
-        var fyTokenReservesValue = values[i][1]
+        var baseBalanceValue = values[i][0]
+        var fyTokenBalanceValue = values[i][1]
         var baseAmountValue = values[i][2]
         var timeTillMaturityValue = values[i][3]
 
-        var baseReserves = BigNumber.from(baseReservesValue)
-        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseBalance = BigNumber.from(baseBalanceValue)
+        var fyTokenBalance = BigNumber.from(fyTokenBalanceValue)
         var baseAmount = BigNumber.from(baseAmountValue)
         var timeTillMaturity = BigNumber.from(timeTillMaturityValue)
 
@@ -271,14 +250,7 @@ describe('YieldMath - Curve', async function () {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.baseInForFYTokenOut(
-            baseReserves,
-            fyTokenReserves,
-            baseAmount,
-            timeTillMaturity,
-            k,
-            g_
-          )
+          result = await yieldMath.baseInForFYTokenOut(baseBalance, fyTokenBalance, baseAmount, timeTillMaturity, k, g_)
         }
 
         expect(result).to.be.gt(previousResult)
@@ -289,12 +261,12 @@ describe('YieldMath - Curve', async function () {
     it('As we approach maturity, price drops to 1 for `baseInForFYTokenOut`', async () => {
       for (var i = 0; i < values.length; i++) {
         // console.log("")
-        var baseReservesValue = values[i][0]
-        var fyTokenReservesValue = values[i][1]
+        var baseBalanceValue = values[i][0]
+        var fyTokenBalanceValue = values[i][1]
         var baseAmountValue = values[i][2]
 
-        var baseReserves = BigNumber.from(baseReservesValue)
-        var fyTokenReserves = BigNumber.from(fyTokenReservesValue)
+        var baseBalance = BigNumber.from(baseBalanceValue)
+        var fyTokenBalance = BigNumber.from(fyTokenBalanceValue)
         var baseAmount = BigNumber.from(baseAmountValue)
 
         const flatFee = BigNumber.from('1000000000000')
@@ -303,7 +275,7 @@ describe('YieldMath - Curve', async function () {
         var previousResult = minimum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          result = await yieldMath.baseInForFYTokenOut(baseReserves, fyTokenReserves, baseAmount, t, k, g1)
+          result = await yieldMath.baseInForFYTokenOut(baseBalance, fyTokenBalance, baseAmount, t, k, g1)
 
           // console.log("      " + result.toString())
           if (j == 0) {

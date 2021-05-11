@@ -90,8 +90,8 @@ export const secondsToFrom = (
  *************************** */
 
 /**
- * @param { BigNumber | string } baseReserves
- * @param { BigNumber | string } fyTokenReserves
+ * @param { BigNumber | string } baseBalance
+ * @param { BigNumber | string } fyTokenBalance
  * @param { BigNumber | string } totalSupply
  * @param { BigNumber | string } base
  * @returns {[BigNumber, BigNumber]}
@@ -99,32 +99,32 @@ export const secondsToFrom = (
  * https://www.desmos.com/calculator/mllhtohxfx
  */
 export function mint(
-  baseReserves: BigNumber | string,
-  fyTokenReserves: BigNumber | string,
+  baseBalance: BigNumber | string,
+  fyTokenBalance: BigNumber | string,
   totalSupply: BigNumber | string,
   mainTokenIn: BigNumber | string,
   fromBase: boolean
 ) : [ BigNumber, BigNumber ] {
-  const baseReserves_ = new Decimal(baseReserves.toString());
-  const fyTokenReserves_ = new Decimal(fyTokenReserves.toString());
+  const baseBalance_ = new Decimal(baseBalance.toString());
+  const fyTokenBalance_ = new Decimal(fyTokenBalance.toString());
   const supply_ = new Decimal(totalSupply.toString());
   const mainTokenIn_ = new Decimal(mainTokenIn.toString());
 
   let minted: Decimal
   let secTokenIn: Decimal
   if (fromBase) {
-    minted = (supply_.mul(mainTokenIn_)).div(baseReserves_);
-    secTokenIn = (fyTokenReserves_.mul(minted)).div(supply_);
+    minted = (supply_.mul(mainTokenIn_)).div(baseBalance_);
+    secTokenIn = (fyTokenBalance_.mul(minted)).div(supply_);
   } else {
-    minted = (supply_.mul(mainTokenIn_)).div(fyTokenReserves_);
-    secTokenIn = (baseReserves_.mul(minted)).div(supply_);
+    minted = (supply_.mul(mainTokenIn_)).div(fyTokenBalance_);
+    secTokenIn = (baseBalance_.mul(minted)).div(supply_);
   }
   return [toBn(minted), toBn(secTokenIn)];
 }
 
 /**
- * @param { BigNumber | string } baseReserves
- * @param { BigNumber | string } fyTokenReserves
+ * @param { BigNumber | string } baseBalance
+ * @param { BigNumber | string } fyTokenBalance
  * @param { BigNumber | string } totalSupply
  * @param lpTokens { BigNumber | string }
  * @returns {[BigNumber, BigNumber]}
@@ -132,13 +132,13 @@ export function mint(
  * https://www.desmos.com/calculator/ubsalzunpo
  */
 export function burn(
-  baseReserves: BigNumber | string,
-  fyTokenReserves: BigNumber | string,
+  baseBalance: BigNumber | string,
+  fyTokenBalance: BigNumber | string,
   totalSupply: BigNumber | string,
   lpTokens: BigNumber | string,
 ): [ BigNumber, BigNumber ] {
-  const Z = new Decimal(baseReserves.toString());
-  const Y = new Decimal(fyTokenReserves.toString());
+  const Z = new Decimal(baseBalance.toString());
+  const Y = new Decimal(fyTokenBalance.toString());
   const S = new Decimal(totalSupply.toString());
   const x = new Decimal(lpTokens.toString());
   const z = (x.mul(Z)).div(S);
@@ -147,28 +147,28 @@ export function burn(
 }
 
 /**
- * @param { BigNumber | string } baseReserves
- * @param { BigNumber | string } fyTokenReservesVirtual
- * @param { BigNumber | string } fyTokenReservesReal
+ * @param { BigNumber | string } baseBalance
+ * @param { BigNumber | string } fyTokenBalanceVirtual
+ * @param { BigNumber | string } fyTokenBalanceReal
  * @param { BigNumber | string } totalSupply
  * @param { BigNumber | string } fyToken
  * @param { BigNumber | string } timeTillMaturity
  * @returns {[BigNumber, BigNumber]}
  */
 export function mintWithBase(
-  baseReserves: BigNumber|string,
-  fyTokenReservesVirtual: BigNumber|string,
-  fyTokenReservesReal: BigNumber|string,
+  baseBalance: BigNumber|string,
+  fyTokenBalanceVirtual: BigNumber|string,
+  fyTokenBalanceReal: BigNumber|string,
   supply: BigNumber|string,
   fyToken: BigNumber|string,
   timeTillMaturity: BigNumber|string,
 ): [BigNumber, BigNumber] {
-  const Z = new Decimal(baseReserves.toString());
-  const YR = new Decimal(fyTokenReservesReal.toString());
+  const Z = new Decimal(baseBalance.toString());
+  const YR = new Decimal(fyTokenBalanceReal.toString());
   const S = new Decimal(supply.toString());
   const y = new Decimal(fyToken.toString());
   // buyFyToken:
-  const z1 = new Decimal(buyFYToken(baseReserves, fyTokenReservesVirtual, fyToken, timeTillMaturity).toString());
+  const z1 = new Decimal(buyFYToken(baseBalance, fyTokenBalanceVirtual, fyToken, timeTillMaturity).toString());
   // Mint specifying how much fyToken to take in. Reverse of `mint`.
   const m = (S.mul(y)).div(YR.sub(y));
   const z2 = ((Z.add(z1)).mul(m)).div(S);
@@ -176,48 +176,48 @@ export function mintWithBase(
 }
 
 /**
- * @param { BigNumber | string } baseReserves
- * @param { BigNumber | string } fyTokenReservesVirtual
- * @param { BigNumber | string } fyTokenReservesReal
+ * @param { BigNumber | string } baseBalance
+ * @param { BigNumber | string } fyTokenBalanceVirtual
+ * @param { BigNumber | string } fyTokenBalanceReal
  * @param { BigNumber | string } totalSupply
  * @param { BigNumber | string } lpTokens
  * @param { BigNumber | string } timeTillMaturity
  * @returns { BigNumber }
  */
 export function burnForBase(
-  baseReserves: BigNumber,
-  fyTokenReservesVirtual: BigNumber,
-  fyTokenReservesReal: BigNumber,
+  baseBalance: BigNumber,
+  fyTokenBalanceVirtual: BigNumber,
+  fyTokenBalanceReal: BigNumber,
   supply: BigNumber,
   lpTokens: BigNumber,
   timeTillMaturity: BigNumber,
 ): BigNumber {
   // Burn FyToken
-  const [z1, y] = burn(baseReserves, fyTokenReservesReal, supply, lpTokens);
+  const [z1, y] = burn(baseBalance, fyTokenBalanceReal, supply, lpTokens);
   // Sell FyToken for base
-  const z2 = sellFYToken(baseReserves, fyTokenReservesVirtual, y, timeTillMaturity);
+  const z2 = sellFYToken(baseBalance, fyTokenBalanceVirtual, y, timeTillMaturity);
   const z1D = new Decimal(z1.toString());
   const z2D = new Decimal(z2.toString());
   return toBn(z1D.add(z2D));
 }
 
 /**
- * @param { BigNumber | string } baseReserves
- * @param { BigNumber | string } fyTokenReserves
+ * @param { BigNumber | string } baseBalance
+ * @param { BigNumber | string } fyTokenBalance
  * @param { BigNumber | string } base
  * @param { BigNumber | string } timeTillMaturity
  * @param { boolean } withNoFee
  * @returns { BigNumber }
  */
 export function sellBase(
-  baseReserves: BigNumber | string,
-  fyTokenReserves: BigNumber | string,
+  baseBalance: BigNumber | string,
+  fyTokenBalance: BigNumber | string,
   base: BigNumber | string,
   timeTillMaturity: BigNumber | string,
   withNoFee: boolean = false, // optional: default === false
 ): BigNumber {
-  const baseReserves_ = new Decimal(baseReserves.toString());
-  const fyTokenReserves_ = new Decimal(fyTokenReserves.toString());
+  const baseBalance_ = new Decimal(baseBalance.toString());
+  const fyTokenBalance_ = new Decimal(fyTokenBalance.toString());
   const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
   const x = new Decimal(base.toString());
 
@@ -226,33 +226,33 @@ export function sellBase(
   const a = ONE.sub(g.mul(t));
   const invA = ONE.div(a);
 
-  const Za = baseReserves_.pow(a);
-  const Ya = fyTokenReserves_.pow(a);
-  const Zxa = (baseReserves_.add(x)).pow(a);
+  const Za = baseBalance_.pow(a);
+  const Ya = fyTokenBalance_.pow(a);
+  const Zxa = (baseBalance_.add(x)).pow(a);
   const sum = (Za.add(Ya)).sub(Zxa);
-  const y = fyTokenReserves_.sub(sum.pow(invA));
+  const y = fyTokenBalance_.sub(sum.pow(invA));
   const yFee = y.sub(precisionFee);
 
   return toBn(yFee);
 }
 
 /**
- * @param { BigNumber | string } baseReserves
- * @param { BigNumber | string } fyTokenReserves
+ * @param { BigNumber | string } baseBalance
+ * @param { BigNumber | string } fyTokenBalance
  * @param { BigNumber | string } fyToken
  * @param { BigNumber | string } timeTillMaturity
  * @param { boolean } withNoFee
  * @returns { BigNumber }
  */
 export function sellFYToken(
-  baseReserves: BigNumber | string,
-  fyTokenReserves: BigNumber | string,
+  baseBalance: BigNumber | string,
+  fyTokenBalance: BigNumber | string,
   fyToken: BigNumber | string,
   timeTillMaturity: BigNumber | string,
   withNoFee: boolean = false, // optional: default === false
 ): BigNumber {
-  const baseReserves_ = new Decimal(baseReserves.toString());
-  const fyTokenReserves_ = new Decimal(fyTokenReserves.toString());
+  const baseBalance_ = new Decimal(baseBalance.toString());
+  const fyTokenBalance_ = new Decimal(fyTokenBalance.toString());
   const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
   const fyDai_ = new Decimal(fyToken.toString());
 
@@ -261,33 +261,33 @@ export function sellFYToken(
   const a = ONE.sub(g.mul(t));
   const invA = ONE.div(a);
 
-  const Za = baseReserves_.pow(a);
-  const Ya = fyTokenReserves_.pow(a);
-  const Yxa = (fyTokenReserves_.add(fyDai_)).pow(a);
+  const Za = baseBalance_.pow(a);
+  const Ya = fyTokenBalance_.pow(a);
+  const Yxa = (fyTokenBalance_.add(fyDai_)).pow(a);
   const sum = Za.add(Ya.sub(Yxa));
-  const y = baseReserves_.sub(sum.pow(invA));
+  const y = baseBalance_.sub(sum.pow(invA));
   const yFee = y.sub(precisionFee);
 
   return toBn(yFee);
 }
 
 /**
- * @param { BigNumber | string } baseReserves
- * @param { BigNumber | string } fyTokenReserves
+ * @param { BigNumber | string } baseBalance
+ * @param { BigNumber | string } fyTokenBalance
  * @param { BigNumber | string } base
  * @param { BigNumber | string } timeTillMaturity
  * @param { boolean } withNoFee
  * @returns { BigNumber }
  */
 export function buyBase(
-  baseReserves: BigNumber | string,
-  fyTokenReserves: BigNumber | string,
+  baseBalance: BigNumber | string,
+  fyTokenBalance: BigNumber | string,
   base: BigNumber | string,
   timeTillMaturity: BigNumber | string,
   withNoFee: boolean = false, // optional: default === false
 ): BigNumber {
-  const baseReserves_ = new Decimal(baseReserves.toString());
-  const fyTokenReserves_ = new Decimal(fyTokenReserves.toString());
+  const baseBalance_ = new Decimal(baseBalance.toString());
+  const fyTokenBalance_ = new Decimal(fyTokenBalance.toString());
   const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
   const x = new Decimal(base.toString());
 
@@ -296,33 +296,33 @@ export function buyBase(
   const a = ONE.sub(g.mul(t));
   const invA = ONE.div(a);
 
-  const Za = baseReserves_.pow(a);
-  const Ya = fyTokenReserves_.pow(a);
-  const Zxa = (baseReserves_.sub(x)).pow(a);
+  const Za = baseBalance_.pow(a);
+  const Ya = fyTokenBalance_.pow(a);
+  const Zxa = (baseBalance_.sub(x)).pow(a);
   const sum = (Za.add(Ya)).sub(Zxa);
-  const y = (sum.pow(invA)).sub(fyTokenReserves_);
+  const y = (sum.pow(invA)).sub(fyTokenBalance_);
   const yFee = y.add(precisionFee);
 
   return toBn(yFee);
 }
 
 /**
- * @param { BigNumber | string } baseReserves
- * @param { BigNumber | string } fyTokenReserves
+ * @param { BigNumber | string } baseBalance
+ * @param { BigNumber | string } fyTokenBalance
  * @param { BigNumber | string } fyToken
  * @param { BigNumber | string } timeTillMaturity
  * @param { boolean } withNoFee
  * @returns { BigNumber }
  */
 export function buyFYToken(
-  baseReserves: BigNumber | string,
-  fyTokenReserves: BigNumber | string,
+  baseBalance: BigNumber | string,
+  fyTokenBalance: BigNumber | string,
   fyToken: BigNumber | string,
   timeTillMaturity: BigNumber | string,
   withNoFee: boolean = false, // optional: default === false
 ): BigNumber {
-  const baseReserves_ = new Decimal(baseReserves.toString());
-  const fyTokenReserves_ = new Decimal(fyTokenReserves.toString());
+  const baseBalance_ = new Decimal(baseBalance.toString());
+  const fyTokenBalance_ = new Decimal(fyTokenBalance.toString());
   const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
   const fyDai_ = new Decimal(fyToken.toString());
 
@@ -331,26 +331,26 @@ export function buyFYToken(
   const a = ONE.sub(g.mul(t));
   const invA = ONE.div(a);
 
-  const Za = baseReserves_.pow(a);
-  const Ya = fyTokenReserves_.pow(a);
-  const Yxa = (fyTokenReserves_.sub(fyDai_)).pow(a);
+  const Za = baseBalance_.pow(a);
+  const Ya = fyTokenBalance_.pow(a);
+  const Yxa = (fyTokenBalance_.sub(fyDai_)).pow(a);
   const sum = Za.add(Ya.sub(Yxa));
-  const y = (sum.pow(invA)).sub(baseReserves_);
+  const y = (sum.pow(invA)).sub(baseBalance_);
   const yFee = y.add(precisionFee);
 
   return toBn(yFee);
 }
 
 /**
- * @param { BigNumber | string } baseReserves
- * @param { BigNumber | string } fyTokenReserves
+ * @param { BigNumber | string } baseBalance
+ * @param { BigNumber | string } fyTokenBalance
  * @param { BigNumber | string } fyToken
  * @param { BigNumber | string } timeTillMaturity
  * @returns { BigNumber }
  */
 export function getFee(
-  baseReserves: BigNumber | string,
-  fyTokenReserves: BigNumber | string,
+  baseBalance: BigNumber | string,
+  fyTokenBalance: BigNumber | string,
   fyToken: BigNumber | string,
   timeTillMaturity: BigNumber | string,
 ): BigNumber {
@@ -358,26 +358,26 @@ export function getFee(
   const fyDai_: BigNumber = BigNumber.isBigNumber(fyToken) ? fyToken : BigNumber.from(fyToken);
 
   if (fyDai_.gte(ethers.constants.Zero)) {
-    const daiWithFee: BigNumber = buyFYToken(baseReserves, fyTokenReserves, fyToken, timeTillMaturity);
-    const daiWithoutFee: BigNumber = buyFYToken(baseReserves, fyTokenReserves, fyToken, timeTillMaturity, true);
+    const daiWithFee: BigNumber = buyFYToken(baseBalance, fyTokenBalance, fyToken, timeTillMaturity);
+    const daiWithoutFee: BigNumber = buyFYToken(baseBalance, fyTokenBalance, fyToken, timeTillMaturity, true);
     fee_ = (new Decimal(daiWithFee.toString())).sub(new Decimal(daiWithoutFee.toString()));
   } else {
-    const daiWithFee:BigNumber = sellFYToken(baseReserves, fyTokenReserves, fyDai_.mul(BigNumber.from('-1')), timeTillMaturity);
-    const daiWithoutFee:BigNumber = sellFYToken(baseReserves, fyTokenReserves, fyDai_.mul(BigNumber.from('-1')), timeTillMaturity, true);
+    const daiWithFee:BigNumber = sellFYToken(baseBalance, fyTokenBalance, fyDai_.mul(BigNumber.from('-1')), timeTillMaturity);
+    const daiWithoutFee:BigNumber = sellFYToken(baseBalance, fyTokenBalance, fyDai_.mul(BigNumber.from('-1')), timeTillMaturity, true);
     fee_ = (new Decimal(daiWithoutFee.toString())).sub(new Decimal(daiWithFee.toString()));
   }
   return toBn(fee_);
 }
 
 // export function fyDaiForMint(
-//   baseReserves: BigNumber |string,
-//   fyDaiRealReserves: BigNumber|string,
-//   fyDaiVirtualReserves: BigNumber|string,
+//   baseBalance: BigNumber |string,
+//   fyDaiRealBalance: BigNumber|string,
+//   fyDaiVirtualBalance: BigNumber|string,
 //   base: BigNumber|string,
 //   timeTillMaturity: BigNumber|string,
 // ): string {
-//   const baseReserves_ = new Decimal(baseReserves.toString());
-//   const fyDaiRealReserves_ = new Decimal(fyDaiRealReserves.toString());
+//   const baseBalance_ = new Decimal(baseBalance.toString());
+//   const fyDaiRealBalance_ = new Decimal(fyDaiRealBalance.toString());
 //   const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
 //   const x = new Decimal(base.toString());
 
@@ -389,18 +389,18 @@ export function getFee(
 //   while (true) {
 //     const zIn = new Decimal(
 //       buyFYDai(
-//         baseReserves,
-//         fyDaiVirtualReserves,
+//         baseBalance,
+//         fyDaiVirtualBalance,
 //         BigNumber.from(yOut.toFixed(0)),
 //         timeTillMaturity_.toString(),
 //       ),
 //     );
-//     const Z_1 = baseReserves_.add(zIn); // New base reserves
-//     const Y_1 = fyDaiRealReserves_.sub(yOut); // New fyToken reserves
+//     const Z_1 = baseBalance_.add(zIn); // New base balance
+//     const Y_1 = fyDaiRealBalance_.sub(yOut); // New fyToken balance
 //     const pz = (x.sub(zIn)).div((x.sub(zIn)).add(yOut)); // base proportion in my assets
-//     const PZ = Z_1.div(Z_1.add(Y_1)); // base proportion in the reserves
+//     const PZ = Z_1.div(Z_1.add(Y_1)); // base proportion in the balances
 
-//     // The base proportion in my assets needs to be higher than but very close to the base proportion in the reserves, to make sure all the fyToken is used.
+//     // The base proportion in my assets needs to be higher than but very close to the base proportion in the balances, to make sure all the fyToken is used.
 //     if (PZ.mul(new Decimal(1.000001)) <= pz) min = yOut;
 //     yOut = (yOut.add(max)).div(TWO); // bought too little fyToken, buy some more
 
@@ -415,20 +415,20 @@ export function getFee(
 
 /**
    * Split a certain amount of X liquidity into its two componetnts (eg. base and fyToken)
-   * @param { BigNumber } xReserves // eg. base reserves
-   * @param { BigNumber } yReserves // eg. fyToken reservers
+   * @param { BigNumber } xBalance // eg. base balance
+   * @param { BigNumber } yBalance // eg. fyToken balance
    * @param {BigNumber} xAmount // amount to split in wei
    * @returns  [ BigNumber, BigNumber ] returns an array of [base, fyToken]
    */
 export const splitLiquidity = (
-  xReserves: BigNumber | string,
-  yReserves: BigNumber | string,
+  xBalance: BigNumber | string,
+  yBalance: BigNumber | string,
   xAmount: BigNumber | string,
 ) : [string, string] => {
-  const xReserves_ = new Decimal(xReserves.toString());
-  const yReserves_ = new Decimal(yReserves.toString());
+  const xBalance_ = new Decimal(xBalance.toString());
+  const yBalance_ = new Decimal(yBalance.toString());
   const xAmount_ = new Decimal(xAmount.toString());
-  const xPortion = (xAmount_.mul(xReserves_)).div(yReserves_.add(xReserves_));
+  const xPortion = (xAmount_.mul(xBalance_)).div(yBalance_.add(xBalance_));
   const yPortion = xAmount_.sub(xPortion);
   return [xPortion.toFixed(), yPortion.toFixed()];
 };

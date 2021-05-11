@@ -25,8 +25,8 @@ describe('Pool - TWAR', async function () {
   this.timeout(0)
 
   // These values impact the pool results
-  const baseTokens = BigNumber.from('1000000000000000000000000')
-  const initialBase = baseTokens
+  const bases = BigNumber.from('1000000000000000000000000')
+  const initialBase = bases
 
   let ownerAcc: SignerWithAddress
   let user1Acc: SignerWithAddress
@@ -71,9 +71,9 @@ describe('Pool - TWAR', async function () {
   })
 
   it('calculates the TWAR price', async () => {
-    const cumulativePrice1 = await pool.cumulativeReserveRatio()
+    const cumulativePrice1 = await pool.cumulativeBalancesRatio()
     expect(cumulativePrice1).to.equal(0, 'Price should start at 0')
-    const timestamp1 = (await pool.getStoredReserves())[2]
+    const timestamp1 = (await pool.getCache())[2]
 
     await ethers.provider.send('evm_mine', [(await currentTimestamp()) + 120])
 
@@ -81,8 +81,8 @@ describe('Pool - TWAR', async function () {
 
     const balancedRatio = BigNumber.from('10').pow(BigNumber.from('27'))
 
-    const cumulativeRatio2 = await pool.cumulativeReserveRatio()
-    const timestamp2 = (await pool.getStoredReserves())[2]
+    const cumulativeRatio2 = await pool.cumulativeBalancesRatio()
+    const timestamp2 = (await pool.getCache())[2]
     const ratio2 = cumulativeRatio2.div(BigNumber.from(timestamp2 - timestamp1))
     almostEqual(ratio2, balancedRatio, BigNumber.from('10000000000'))
 
@@ -90,8 +90,8 @@ describe('Pool - TWAR', async function () {
 
     await pool.sync()
 
-    const cumulativeRatio3 = await pool.cumulativeReserveRatio()
-    const timestamp3 = (await pool.getStoredReserves())[2]
+    const cumulativeRatio3 = await pool.cumulativeBalancesRatio()
+    const timestamp3 = (await pool.getCache())[2]
     const ratio3 = cumulativeRatio3.sub(cumulativeRatio2).div(BigNumber.from(timestamp3 - timestamp2))
     almostEqual(ratio3, balancedRatio, BigNumber.from('10000000000'))
   })
