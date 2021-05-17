@@ -86,7 +86,7 @@ contract PoolRouter {
 
     /// @dev Return which pool contract matches the base and fyToken
     function findPool(address base, address fyToken)
-        public view returns (address pool)
+        private view returns (address pool)
     {
         pool = factory.getPool(base, fyToken);
         require (pool != address(0), "Pool not found");
