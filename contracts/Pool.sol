@@ -157,7 +157,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         return baseToken.balanceOf(address(this)).u112();
     }
 
-    /// @dev Retrieve any base okens not accounted for in the stored reserves
+    /// @dev Retrieve any base tokens not accounted for in the stored reserves
     function retrieveBaseToken(address to)
         external override
         returns(uint128 retrieved)

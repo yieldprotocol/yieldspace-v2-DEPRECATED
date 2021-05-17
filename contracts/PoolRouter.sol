@@ -86,7 +86,7 @@ contract PoolRouter {
 
     /// @dev Return which pool contract matches the base and fyToken
     function findPool(address base, address fyToken)
-        private view returns (address pool)
+        public view returns (address pool)
     {
         pool = factory.getPool(base, fyToken);
         require (pool != address(0), "Pool not found");
@@ -147,7 +147,7 @@ contract PoolRouter {
         require (msg.sender == address(weth), "Only Weth contract allowed");
     }
 
-    /// @dev Accept Ether, wrap it and forward it to the to a pool
+    /// @dev Accept Ether, wrap it and forward it to a pool
     function _joinEther(address pool)
         private
         returns (uint256 ethTransferred)
