@@ -46,7 +46,7 @@ contract PoolBridge {
         return IPool(liquidToken).burn(msg.sender, minBaseLiquidity, minFyLiquidity);
     }
 
-    /// @dev Transfer all liquidity from an expired pool to the `liquidToken` pool
+    /// @dev Transfer all liquidity from an expired pool to the target `liquifyingToken` pool
     /// The trader needs to have called `liquidToken.approve`
     /// @param liquifiedToken Pool
     /// @param liquidity The amount of pool tokens
