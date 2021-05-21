@@ -19,10 +19,10 @@ export class PoolRouterWrapper {
   address: string
 
   pool = new ethers.utils.Interface([
-      "function sellBaseToken(address to, uint128 min)",
+      "function sellBase(address to, uint128 min)",
       "function sellFYToken(address to, uint128 min)",
-      "function mintWithBaseToken(address to, uint256 fyTokenToBuy, uint256 minTokensMinted)",
-      "function burnForBaseToken(address to, uint256 minBaseTokenOut)",
+      "function mintWithBase(address to, uint256 fyTokenToBuy, uint256 minTokensMinted)",
+      "function burnForBase(address to, uint256 minBaseOut)",
   ]);
 
   constructor(router: PoolRouter) {
@@ -115,19 +115,19 @@ export class PoolRouterWrapper {
     return this.batch([this.routeAction(base, fyToken, poolcall)])
   }
 
-  public sellBaseTokenAction(base: string, fyToken: string, receiver: string, min: BigNumberish): BatchAction {
+  public sellBaseAction(base: string, fyToken: string, receiver: string, min: BigNumberish): BatchAction {
     return new BatchAction(OPS.ROUTE, ethers.utils.defaultAbiCoder.encode(
       ['address', 'address', 'bytes'],
       [
         base,
         fyToken,
-        this.pool.encodeFunctionData('sellBaseToken', [receiver, min])
+        this.pool.encodeFunctionData('sellBase', [receiver, min])
       ]
     ))
   }
 
-  public async sellBaseToken(base: string, fyToken: string, receiver: string, min: BigNumberish): Promise<ContractTransaction> {
-    return this.batch([this.sellBaseTokenAction(base, fyToken, receiver, min)])
+  public async sellBase(base: string, fyToken: string, receiver: string, min: BigNumberish): Promise<ContractTransaction> {
+    return this.batch([this.sellBaseAction(base, fyToken, receiver, min)])
   }
 
   public sellFYTokenAction(base: string, fyToken: string, receiver: string, min: BigNumberish): BatchAction {
@@ -145,34 +145,34 @@ export class PoolRouterWrapper {
     return this.batch([this.sellFYTokenAction(base, fyToken, receiver, min)])
   }
 
-  public mintWithBaseTokenAction(base: string, fyToken: string, receiver: string, fyTokenToBuy: BigNumberish, minTokensMinted: BigNumberish): BatchAction {
+  public mintWithBaseAction(base: string, fyToken: string, receiver: string, fyTokenToBuy: BigNumberish, minTokensMinted: BigNumberish): BatchAction {
     return new BatchAction(OPS.ROUTE, ethers.utils.defaultAbiCoder.encode(
       ['address', 'address', 'bytes'],
       [
         base,
         fyToken,
-        this.pool.encodeFunctionData('mintWithBaseToken', [receiver, fyTokenToBuy, minTokensMinted])
+        this.pool.encodeFunctionData('mintWithBase', [receiver, fyTokenToBuy, minTokensMinted])
       ]
     ))
   }
 
-  public async mintWithBaseToken(base: string, fyToken: string, receiver: string, fyTokenToBuy: BigNumberish, minTokensMinted: BigNumberish): Promise<ContractTransaction> {
-    return this.batch([this.mintWithBaseTokenAction(base, fyToken, receiver, fyTokenToBuy, minTokensMinted)])
+  public async mintWithBase(base: string, fyToken: string, receiver: string, fyTokenToBuy: BigNumberish, minTokensMinted: BigNumberish): Promise<ContractTransaction> {
+    return this.batch([this.mintWithBaseAction(base, fyToken, receiver, fyTokenToBuy, minTokensMinted)])
   }
 
-  public burnForBaseTokenAction(base: string, fyToken: string, receiver: string, minBaseTokenOut: BigNumberish): BatchAction {
+  public burnForBaseAction(base: string, fyToken: string, receiver: string, minBaseOut: BigNumberish): BatchAction {
     return new BatchAction(OPS.ROUTE, ethers.utils.defaultAbiCoder.encode(
       ['address', 'address', 'bytes'],
       [
         base,
         fyToken,
-        this.pool.encodeFunctionData('burnForBaseToken', [receiver, minBaseTokenOut])
+        this.pool.encodeFunctionData('burnForBase', [receiver, minBaseOut])
       ]
     ))
   }
 
-  public async burnForBaseToken(base: string, fyToken: string, receiver: string, minBaseTokenOut: BigNumberish): Promise<ContractTransaction> {
-    return this.batch([this.burnForBaseTokenAction(base, fyToken, receiver, minBaseTokenOut)])
+  public async burnForBase(base: string, fyToken: string, receiver: string, minBaseOut: BigNumberish): Promise<ContractTransaction> {
+    return this.batch([this.burnForBaseAction(base, fyToken, receiver, minBaseOut)])
   }
 }
   

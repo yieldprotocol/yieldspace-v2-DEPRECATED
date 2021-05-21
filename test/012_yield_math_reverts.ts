@@ -49,15 +49,15 @@ describe('YieldMath - Reverts', async function () {
       ).to.be.revertedWith('YieldMath: Too far from maturity')
     })
 
-    // If the base in, added to the base reserves, exceed 2**128, we will have too much base to operate
+    // If the base in, added to the base balance, exceed 2**128, we will have too much base to operate
     it('Too much base in', async () => {
       await expect(yieldMath.fyTokenOutForBaseIn(MAX, WAD.mul(10), WAD, secondsInOneYear, k, g0)).to.be.revertedWith(
         'YieldMath: Too much base in'
       )
     })
 
-    // If the fyToken to be obtained exceeds the fyToken reserves, the trade reverts
-    it('Insufficient fyToken reserves', async () => {
+    // If the fyToken to be obtained exceeds the fyToken balance, the trade reverts
+    it('Insufficient fyToken balance', async () => {
       await expect(
         yieldMath.fyTokenOutForBaseIn(WAD, WAD.mul(10), WAD.mul(20), secondsInOneYear, k, g0)
       ).to.be.revertedWith('YieldMath: Insufficient fyToken reserves')
@@ -89,15 +89,15 @@ describe('YieldMath - Reverts', async function () {
       ).to.be.revertedWith('YieldMath: Too far from maturity')
     })
 
-    // If the fyToken in, added to the fyToken reserves, exceed 2**128, we will have too much fyToken to operate
+    // If the fyToken in, added to the fyToken balance, exceed 2**128, we will have too much fyToken to operate
     it('Too much fyToken in', async () => {
       await expect(yieldMath.baseOutForFYTokenIn(WAD.mul(10), MAX, WAD, secondsInOneYear, k, g0)).to.be.revertedWith(
         'YieldMath: Too much fyToken in'
       )
     })
 
-    // If the base to be obtained exceeds the base reserves, the trade reverts
-    it('Insufficient base reserves', async () => {
+    // If the base to be obtained exceeds the base balance, the trade reverts
+    it('Insufficient base balance', async () => {
       await expect(
         yieldMath.baseOutForFYTokenIn(WAD.mul(10), WAD, WAD.mul(20), secondsInOneYear, k, g0)
       ).to.be.revertedWith('YieldMath: Insufficient base reserves')
@@ -135,11 +135,11 @@ describe('YieldMath - Reverts', async function () {
       ).to.be.revertedWith('YieldMath: Too much base out')
     })
 
-    // If the base to be obtained exceeds the base reserves, the trade reverts
-    it('Resulting fyToken reserves too high', async () => {
+    // If the base to be obtained exceeds the base balance, the trade reverts
+    it('Resulting fyToken balance too high', async () => {
       await expect(
         yieldMath.fyTokenInForBaseOut(WAD.mul(10), MAX, WAD, secondsInOneYear.mul(4), k, g0),
-        'YieldMath: Resulting fyToken reserves too high'
+        'YieldMath: Resulting fyToken balance too high'
       ).to.be.revertedWith('YieldMath: Resulting fyToken reserves too high')
     })
 
@@ -173,8 +173,8 @@ describe('YieldMath - Reverts', async function () {
       )
     })
 
-    // If the base to be traded in makes the base reserves to go over 2**128, the trade reverts
-    it('Resulting base reserves too high', async () => {
+    // If the base to be traded in makes the base balance to go over 2**128, the trade reverts
+    it('Resulting base balance too high', async () => {
       await expect(
         yieldMath.baseInForFYTokenOut(MAX, WAD.mul(10), WAD, secondsInOneYear.mul(4), k, g0)
       ).to.be.revertedWith('YieldMath: Resulting base reserves too high')

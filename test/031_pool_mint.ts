@@ -29,9 +29,9 @@ describe('Pool - mint', async function () {
   this.timeout(0)
 
   // These values impact the pool results
-  const baseTokens = WAD.mul(1000000)
-  const fyTokenTokens = baseTokens
-  const initialBase = baseTokens
+  const bases = WAD.mul(1000000)
+  const fyTokens = bases
+  const initialBase = bases
   const OVERRIDES = { gasLimit: 1_000_000 }
 
   let ownerAcc: SignerWithAddress
@@ -42,7 +42,6 @@ describe('Pool - mint', async function () {
   let user2: string
 
   let yieldSpace: YieldSpaceEnvironment
-  let factory: PoolFactory
 
   let pool: Pool
   let poolEstimator: PoolEstimator
@@ -71,7 +70,6 @@ describe('Pool - mint', async function () {
 
   beforeEach(async () => {
     yieldSpace = await loadFixture(fixture)
-    factory = yieldSpace.factory as PoolFactory
     base = yieldSpace.bases.get(baseId) as Base
     fyToken = yieldSpace.fyTokens.get(fyTokenId) as FYToken
 
@@ -91,18 +89,18 @@ describe('Pool - mint', async function () {
 
     expect(await pool.balanceOf(user2)).to.equal(initialBase, 'User2 should have ' + initialBase + ' liquidity tokens')
 
-    expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
-    expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
+    expect((await pool.getCache())[0]).to.equal(await pool.getBaseBalance())
+    expect((await pool.getCache())[1]).to.equal(await pool.getFYTokenBalance())
   })
 
-  it('syncs reserves after donations', async () => {
+  it('syncs balances after donations', async () => {
     await base.mint(pool.address, initialBase)
     await fyToken.mint(pool.address, initialBase.div(9))
 
     await expect(pool.sync()).to.emit(pool, 'Sync')
 
-    expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
-    expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
+    expect((await pool.getCache())[0]).to.equal(await pool.getBaseBalance())
+    expect((await pool.getCache())[1]).to.equal(await pool.getFYTokenBalance())
   })
 
   describe('with initial liquidity', () => {
@@ -110,9 +108,9 @@ describe('Pool - mint', async function () {
       await base.mint(pool.address, initialBase)
       await pool.mint(user1, CALCULATE_FROM_BASE, 0)
 
-      const additionalFYTokenReserves = initialBase.div(9)
-      // Skew the reserves without using trading functions
-      await fyToken.mint(pool.address, additionalFYTokenReserves)
+      const additionalFYToken = initialBase.div(9)
+      // Skew the balances without using trading functions
+      await fyToken.mint(pool.address, additionalFYToken)
       await pool.sync()
     })
 
@@ -122,7 +120,7 @@ describe('Pool - mint', async function () {
       const [expectedMinted, expectedFYTokenIn] = await poolEstimator.mint(baseIn, CALCULATE_FROM_BASE)
 
       await base.mint(user1, baseIn)
-      await fyToken.mint(user1, fyTokenTokens)
+      await fyToken.mint(user1, fyTokens)
 
       const poolTokensBefore = await pool.balanceOf(user2)
 
@@ -135,8 +133,8 @@ describe('Pool - mint', async function () {
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
 
       almostEqual(minted, expectedMinted, baseIn.div(10000))
-      expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
-      expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
+      expect((await pool.getCache())[0]).to.equal(await pool.getBaseBalance())
+      expect((await pool.getCache())[1]).to.equal(await pool.getFYTokenBalance())
     })
 
     it('mints liquidity tokens, leaving fyToken surplus', async () => {
@@ -145,7 +143,7 @@ describe('Pool - mint', async function () {
       const [expectedMinted, expectedFYTokenIn] = await poolEstimator.mint(baseIn, CALCULATE_FROM_BASE)
 
       await base.mint(user1, baseIn)
-      await fyToken.mint(user1, fyTokenTokens)
+      await fyToken.mint(user1, fyTokens)
 
       const poolTokensBefore = await pool.balanceOf(user2)
 
@@ -158,8 +156,8 @@ describe('Pool - mint', async function () {
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
 
       almostEqual(minted, expectedMinted, baseIn.div(10000))
-      expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
-      expect((await pool.getStoredReserves())[1]).to.equal((await pool.getFYTokenReserves()).sub(WAD))
+      expect((await pool.getCache())[0]).to.equal(await pool.getBaseBalance())
+      expect((await pool.getCache())[1]).to.equal((await pool.getFYTokenBalance()).sub(WAD))
     })
 
     it('mints liquidity tokens, leaving base surplus', async () => {
@@ -167,7 +165,7 @@ describe('Pool - mint', async function () {
 
       const [expectedMinted, expectedBaseIn] = await poolEstimator.mint(fyTokenIn, !CALCULATE_FROM_BASE)
 
-      await base.mint(user1, baseTokens)
+      await base.mint(user1, bases)
       await fyToken.mint(user1, fyTokenIn)
 
       const poolTokensBefore = await pool.balanceOf(user2)
@@ -181,56 +179,56 @@ describe('Pool - mint', async function () {
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
 
       almostEqual(minted, expectedMinted, fyTokenIn.div(10000))
-      expect((await pool.getStoredReserves())[0]).to.equal((await pool.getBaseTokenReserves()).sub(WAD))
-      expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
+      expect((await pool.getCache())[0]).to.equal((await pool.getBaseBalance()).sub(WAD))
+      expect((await pool.getCache())[1]).to.equal(await pool.getFYTokenBalance())
     })
 
     it('mints liquidity tokens with base only', async () => {
       const fyTokenToBuy = WAD.div(1000)
 
-      const [expectedMinted, expectedBaseIn] = await poolEstimator.mintWithBaseToken(fyTokenToBuy)
+      const [expectedMinted, expectedBaseIn] = await poolEstimator.mintWithBase(fyTokenToBuy)
 
       const poolTokensBefore = await pool.balanceOf(user2)
       const poolSupplyBefore = await pool.totalSupply()
-      const storedBaseReservesBefore = (await pool.getStoredReserves())[0]
-      const storedFYTokenReservesBefore = (await pool.getStoredReserves())[1]
+      const baseCachedBefore = (await pool.getCache())[0]
+      const fyTokenCachedBefore = (await pool.getCache())[1]
 
       await base.mint(pool.address, expectedBaseIn)
 
-      await expect(pool.mintWithBaseToken(user2, fyTokenToBuy, 0, OVERRIDES))
+      await expect(pool.mintWithBase(user2, fyTokenToBuy, 0, OVERRIDES))
         .to.emit(pool, 'Liquidity')
         .withArgs(
           maturity,
           user1,
           user2,
-          (await pool.getStoredReserves())[0].sub(storedBaseReservesBefore).mul(-1),
+          (await pool.getCache())[0].sub(baseCachedBefore).mul(-1),
           0,
           (await pool.totalSupply()).sub(poolSupplyBefore)
         )
         .to.emit(base, 'Transfer')
         .withArgs(pool.address, user2, await base.balanceOf(user2)) // Surplus base is given to the receiver of LP tokens
 
-      const baseIn = (await pool.getStoredReserves())[0].sub(storedBaseReservesBefore)
+      const baseIn = (await pool.getCache())[0].sub(baseCachedBefore)
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
 
       almostEqual(minted, expectedMinted, minted.div(10000))
 
       almostEqual(baseIn, expectedBaseIn, baseIn.div(10000))
-      expect((await pool.getStoredReserves())[0]).to.equal(storedBaseReservesBefore.add(baseIn))
-      expect((await pool.getStoredReserves())[1]).to.equal(storedFYTokenReservesBefore.add(minted))
+      expect((await pool.getCache())[0]).to.equal(baseCachedBefore.add(baseIn))
+      expect((await pool.getCache())[1]).to.equal(fyTokenCachedBefore.add(minted))
     })
 
     it("doesn't mint beyond slippage", async () => {
       const fyTokenToBuy = WAD.div(1000)
       await base.mint(pool.address, WAD)
-      await expect(pool.mintWithBaseToken(user2, fyTokenToBuy, MAX, OVERRIDES)).to.be.revertedWith(
+      await expect(pool.mintWithBase(user2, fyTokenToBuy, MAX, OVERRIDES)).to.be.revertedWith(
         'Pool: Not enough tokens minted'
       )
     })
 
     it('burns liquidity tokens', async () => {
-      const baseReserves = await base.balanceOf(pool.address)
-      const fyTokenReserves = await fyToken.balanceOf(pool.address)
+      const baseBalance = await base.balanceOf(pool.address)
+      const fyTokenBalance = await fyToken.balanceOf(pool.address)
       const lpTokensIn = WAD
 
       const [expectedBaseOut, expectedFYTokenOut] = await poolEstimator.burn(lpTokensIn)
@@ -242,44 +240,42 @@ describe('Pool - mint', async function () {
           maturity,
           user1,
           user2,
-          baseReserves.sub(await base.balanceOf(pool.address)),
-          fyTokenReserves.sub(await fyToken.balanceOf(pool.address)),
+          baseBalance.sub(await base.balanceOf(pool.address)),
+          fyTokenBalance.sub(await fyToken.balanceOf(pool.address)),
           lpTokensIn.mul(-1)
         )
 
-      const baseOut = baseReserves.sub(await base.balanceOf(pool.address))
-      const fyTokenOut = fyTokenReserves.sub(await fyToken.balanceOf(pool.address))
+      const baseOut = baseBalance.sub(await base.balanceOf(pool.address))
+      const fyTokenOut = fyTokenBalance.sub(await fyToken.balanceOf(pool.address))
 
       almostEqual(baseOut, expectedBaseOut, baseOut.div(10000))
       almostEqual(fyTokenOut, expectedFYTokenOut, fyTokenOut.div(10000))
-      expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
-      expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
+      expect((await pool.getCache())[0]).to.equal(await pool.getBaseBalance())
+      expect((await pool.getCache())[1]).to.equal(await pool.getFYTokenBalance())
     })
 
     it('burns liquidity tokens to Base', async () => {
-      const baseReserves = await base.balanceOf(pool.address)
+      const baseBalance = await base.balanceOf(pool.address)
       const lpTokensIn = WAD.mul(2)
 
-      const expectedBaseOut = await poolEstimator.burnForBaseToken(lpTokensIn)
+      const expectedBaseOut = await poolEstimator.burnForBase(lpTokensIn)
 
       await pool.transfer(pool.address, lpTokensIn)
-      await expect(pool.burnForBaseToken(user2, 0, OVERRIDES))
+      await expect(pool.burnForBase(user2, 0, OVERRIDES))
         .to.emit(pool, 'Liquidity')
-        .withArgs(maturity, user1, user2, baseReserves.sub(await base.balanceOf(pool.address)), 0, lpTokensIn.mul(-1))
+        .withArgs(maturity, user1, user2, baseBalance.sub(await base.balanceOf(pool.address)), 0, lpTokensIn.mul(-1))
 
-      const baseOut = baseReserves.sub(await base.balanceOf(pool.address))
+      const baseOut = baseBalance.sub(await base.balanceOf(pool.address))
 
       almostEqual(baseOut, expectedBaseOut, baseOut.div(10000))
-      expect((await pool.getStoredReserves())[0]).to.equal(await pool.getBaseTokenReserves())
-      expect((await pool.getStoredReserves())[1]).to.equal(await pool.getFYTokenReserves())
+      expect((await pool.getCache())[0]).to.equal(await pool.getBaseBalance())
+      expect((await pool.getCache())[1]).to.equal(await pool.getFYTokenBalance())
     })
 
     it("doesn't burn beyond slippage", async () => {
       const lpTokensIn = WAD.mul(2)
       await pool.transfer(pool.address, lpTokensIn)
-      await expect(pool.burnForBaseToken(user2, MAX, OVERRIDES)).to.be.revertedWith(
-        'Pool: Not enough base tokens obtained'
-      )
+      await expect(pool.burnForBase(user2, MAX, OVERRIDES)).to.be.revertedWith('Pool: Not enough base tokens obtained')
     })
   })
 })

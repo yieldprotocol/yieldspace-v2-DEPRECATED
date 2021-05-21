@@ -101,7 +101,7 @@ describe('PoolRouter - Pool', async function () {
     await base.approve(router.address, WAD)
     await router.batch([
       router.transferToPoolAction(base.address, fyToken1.address, base.address, WAD),
-      router.sellBaseTokenAction(base.address, fyToken1.address, owner, 0),
+      router.sellBaseAction(base.address, fyToken1.address, owner, 0),
     ])
   })
 
@@ -121,7 +121,7 @@ describe('PoolRouter - Pool', async function () {
     await base.approve(router.address, WAD)
     await router.batch([
       router.transferToPoolAction(base.address, fyToken1.address, base.address, WAD),
-      router.mintWithBaseTokenAction(base.address, fyToken1.address, owner, WAD.div(100), 0),
+      router.mintWithBaseAction(base.address, fyToken1.address, owner, WAD.div(100), 0),
     ])
   })
 
@@ -129,7 +129,7 @@ describe('PoolRouter - Pool', async function () {
     await pool1.approve(router.address, WAD)
     await router.batch([
       router.transferToPoolAction(base.address, fyToken1.address, pool1.address, WAD),
-      router.burnForBaseTokenAction(base.address, fyToken1.address, owner, 0),
+      router.burnForBaseAction(base.address, fyToken1.address, owner, 0),
     ])
   })
 
@@ -142,14 +142,14 @@ describe('PoolRouter - Pool', async function () {
 
     it('retrieves tokens from a pool using route', async () => {
       const baseBefore = await base.balanceOf(owner)
-      const retrieveTokenCall = pool1.interface.encodeFunctionData('retrieveBaseToken', [owner])
+      const retrieveTokenCall = pool1.interface.encodeFunctionData('retrieveBase', [owner])
       await router.route(base.address, fyToken1.address, retrieveTokenCall)
       expect(await base.balanceOf(owner)).to.equal(baseBefore.add(WAD))
     })
 
     it('wraps a route in a batch', async () => {
       const baseBefore = await base.balanceOf(owner)
-      const retrieveTokenCall = pool1.interface.encodeFunctionData('retrieveBaseToken', [owner])
+      const retrieveTokenCall = pool1.interface.encodeFunctionData('retrieveBase', [owner])
       await router.batch([router.routeAction(base.address, fyToken1.address, retrieveTokenCall)])
       expect(await base.balanceOf(owner)).to.equal(baseBefore.add(WAD))
     })
