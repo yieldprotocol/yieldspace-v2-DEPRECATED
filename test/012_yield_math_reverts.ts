@@ -19,7 +19,7 @@ describe('YieldMath - Reverts', async function () {
 
   before(async () => {
     const YieldMathFactory = await ethers.getContractFactory('YieldMath')
-    yieldMathLibrary = ((await YieldMathFactory.deploy()) as unknown) as YieldMath // TODO: Why does the Factory return a Contract and not a YieldMath?
+    yieldMathLibrary = ((await YieldMathFactory.deploy()) as unknown) as YieldMath
     await yieldMathLibrary.deployed()
 
     const YieldMathWrapperFactory = await ethers.getContractFactory('YieldMathWrapper', {
@@ -28,7 +28,7 @@ describe('YieldMath - Reverts', async function () {
       },
     })
 
-    yieldMath = ((await YieldMathWrapperFactory.deploy()) as unknown) as YieldMathWrapper // TODO: See above
+    yieldMath = ((await YieldMathWrapperFactory.deploy()) as unknown) as YieldMathWrapper
     await yieldMath.deployed()
   })
 

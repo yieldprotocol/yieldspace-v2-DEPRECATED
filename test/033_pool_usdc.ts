@@ -148,7 +148,7 @@ describe('Pool - usdc', async function () {
 
       await expect(pool.connect(user1Acc).mint(user2, CALCULATE_FROM_BASE, 0))
         .to.emit(pool, 'Liquidity')
-        .withArgs(maturity, user1, user2, WAD.mul(-1), expectedFYTokenIn.mul(-1), expectedMinted) // TODO: Rounding
+        .withArgs(maturity, user1, user2, WAD.mul(-1), expectedFYTokenIn.mul(-1), expectedMinted)
 
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
 
