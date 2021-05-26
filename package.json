@@ -1,6 +1,6 @@
 {
   "name": "@yield-protocol/yieldspace-v2",
-  "version": "0.5.0-rc1",
+  "version": "0.6.0-rc0",
   "description": "YieldSpace v2 contracts",
   "author": "Yield Inc.",
   "files": [
@@ -28,7 +28,7 @@
     "@truffle/hdwallet-provider": "^1.0.40",
     "@types/mocha": "^8.0.0",
     "@yield-protocol/utils-v2": "^2.2.5",
-    "@yield-protocol/vault-interfaces": "^2.0.28",
+    "@yield-protocol/vault-interfaces": "^2.0.33",
     "@yield-protocol/yieldspace-interfaces": "^2.0.14",
     "chai": "4.2.0",
     "chai-bignumber": "3.0.0",
