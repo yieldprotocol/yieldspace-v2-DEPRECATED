@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity >= 0.8.0;
 
@@ -166,6 +166,6 @@ contract PoolRouter {
         ethTransferred = weth.balanceOf(address(this));
 
         weth.withdraw(ethTransferred);   // TODO: Test gas savings using WETH10 `withdrawTo`
-        payable(to).safeTransferETH(ethTransferred); /// TODO: Consider reentrancy and safe transfers
+        payable(to).safeTransferETH(ethTransferred);
     }
 }
