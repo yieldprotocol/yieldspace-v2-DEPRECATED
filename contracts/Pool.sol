@@ -183,7 +183,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && _baseCached != 0 && _fyTokenCached != 0) {
             uint256 scaledFYTokenCached = uint256(_fyTokenCached) * 1e27;
-            cumulativeBalancesRatio += scaledFYTokenCached / _baseCached * timeElapsed;
+            cumulativeBalancesRatio += scaledFYTokenCached  * timeElapsed / _baseCached;
         }
         baseCached = baseBalance.u112();
         fyTokenCached = fyBalance.u112();
