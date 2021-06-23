@@ -40,11 +40,11 @@ contract PoolRouter {
     function batch(
         PoolDataTypes.Operation[] calldata operations,
         bytes[] calldata data
-    ) external payable returns(bytes[] memory resultValues) {
+    ) external payable returns(bytes[] memory results) {
         require(operations.length == data.length, "Mismatched operation data");
         PoolAddresses memory cache;
 
-        resultValues = new bytes[](operations.length);
+        results = new bytes[](operations.length);
 
         for (uint256 i = 0; i < operations.length; i += 1) {
             PoolDataTypes.Operation operation = operations[i];
@@ -53,38 +53,38 @@ contract PoolRouter {
                 (address base, address fyToken, bytes memory poolcall) = abi.decode(data[i], (address, address, bytes));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
                 (bool success, bytes memory result) = _route(cache, poolcall);
-                resultValues[i] = abi.encode(success, result);
+                results[i] = abi.encode(success, result);
 
             } else if (operation == PoolDataTypes.Operation.TRANSFER_TO_POOL) {
                 (address base, address fyToken, address token, uint128 wad) = abi.decode(data[i], (address, address, address, uint128));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
-                (bool result) = _transferToPool(cache, token, wad);
-                resultValues[i] = abi.encode(result);
+                bool result = _transferToPool(cache, token, wad);
+                results[i] = abi.encode(result);
 
             } else if (operation == PoolDataTypes.Operation.FORWARD_PERMIT) {
                 (address base, address fyToken, address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s) = 
                     abi.decode(data[i], (address, address, address, address, uint256, uint256, uint8, bytes32, bytes32));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
                 _forwardPermit(cache, token, spender, amount, deadline, v, r, s);
-                resultValues[i] = abi.encode(bytes32(0));
+                results[i] = abi.encode(bytes32(0));
 
             } else if (operation == PoolDataTypes.Operation.FORWARD_DAI_PERMIT) {
                         (address base, address fyToken, address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s) = 
                     abi.decode(data[i], (address, address, address, uint256, uint256, bool, uint8, bytes32, bytes32));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
                 _forwardDaiPermit(cache, spender, nonce, deadline, allowed, v, r, s);
-                resultValues[i] = abi.encode(bytes32(0));
+                results[i] = abi.encode(bytes32(0));
 
             } else if (operation == PoolDataTypes.Operation.JOIN_ETHER) {
                 (address base, address fyToken) = abi.decode(data[i], (address, address));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
-                (uint256 ethTransferred) = _joinEther(cache.pool);
-                resultValues[i] = abi.encode(ethTransferred);
+                uint256 ethTransferred = _joinEther(cache.pool);
+                results[i] = abi.encode(ethTransferred);
 
             } else if (operation == PoolDataTypes.Operation.EXIT_ETHER) {
                 (address to) = abi.decode(data[i], (address));
-                (uint256 ethTransferred) = _exitEther(to);
-                resultValues[i] = abi.encode(ethTransferred);
+                uint256 ethTransferred = _exitEther(to);
+                results[i] = abi.encode(ethTransferred);
 
             } else {
                 revert("Invalid operation");
