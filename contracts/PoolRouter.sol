@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
 pragma solidity >= 0.8.0;
-pragma experimental ABIEncoderV2;
 
 import "@yield-protocol/utils-v2/contracts/token/IERC20.sol";
 import "@yield-protocol/utils-v2/contracts/token/IERC2612.sol";
