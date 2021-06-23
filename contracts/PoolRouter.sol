@@ -92,17 +92,6 @@ contract PoolRouter {
         require (pool != address(0), "Pool not found");
     }
 
-    /// @dev Allow users to trigger a token transfer to a pool, to be used with multicall
-    function transferToPool(address base, address fyToken, address token, uint128 wad)
-        external payable
-        returns (bool)
-    {
-        return _transferToPool(
-            PoolAddresses(base, fyToken, findPool(base, fyToken)),
-            token, wad
-        );
-    }
-
     /// @dev Allow users to trigger a token transfer to a pool, to be used with batch
     function _transferToPool(PoolAddresses memory addresses, address token, uint128 wad)
         private
