@@ -40,11 +40,10 @@ contract PoolRouter {
     function batch(
         PoolDataTypes.Operation[] calldata operations,
         bytes[] calldata data
-    ) external payable returns(bytes[] memory resultTypes, bytes[] memory resultValues) {
+    ) external payable returns(bytes[] memory resultValues) {
         require(operations.length == data.length, "Mismatched operation data");
         PoolAddresses memory cache;
 
-        resultTypes = new bytes[](operations.length);
         resultValues = new bytes[](operations.length);
 
         for (uint256 i = 0; i < operations.length; i += 1) {
@@ -54,14 +53,12 @@ contract PoolRouter {
                 (address base, address fyToken, bytes memory poolcall) = abi.decode(data[i], (address, address, bytes));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
                 (bool success, bytes memory result) = _route(cache, poolcall);
-                resultTypes[i] = abi.encode("bool", "bytes");
                 resultValues[i] = abi.encode(success, result);
 
             } else if (operation == PoolDataTypes.Operation.TRANSFER_TO_POOL) {
                 (address base, address fyToken, address token, uint128 wad) = abi.decode(data[i], (address, address, address, uint128));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
                 (bool result) = _transferToPool(cache, token, wad);
-                resultTypes[i] = abi.encode("bool");
                 resultValues[i] = abi.encode(result);
 
             } else if (operation == PoolDataTypes.Operation.FORWARD_PERMIT) {
@@ -69,28 +66,24 @@ contract PoolRouter {
                     abi.decode(data[i], (address, address, address, address, uint256, uint256, uint8, bytes32, bytes32));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
                 _forwardPermit(cache, token, spender, amount, deadline, v, r, s);
-                resultTypes[i] = abi.encode("string");
-                resultValues[i] = abi.encode("void");
+                resultValues[i] = abi.encode(bytes32(0));
 
             } else if (operation == PoolDataTypes.Operation.FORWARD_DAI_PERMIT) {
                         (address base, address fyToken, address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s) = 
                     abi.decode(data[i], (address, address, address, uint256, uint256, bool, uint8, bytes32, bytes32));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
                 _forwardDaiPermit(cache, spender, nonce, deadline, allowed, v, r, s);
-                resultTypes[i] = abi.encode("string");
-                resultValues[i] = abi.encode("void");
+                resultValues[i] = abi.encode(bytes32(0));
 
             } else if (operation == PoolDataTypes.Operation.JOIN_ETHER) {
                 (address base, address fyToken) = abi.decode(data[i], (address, address));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
                 (uint256 ethTransferred) = _joinEther(cache.pool);
-                resultTypes[i] = abi.encode("uint256");
                 resultValues[i] = abi.encode(ethTransferred);
 
             } else if (operation == PoolDataTypes.Operation.EXIT_ETHER) {
                 (address to) = abi.decode(data[i], (address));
                 (uint256 ethTransferred) = _exitEther(to);
-                resultTypes[i] = abi.encode("uint256");
                 resultValues[i] = abi.encode(ethTransferred);
 
             } else {
