@@ -11,7 +11,6 @@ import "@yield-protocol/yieldspace-interfaces/IPool.sol";
 import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
 import "@yield-protocol/yieldspace-interfaces/PoolDataTypes.sol";
 import "dss-interfaces/src/dss/DaiAbstract.sol";
-import "hardhat/console.sol";
 
 
 contract PoolRouter {
@@ -86,8 +85,6 @@ contract PoolRouter {
             } else {
                 revert("Invalid operation");
             }
-
-            console.logBytes(results[i]);
         }
     }
 
