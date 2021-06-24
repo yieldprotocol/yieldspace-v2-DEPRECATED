@@ -53,7 +53,7 @@ contract PoolRouter {
             if (operation == PoolDataTypes.Operation.ROUTE) {
                 (address base, address fyToken, bytes memory poolcall) = abi.decode(data[i], (address, address, bytes));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
-                results[i] = abi.encode(_route(cache, poolcall));
+                results[i] = _route(cache, poolcall);
 
             } else if (operation == PoolDataTypes.Operation.TRANSFER_TO_POOL) {
                 (address base, address fyToken, address token, uint128 wad) = abi.decode(data[i], (address, address, address, uint128));
