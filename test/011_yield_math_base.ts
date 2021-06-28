@@ -1,3 +1,5 @@
+import { debugLog } from './shared/helpers'
+
 import { YieldMathWrapper } from '../typechain/YieldMathWrapper'
 import { YieldMath } from '../typechain/YieldMath'
 
@@ -103,7 +105,7 @@ describe('YieldMath - Base', async function () {
 
       for (var i = 0; i < xValues.length; i++) {
         var xValue = xValues[i]
-        // console.log('    pow_2 (' + xValue + ')')
+        debugLog('    pow_2 (' + xValue + ')')
         var x = BigNumber.from(xValue)
         var result
         try {
@@ -146,7 +148,7 @@ describe('YieldMath - Base', async function () {
         for (var j = 0; j < yzValues.length; j++) {
           var yValue = yzValues[j][0]
           var zValue = yzValues[j][1]
-          // console.log('    pow (' + xValue + ', ' + yValue + ', ' + zValue + ')')
+          debugLog('    pow (' + xValue + ', ' + yValue + ', ' + zValue + ')')
           var x = BigNumber.from(xValue)
           var y = BigNumber.from(yValue)
           var z = BigNumber.from(zValue)
