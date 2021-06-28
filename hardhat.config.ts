@@ -9,6 +9,9 @@ import 'hardhat-gas-reporter'
 import 'hardhat-typechain'
 import 'solidity-coverage'
 import 'hardhat-deploy'
+import { task, types } from 'hardhat/config'
+import { TASK_TEST } from 'hardhat/builtin-tasks/task-names'
+import { TaskArguments, HardhatRuntimeEnvironment, RunSuperFunction } from 'hardhat/types'
 
 // REQUIRED TO ENSURE METADATA IS SAVED IN DEPLOYMENTS (because solidity-coverage disable it otherwise)
 /* import {
@@ -19,6 +22,16 @@ task(TASK_COMPILE_GET_COMPILER_INPUT).setAction(async (_, bre, runSuper) => {
   input.settings.metadata.useLiteralContent = bre.network.name !== "coverage"
   return input
 }) */
+
+
+// This hook enables debugging during test runs by appending the `--debug` flag to the test command (`yarn test --debug`) and using `debugLog()` (instead of `console.log()`).
+task(TASK_TEST).addFlag("debug", "Enable debugging logs").setAction(
+  async (args: TaskArguments, hre: HardhatRuntimeEnvironment, runSuper: RunSuperFunction<TaskArguments>) => {
+    process.env.DEBUG = args?.["debug"]
+    delete args?.["debug"]
+    await runSuper(args);
+  }
+)
 
 
 function nodeUrl(network: any) {
