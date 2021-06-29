@@ -9,6 +9,9 @@ import 'hardhat-gas-reporter'
 import 'hardhat-typechain'
 import 'solidity-coverage'
 import 'hardhat-deploy'
+import { task, types } from 'hardhat/config'
+import { TASK_TEST } from 'hardhat/builtin-tasks/task-names'
+import { TaskArguments, HardhatRuntimeEnvironment, RunSuperFunction } from 'hardhat/types'
 
 import { task } from 'hardhat/config'
 
@@ -42,6 +45,16 @@ task("lint:collisions", "Checks all contracts for function signatures collisions
     console.log("No collisions, check passed.")
   }
 )
+
+// This hook enables debugging during test runs by appending the `--debug` flag to the test command (`yarn test --debug`) and using `debugLog()` (instead of `console.log()`).
+task(TASK_TEST).addFlag("debug", "Enable debugging logs").setAction(
+  async (args: TaskArguments, hre: HardhatRuntimeEnvironment, runSuper: RunSuperFunction<TaskArguments>) => {
+    process.env.DEBUG = args?.["debug"]
+    delete args?.["debug"]
+    await runSuper(args);
+  }
+)
+
 
 function nodeUrl(network: any) {
   let infuraKey
