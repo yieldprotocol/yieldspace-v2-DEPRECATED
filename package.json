@@ -10,7 +10,7 @@
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "scripts": {
-    "build": "hardhat compile",
+    "build": "rm -rf artifacts typechain && hardhat compile",
     "test": "hardhat test",
     "test:parallel": "mocha --require hardhat/register --recursive --parallel --exit --extension ts",
     "test:deploy": "hardhat deploy --tags DeployTest",

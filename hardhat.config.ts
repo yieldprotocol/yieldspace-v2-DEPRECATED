@@ -13,8 +13,6 @@ import { task, types } from 'hardhat/config'
 import { TASK_TEST } from 'hardhat/builtin-tasks/task-names'
 import { TaskArguments, HardhatRuntimeEnvironment, RunSuperFunction } from 'hardhat/types'
 
-import { task } from 'hardhat/config'
-
 // REQUIRED TO ENSURE METADATA IS SAVED IN DEPLOYMENTS (because solidity-coverage disable it otherwise)
 /* import {
   TASK_COMPILE_GET_COMPILER_INPUT
@@ -96,6 +94,12 @@ module.exports = {
   typechain: {
     outDir: 'typechain',
     target: 'ethers-v5',
+  },
+  abiExporter: {
+    path: './abi',
+    clear: true,
+    flat: true,
+    spacing: 2
   },
   contractSizer: {
     alphaSort: true,
