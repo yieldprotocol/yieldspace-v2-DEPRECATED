@@ -1,3 +1,5 @@
+import { debugLog } from './shared/helpers'
+
 import { YieldMathWrapper } from '../typechain/YieldMathWrapper'
 import { YieldMath } from '../typechain/YieldMath'
 
@@ -75,8 +77,8 @@ describe('YieldMath - Surface', async function () {
         for (var fyTokenBalanceDelta of fyTokenBalanceDeltas) {
           for (var tradeSize of tradeSizes) {
             for (var timeTillMaturity of timesTillMaturity) {
-              console.log(`baseBalance, fyTokenBalanceDelta, tradeSize, timeTillMaturity`)
-              console.log(`${baseBalance}, ${fyTokenBalanceDelta}, ${tradeSize}, ${timeTillMaturity}`)
+              debugLog(`baseBalance, fyTokenBalanceDelta, tradeSize, timeTillMaturity`)
+              debugLog(`${baseBalance}, ${fyTokenBalanceDelta}, ${tradeSize}, ${timeTillMaturity}`)
               const fyTokenBalance = baseBalance.add(fyTokenBalanceDelta)
               let offChain, onChain
               offChain = sellFYToken(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity)
@@ -88,8 +90,8 @@ describe('YieldMath - Surface', async function () {
                 k,
                 g2
               )
-              console.log(`offChain sellFYToken: ${offChain}`)
-              console.log(`onChain sellFYToken: ${onChain}`)
+              debugLog(`offChain sellFYToken: ${offChain}`)
+              debugLog(`onChain sellFYToken: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
               offChain = sellBase(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity)
@@ -101,8 +103,8 @@ describe('YieldMath - Surface', async function () {
                 k,
                 g1
               )
-              console.log(`offChain sellBase: ${offChain}`)
-              console.log(`onChain sellBase: ${onChain}`)
+              debugLog(`offChain sellBase: ${offChain}`)
+              debugLog(`onChain sellBase: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
               offChain = buyBase(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity)
@@ -114,8 +116,8 @@ describe('YieldMath - Surface', async function () {
                 k,
                 g2
               )
-              console.log(`offChain buyBase: ${offChain}`)
-              console.log(`onChain buyBase: ${onChain}`)
+              debugLog(`offChain buyBase: ${offChain}`)
+              debugLog(`onChain buyBase: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
               offChain = buyFYToken(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity)
@@ -127,11 +129,11 @@ describe('YieldMath - Surface', async function () {
                 k,
                 g1
               )
-              console.log(`offChain buyFYToken: ${offChain}`)
-              console.log(`onChain buyFYToken: ${onChain}`)
+              debugLog(`offChain buyFYToken: ${offChain}`)
+              debugLog(`onChain buyFYToken: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              console.log()
+              debugLog()
             }
           }
         }
