@@ -102,7 +102,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
     // ---- Administration ----
 
     /// @dev Set the k, g1 or g2 parameters
-    function setParameter(bytes32 parameter, int128 value) public onlyOwner {
+    function setParameter(bytes32 parameter, int128 value)
+        external onlyOwner
+    {
         if (parameter == "k") k1 = k2 = value;
         else if (parameter == "g1") g1 = value;
         else if (parameter == "g2") g2 = value;
@@ -111,18 +113,27 @@ contract Pool is IPool, ERC20Permit, Ownable {
     }
 
     /// @dev Get k
-    function getK() public view returns (int128) {
+    function getK()
+        external view
+        returns (int128)
+    {
         assert(k1 == k2);
         return k1;
     }
 
     /// @dev Get g1
-    function getG1() public view returns (int128) {
+    function getG1()
+        external view
+        returns (int128)
+    {
         return g1;
     }
 
     /// @dev Get g2
-    function getG2() public view returns (int128) {
+    function getG2()
+        external view
+        returns (int128)
+    {
         return g2;
     }
 
@@ -137,7 +148,10 @@ contract Pool is IPool, ERC20Permit, Ownable {
     /// @return Cached base token balance.
     /// @return Cached virtual FY token balance.
     /// @return Timestamp that balances were last cached.
-    function getCache() public view returns (uint112, uint112, uint32) {
+    function getCache()
+        external view
+        returns (uint112, uint112, uint32)
+    {
         return (baseCached, fyTokenCached, blockTimestampLast);
     }
 
