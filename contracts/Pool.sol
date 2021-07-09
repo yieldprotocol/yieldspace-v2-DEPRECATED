@@ -70,9 +70,9 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
     uint112 private baseCached;              // uses single storage slot, accessible via getCache
     uint112 private fyTokenCached;           // uses single storage slot, accessible via getCache
-    uint32  private blockTimestampLast;             // uses single storage slot, accessible via getCache
+    uint32  private blockTimestampLast;      // uses single storage slot, accessible via getCache
 
-    uint256 public cumulativeBalancesRatio;
+    uint256 public cumulativeBalancesRatio;  // Fixed point factor with 27 decimals (ray)
 
     constructor()
         ERC20Permit(
@@ -196,6 +196,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         uint32 blockTimestamp = uint32(block.timestamp);
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
         if (timeElapsed > 0 && _baseCached != 0 && _fyTokenCached != 0) {
+            // We multiply by 1e27 here so that r = t * y/x is a fixed point factor with 27 decimals 
             uint256 scaledFYTokenCached = uint256(_fyTokenCached) * 1e27;
             cumulativeBalancesRatio += scaledFYTokenCached  * timeElapsed / _baseCached;
         }

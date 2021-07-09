@@ -332,6 +332,7 @@ library YieldMath {
 
   uint128 public constant ONE = 0x10000000000000000; // In 64.64
   uint256 public constant MAX = type(uint128).max;   // Used for overflow checks
+  uint256 public constant VAR = 1e12;                // The logarithm math used is not precise to the wei, but can deviate up to 1e12 from the real value.
 
   /**
    * Calculate the amount of fyToken a user would get for given amount of Base.
@@ -372,7 +373,7 @@ library YieldMath {
       uint256 result = uint256(fyTokenReserves) - uint256(uint128(sum).pow(ONE, a));
       require(result <= MAX, "YieldMath: Rounding induced error");
 
-      result = result > 1e12 ? result - 1e12 : 0; // Subtract error guard, flooring the result at zero
+      result = result > VAR ? result - VAR : 0; // Subtract error guard, flooring the result at zero
 
       return uint128(result);
     }
@@ -417,7 +418,7 @@ library YieldMath {
       uint256 result = uint256(baseReserves) - uint256(uint128(sum).pow(ONE, a));
       require(result <= MAX, "YieldMath: Rounding induced error");
 
-      result = result > 1e12 ? result - 1e12 : 0; // Subtract error guard, flooring the result at zero
+      result = result > VAR ? result - VAR : 0; // Subtract error guard, flooring the result at zero
 
       return uint128(result);
     }
@@ -462,7 +463,7 @@ library YieldMath {
       uint256 result = uint256(uint128(sum).pow(ONE, a)) - uint256(fyTokenReserves);
       require(result <= MAX, "YieldMath: Rounding induced error");
 
-      result = result < MAX - 1e12 ? result + 1e12 : MAX; // Add error guard, ceiling the result at max
+      result = result < MAX - VAR ? result + VAR : MAX; // Add error guard, ceiling the result at max
 
       return uint128(result);
     }
@@ -508,7 +509,7 @@ library YieldMath {
       uint256 result = uint256(uint128(sum).pow(ONE, a)) - uint256(baseReserves);
       require(result <= MAX, "YieldMath: Rounding induced error");
 
-      result = result < MAX - 1e12 ? result + 1e12 : MAX; // Add error guard, ceiling the result at max
+      result = result < MAX - VAR ? result + VAR : MAX; // Add error guard, ceiling the result at max
 
       return uint128(result);
     }
