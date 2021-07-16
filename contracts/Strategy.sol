@@ -5,23 +5,74 @@ import "@yield-protocol/utils-v2/contracts/access/AccessControl.sol";
 import "@yield-protocol/utils-v2/contracts/token/ERC20Permit.sol";
 import "@yield-protocol/utils-v2/contracts/token/TransferHelper.sol";
 import "@yield-protocol/utils-v2/contracts/token/IERC20.sol";
-import "@yield-protocol/vault-interfaces/IFYToken.sol";
-import "@yield-protocol/vault-interfaces/ICauldron.sol";
-import "@yield-protocol/vault-interfaces/ILadle.sol";
 import "@yield-protocol/yieldspace-interfaces/IPool.sol";
+import "@yield-protocol/vault-interfaces/DataTypes.sol";
+
+
+interface ILadle {
+    enum Operation {
+        BUILD,               // 0
+        TWEAK,               // 1
+        GIVE,                // 2
+        DESTROY,             // 3
+        STIR,                // 4
+        POUR,                // 5
+        SERVE,               // 6
+        ROLL,                // 7
+        CLOSE,               // 8
+        REPAY,               // 9
+        REPAY_VAULT,         // 10
+        REPAY_LADLE,         // 11
+        RETRIEVE,            // 12
+        FORWARD_PERMIT,      // 13
+        FORWARD_DAI_PERMIT,  // 14
+        JOIN_ETHER,          // 15
+        EXIT_ETHER,          // 16
+        TRANSFER_TO_POOL,    // 17
+        ROUTE,               // 18
+        TRANSFER_TO_FYTOKEN, // 19
+        REDEEM,              // 20
+        MODULE               // 21
+    }
+
+    function joins(bytes6) external view returns (IJoin);
+    function cauldron() external view returns (ICauldron);
+    function batch(
+        Operation[] calldata operations,
+        bytes[] calldata data
+    ) external payable returns(bytes[] memory results);
+}
+
+interface ICauldron {
+    function assets(bytes6) external view returns (address);
+    function series(bytes6) external view returns (DataTypes.Series memory);
+}
+
+interface IJoin {
+    function join(address user, uint128 wad) external returns (uint128);
+}
 
 
 /// @dev The Pool contract exchanges base for fyToken at a price defined by a specific formula.
 contract Strategy is AccessControl, ERC20Permit {
 
+    event BufferSet(uint128 low, uint128 high);
+    event PoolSwapped(address pool, bytes6 seriesId);
+
+    struct Buffer {
+        uint128 low;
+        uint128 high;
+    }
+
     ILadle public immutable ladle;              // Gateway to the Yield v2 Collateralized Debt Engine
     IERC20 public immutable token;              // Base token for this strategy
     bytes6 public immutable tokenId;            // Identifier for the base token in Yieldv2
     address public immutable tokenJoin;         // Yield v2 Join to deposit token when borrowing
+    Buffer public buffer;                       // Limits for unallocated funds
     IPool public pool;                          // Pool that this strategy invests in
     IFYToken public fyToken;                    // Current fyToken for this strategy
     uint256 public balance;                     // Unallocated base token in this strategy
-    bytes6 public vaultId;                      // Vault used to borrow fyToken
+    bytes12 public vaultId;                      // Vault used to borrow fyToken
 
     constructor(ILadle ladle_, IERC20 token_, bytes6 tokenId_)
         ERC20Permit(
@@ -38,6 +89,27 @@ contract Strategy is AccessControl, ERC20Permit {
         token = token_;
         tokenId = tokenId_;
         tokenJoin = address(ladle.joins(tokenId_));
+        buffer = Buffer({
+            low: 0,
+            high: type(uint128).max
+        });
+    }
+
+    /// @dev Set the buffer limits
+    function setBuffer(uint128 low_, uint128 high_)
+        public
+        auth
+    {
+        require (
+            low_ <= high_,
+            "Buffer limits error"
+        );
+
+        buffer = Buffer({
+            low: low_,
+            high: high_
+        });
+        emit BufferSet(low_, high_);
     }
 
     /// @dev Swap funds to a new pool (auth)
@@ -47,28 +119,30 @@ contract Strategy is AccessControl, ERC20Permit {
         public
         auth
     {
+        ICauldron cauldron = ladle.cauldron();
+        DataTypes.Series memory series = cauldron.series(seriesId_);
         require(
-            ladle.cauldron().assets(seriesId_).fyToken == pool_.fyToken,
+            series.fyToken == pool_.fyToken(),
             "Mismatched seriesId"
         );
         require(
-            vaultId == bytes12(0) || ladle.batch(DESTROY, abi.encode(vaultId)),
+            (vaultId == bytes12(0)) || ladle.batch([ILadle.Operation.DESTROY], [abi.encode(vaultId)]),
             "Repay all debt first"
         );
         
         // Build a new vault
-        bytes12 vaultId = abi.decode(ladle.batch(BUILD, abi.encode(seriesId, tokenId)), (bytes12));
+        vaultId = abi.decode(ladle.batch([ILadle.Operation.BUILD], [abi.encode(seriesId_, tokenId)]), (bytes12));
         pool = pool_;
         fyToken = pool_.fyToken();
-        emit PoolSwapped();
+        emit PoolSwapped(address(pool_), seriesId_);
     }
 
-    /// @dev Value of the stratefy in token terms
+    /// @dev Value of the strategy in token terms
     function strategyValue()
         external view
         returns (uint256 strategy)
     {
-        strategy = _value();
+        strategy = _strategyValue();
     }
 
     /// @dev Value of the stratefy in token terms
@@ -77,8 +151,9 @@ contract Strategy is AccessControl, ERC20Permit {
         returns (uint256 strategy)
     {
         //  - Can we use 1 fyToken = 1 token for this purpose? It overvalues the value of the strategy.
-        //  - If so lpTokens/lpSupply * (lpReserves + lpFYReserves) = value_in_token(strategy)
-        strategy = (token.balanceOf(address(pool)) + fyToken.balanceOf(address(pool))) * pool.balanceOf(address(this)) / pool.totalSupply();
+        //  - If so lpTokens/lpSupply * (lpReserves + lpFYReserves) + unallocated = value_in_token(strategy)
+        strategy = (token.balanceOf(address(pool)) + fyToken.balanceOf(address(pool)) * 
+            pool.balanceOf(address(this))) / pool.totalSupply() + balance;
     }
 
     /// @dev Mint strategy tokens. The underlying tokens that the user contributes need to have been transferred previously.
@@ -89,8 +164,8 @@ contract Strategy is AccessControl, ERC20Permit {
         // Find value of strategy
         // Find value of deposit. Straightforward if done in token
         // minted = supply * deposit/strategy
-        uint256 deposited = token.balanceOf(this) - balance;
-        uint256 minted = _totalSupply - deposited / _strategyValue();
+        uint256 deposited = token.balanceOf(address(this)) - balance;
+        minted = _totalSupply - deposited / _strategyValue();
         balance += deposited;
         _mint(to, minted);
     }
@@ -105,15 +180,17 @@ contract Strategy is AccessControl, ERC20Permit {
         // strategy * burnt/supply = withdrawal
         uint256 toBurn = _balanceOf[address(this)];
         withdrawal = _strategyValue() * toBurn / _totalSupply;
-        if (withdrawal > balance || balance - withdrawal < bufferLow) {
-            _fillBuffer(withdrawal, minTokenReceived, minFYTokenReceived); // TODO: Set slippage via governance, and calculate limits on the fly
+
+        // Divest if the withdrawal would lead to `balance` below `buffer.low`
+        if (withdrawal > balance || balance - withdrawal < buffer.low) {
+            _fillBuffer(withdrawal, 0, 0/* minTokenReceived, minFYTokenReceived*/); // TODO: Set slippage via governance, and calculate limits on the fly
         }
-        balance -= withdrawal; // TODO: Divest if this would lead to `balance` below `BUFFER_LOW`
+        balance -= withdrawal;
         _burn(address(this), toBurn);
         token.transfer(to, withdrawal);
     }
 
-    /// @dev Fill the available funds buffer
+    /// @dev Fill the available funds buffer to the high buffer limit
     function fillBuffer(uint256 minTokenReceived, uint256 minFYTokenReceived)
         public
         auth
@@ -128,12 +205,12 @@ contract Strategy is AccessControl, ERC20Permit {
         returns (uint256 tokenDivested, uint256 fyTokenDivested)
     {
         require(
-            balance - withdrawal < bufferHigh,
+            balance - withdrawal < buffer.high,
             "Buffer is full"
         );
 
         // Find out how many lp tokens we need to burn so that balance - withdrawal = bufferHigh
-        uint256 toObtain = bufferHigh + withdrawal - balance;
+        uint256 toObtain = buffer.high + withdrawal - balance;
         // Find value of lp tokens in token terms, scaled up for precision
         uint256 lpValueUp = (1e18 * (token.balanceOf(address(pool)) + fyToken.balanceOf(address(pool)))) / pool.totalSupply();
         uint256 toDivest = (1e18 * toObtain) / lpValueUp;
@@ -155,17 +232,17 @@ contract Strategy is AccessControl, ERC20Permit {
         //   (investment * p) fyToken + (investment * (1 - p)) token = investment
         //   (investment * p) / ((investment * p) + (investment * (1 - p))) = p
         //   (investment * (1 - p)) / ((investment * p) + (investment * (1 - p))) = 1 - p
-        uint256 fyTokenToPool = tokenInvested.wmul(proportion);
+        uint256 fyTokenToPool = tokenInvested * proportion / 1e18;
         uint256 tokenToPool = tokenInvested - fyTokenToPool;
 
         token.transfer(address(pool), tokenToPool);
 
         token.transfer(tokenJoin, fyTokenToPool);
-        tokenJoin.join(address(0), fyTokenToPool);
-        ladle.batch(POUR, abi.encode(vaultId, address(pool), fyTokenToPool, fyTokenToPool));
+        IJoin(tokenJoin).join(address(0), fyTokenToPool);
+        ladle.batch([ILadle.Operation.POUR], [abi.encode(vaultId, address(pool), fyTokenToPool, fyTokenToPool)]);
 
         // Mint LP tokens with (investment * p) fyToken and (investment * (1 - p)) token
-        minted = pool.mint(address(this), true, min);
+        (,, minted) = pool.mint(address(this), true, min);
     }
 
     /// @dev Invest available funds from the strategy into YieldSpace LP (auth) - Buy and mint
@@ -191,7 +268,7 @@ contract Strategy is AccessControl, ERC20Permit {
         (, tokenDivested, fyTokenDivested) = pool.burn(address(this), minTokenReceived, minFYTokenReceived);
         // Repay with fyToken. Reverts if there isn't enough debt
         fyToken.transfer(address(fyToken), fyTokenDivested);
-        ladle.batch(POUR, abi.encode(vaultId, address(this), fyTokenDivested, fyTokenDivested));
+        ladle.batch([ILadle.Operation.POUR], [abi.encode(vaultId, address(this), fyTokenDivested, fyTokenDivested)]);
         balance += tokenDivested;  
     }
 
@@ -215,6 +292,7 @@ contract Strategy is AccessControl, ERC20Permit {
     {
         // Burn lpTokens
         pool.transfer(address(pool), lpBurnt);
+        uint256 fyTokenDivested;
         (, tokenDivested, fyTokenDivested) = pool.burn(address(this), minTokenReceived, minFYTokenReceived);
         // Redeem all obtained fyToken
         fyToken.transfer(address(fyToken), fyTokenDivested);
