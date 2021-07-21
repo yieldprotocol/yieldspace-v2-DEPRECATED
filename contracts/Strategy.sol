@@ -10,37 +10,11 @@ import "@yield-protocol/vault-interfaces/DataTypes.sol";
 
 
 interface ILadle {
-    enum Operation {
-        BUILD,               // 0
-        TWEAK,               // 1
-        GIVE,                // 2
-        DESTROY,             // 3
-        STIR,                // 4
-        POUR,                // 5
-        SERVE,               // 6
-        ROLL,                // 7
-        CLOSE,               // 8
-        REPAY,               // 9
-        REPAY_VAULT,         // 10
-        REPAY_LADLE,         // 11
-        RETRIEVE,            // 12
-        FORWARD_PERMIT,      // 13
-        FORWARD_DAI_PERMIT,  // 14
-        JOIN_ETHER,          // 15
-        EXIT_ETHER,          // 16
-        TRANSFER_TO_POOL,    // 17
-        ROUTE,               // 18
-        TRANSFER_TO_FYTOKEN, // 19
-        REDEEM,              // 20
-        MODULE               // 21
-    }
-
-    function joins(bytes6) external view returns (IJoin);
+    function joins(bytes6) external view returns (address);
     function cauldron() external view returns (ICauldron);
-    function batch(
-        Operation[] calldata operations,
-        bytes[] calldata data
-    ) external payable returns(bytes[] memory results);
+    function build(bytes6 seriesId, bytes6 ilkId, uint8 salt) external returns (bytes12 vaultId, DataTypes.Vault memory vault);
+    function destroy(bytes12 vaultId) external;
+    function pour(bytes12 vaultId, address to, int128 ink, int128 art) external;
 }
 
 interface ICauldron {
@@ -48,13 +22,26 @@ interface ICauldron {
     function series(bytes6) external view returns (DataTypes.Series memory);
 }
 
-interface IJoin {
-    function join(address user, uint128 wad) external returns (uint128);
+library CastU256U128 {
+    /// @dev Safely cast an uint256 to an uint128
+    function u128(uint256 x) internal pure returns (uint128 y) {
+        require (x <= type(uint128).max, "Cast overflow");
+        y = uint128(x);
+    }
 }
 
+library CastU128I128 {
+    /// @dev Safely cast an uint128 to an int128
+    function i128(uint128 x) internal pure returns (int128 y) {
+        require (x <= uint128(type(int128).max), "Cast overflow");
+        y = int128(x);
+    }
+}
 
 /// @dev The Pool contract exchanges base for fyToken at a price defined by a specific formula.
 contract Strategy is AccessControl, ERC20Permit {
+    using CastU256U128 for uint256;
+    using CastU128I128 for uint128;
 
     event BufferSet(uint128 low, uint128 high);
     event PoolSwapped(address pool, bytes6 seriesId);
@@ -72,7 +59,7 @@ contract Strategy is AccessControl, ERC20Permit {
     IPool public pool;                          // Pool that this strategy invests in
     IFYToken public fyToken;                    // Current fyToken for this strategy
     uint256 public balance;                     // Unallocated base token in this strategy
-    bytes12 public vaultId;                      // Vault used to borrow fyToken
+    bytes12 public vaultId;                     // Vault used to borrow fyToken
 
     constructor(ILadle ladle_, IERC20 token_, bytes6 tokenId_)
         ERC20Permit(
@@ -82,13 +69,13 @@ contract Strategy is AccessControl, ERC20Permit {
         )
     { 
         require(
-            ladle.cauldron().assets(tokenId_) == address(token_),
+            ladle_.cauldron().assets(tokenId_) == address(token_),
             "Mismatched tokenId"
         );
         ladle = ladle_;
         token = token_;
         tokenId = tokenId_;
-        tokenJoin = address(ladle.joins(tokenId_));
+        tokenJoin = ladle_.joins(tokenId_);
         buffer = Buffer({
             low: 0,
             high: type(uint128).max
@@ -125,13 +112,11 @@ contract Strategy is AccessControl, ERC20Permit {
             series.fyToken == pool_.fyToken(),
             "Mismatched seriesId"
         );
-        require(
-            (vaultId == bytes12(0)) || ladle.batch([ILadle.Operation.DESTROY], [abi.encode(vaultId)]),
-            "Repay all debt first"
-        );
+
+        if (vaultId != bytes12(0)) ladle.destroy(vaultId); // This will revert unless the vault has been emptied
         
         // Build a new vault
-        vaultId = abi.decode(ladle.batch([ILadle.Operation.BUILD], [abi.encode(seriesId_, tokenId)]), (bytes12));
+        (vaultId, ) = ladle.build(seriesId_, tokenId, 0);
         pool = pool_;
         fyToken = pool_.fyToken();
         emit PoolSwapped(address(pool_), seriesId_);
@@ -235,13 +220,12 @@ contract Strategy is AccessControl, ERC20Permit {
         uint256 fyTokenToPool = tokenInvested * proportion / 1e18;
         uint256 tokenToPool = tokenInvested - fyTokenToPool;
 
-        token.transfer(address(pool), tokenToPool);
-
         token.transfer(tokenJoin, fyTokenToPool);
-        IJoin(tokenJoin).join(address(0), fyTokenToPool);
-        ladle.batch([ILadle.Operation.POUR], [abi.encode(vaultId, address(pool), fyTokenToPool, fyTokenToPool)]);
+        int128 fyTokenToPool_ = fyTokenToPool.u128().i128();
+        ladle.pour(vaultId, address(pool), fyTokenToPool_, fyTokenToPool_);
 
         // Mint LP tokens with (investment * p) fyToken and (investment * (1 - p)) token
+        token.transfer(address(pool), tokenToPool);
         (,, minted) = pool.mint(address(this), true, min);
     }
 
@@ -268,7 +252,8 @@ contract Strategy is AccessControl, ERC20Permit {
         (, tokenDivested, fyTokenDivested) = pool.burn(address(this), minTokenReceived, minFYTokenReceived);
         // Repay with fyToken. Reverts if there isn't enough debt
         fyToken.transfer(address(fyToken), fyTokenDivested);
-        ladle.batch([ILadle.Operation.POUR], [abi.encode(vaultId, address(this), fyTokenDivested, fyTokenDivested)]);
+        int128 fyTokenDivested_ = fyTokenDivested.u128().i128();
+        ladle.pour(vaultId, address(this), fyTokenDivested_, fyTokenDivested_);
         balance += tokenDivested;  
     }
 
