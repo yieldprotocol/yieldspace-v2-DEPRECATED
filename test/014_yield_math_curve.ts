@@ -1,3 +1,5 @@
+import { debugLog } from './shared/helpers'
+
 import { YieldMathWrapper } from '../typechain/YieldMathWrapper'
 import { YieldMath } from '../typechain/YieldMath'
 
@@ -76,7 +78,7 @@ describe('YieldMath - Curve', async function () {
 
     it('As we approach maturity, price grows to 1 for `fyTokenOutForBaseIn`', async () => {
       for (var i = 0; i < values.length; i++) {
-        // console.log("")
+        debugLog('')
         var baseBalanceValue = values[i][0]
         var fyTokenBalanceValue = values[i][1]
         var baseAmountValue = values[i][2]
@@ -94,7 +96,7 @@ describe('YieldMath - Curve', async function () {
 
           result = await yieldMath.fyTokenOutForBaseIn(baseBalance, fyTokenBalance, baseAmount, t, k, g1)
 
-          // console.log("      " + result.toString())
+          debugLog('      ' + result.toString())
           if (j == 0) {
             // Test that when we are very close to maturity, price is very close to 1 minus flat fee.
             almostEqual(result, maximum, PRECISION)
@@ -138,7 +140,7 @@ describe('YieldMath - Curve', async function () {
 
     it('As we approach maturity, price drops to 1 for `baseOutForFYTokenIn`', async () => {
       for (var i = 0; i < values.length; i++) {
-        // console.log("")
+        debugLog('')
         var baseBalanceValue = values[i][0]
         var fyTokenBalanceValue = values[i][1]
         var baseAmountValue = values[i][2]
@@ -155,7 +157,7 @@ describe('YieldMath - Curve', async function () {
           var t = timeTillMaturity[j]
           result = await yieldMath.baseOutForFYTokenIn(baseBalance, fyTokenBalance, baseAmount, t, k, g2)
 
-          // console.log("      " + result.toString())
+          debugLog('      ' + result.toString())
           if (j == 0) {
             // Test that when we are very close to maturity, price is very close to 1 minus flat fee.
             almostEqual(result, minimum, PRECISION)
@@ -199,7 +201,7 @@ describe('YieldMath - Curve', async function () {
 
     it('As we approach maturity, price grows to 1 for `fyTokenInForBaseOut`', async () => {
       for (var i = 0; i < values.length; i++) {
-        // console.log("")
+        debugLog('')
         var baseBalanceValue = values[i][0]
         var fyTokenBalanceValue = values[i][1]
         var baseAmountValue = values[i][2]
@@ -216,7 +218,7 @@ describe('YieldMath - Curve', async function () {
           var t = timeTillMaturity[j]
           result = await yieldMath.fyTokenInForBaseOut(baseBalance, fyTokenBalance, baseAmount, t, k, g2)
 
-          // console.log("      " + result.toString())
+          debugLog('      ' + result.toString())
           if (j == 0) {
             // Test that when we are very close to maturity, price is very close to 1 plus flat fee.
             almostEqual(result, maximum, PRECISION)
@@ -260,7 +262,7 @@ describe('YieldMath - Curve', async function () {
 
     it('As we approach maturity, price drops to 1 for `baseInForFYTokenOut`', async () => {
       for (var i = 0; i < values.length; i++) {
-        // console.log("")
+        debugLog('')
         var baseBalanceValue = values[i][0]
         var fyTokenBalanceValue = values[i][1]
         var baseAmountValue = values[i][2]
@@ -277,7 +279,7 @@ describe('YieldMath - Curve', async function () {
           var t = timeTillMaturity[j]
           result = await yieldMath.baseInForFYTokenOut(baseBalance, fyTokenBalance, baseAmount, t, k, g1)
 
-          // console.log("      " + result.toString())
+          debugLog('      ' + result.toString())
           if (j == 0) {
             // Test that when we are very close to maturity, price is very close to 1 plus flat fee.
             almostEqual(result, minimum, PRECISION)

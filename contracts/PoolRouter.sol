@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 
-pragma solidity >= 0.8.0;
+pragma solidity 0.8.1;
 
 import "@yield-protocol/utils-v2/contracts/token/IERC20.sol";
 import "@yield-protocol/utils-v2/contracts/token/IERC2612.sol";
@@ -40,9 +40,11 @@ contract PoolRouter {
     function batch(
         PoolDataTypes.Operation[] calldata operations,
         bytes[] calldata data
-    ) external payable {
+    ) external payable returns(bytes[] memory results) {
         require(operations.length == data.length, "Mismatched operation data");
         PoolAddresses memory cache;
+
+        results = new bytes[](operations.length);
 
         for (uint256 i = 0; i < operations.length; i += 1) {
             PoolDataTypes.Operation operation = operations[i];
@@ -50,33 +52,35 @@ contract PoolRouter {
             if (operation == PoolDataTypes.Operation.ROUTE) {
                 (address base, address fyToken, bytes memory poolcall) = abi.decode(data[i], (address, address, bytes));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
-                _route(cache, poolcall);
+                results[i] = _route(cache, poolcall);
 
             } else if (operation == PoolDataTypes.Operation.TRANSFER_TO_POOL) {
                 (address base, address fyToken, address token, uint128 wad) = abi.decode(data[i], (address, address, address, uint128));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
-                _transferToPool(cache, token, wad);
+                results[i] = abi.encode(_transferToPool(cache, token, wad));
 
             } else if (operation == PoolDataTypes.Operation.FORWARD_PERMIT) {
                 (address base, address fyToken, address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s) = 
                     abi.decode(data[i], (address, address, address, address, uint256, uint256, uint8, bytes32, bytes32));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
                 _forwardPermit(cache, token, spender, amount, deadline, v, r, s);
+                results[i] = abi.encode(true);
 
             } else if (operation == PoolDataTypes.Operation.FORWARD_DAI_PERMIT) {
                         (address base, address fyToken, address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s) = 
                     abi.decode(data[i], (address, address, address, uint256, uint256, bool, uint8, bytes32, bytes32));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
                 _forwardDaiPermit(cache, spender, nonce, deadline, allowed, v, r, s);
+                results[i] = abi.encode(true);
 
             } else if (operation == PoolDataTypes.Operation.JOIN_ETHER) {
                 (address base, address fyToken) = abi.decode(data[i], (address, address));
                 if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
-                _joinEther(cache.pool);
+                results[i] = abi.encode(_joinEther(cache.pool));
 
             } else if (operation == PoolDataTypes.Operation.EXIT_ETHER) {
                 (address to) = abi.decode(data[i], (address));
-                _exitEther(to);
+                results[i] = abi.encode(_exitEther(to));
 
             } else {
                 revert("Invalid operation");
@@ -92,17 +96,6 @@ contract PoolRouter {
         require (pool != address(0), "Pool not found");
     }
 
-    /// @dev Allow users to trigger a token transfer to a pool, to be used with multicall
-    function transferToPool(address base, address fyToken, address token, uint128 wad)
-        external payable
-        returns (bool)
-    {
-        return _transferToPool(
-            PoolAddresses(base, fyToken, findPool(base, fyToken)),
-            token, wad
-        );
-    }
-
     /// @dev Allow users to trigger a token transfer to a pool, to be used with batch
     function _transferToPool(PoolAddresses memory addresses, address token, uint128 wad)
         private
@@ -116,8 +109,9 @@ contract PoolRouter {
     /// @dev Allow users to route calls to a pool, to be used with batch
     function _route(PoolAddresses memory addresses, bytes memory data)
         private
-        returns (bool success, bytes memory result)
+        returns (bytes memory result)
     {
+        bool success;
         (success, result) = addresses.pool.call(data);
         if (!success) revert(RevertMsgExtractor.getRevertMsg(result));
     }
