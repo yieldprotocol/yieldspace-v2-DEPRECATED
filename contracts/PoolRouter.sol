@@ -25,66 +25,15 @@ contract PoolRouter {
         weth = weth_;
     }
 
-    struct PoolAddresses {
-        address base;
-        address fyToken;
-        address pool;
-    }
-
     /// @dev Submit a series of calls for execution
-    /// The `bases` and `fyTokens` parameters define the pools that will be target for operations
-    /// Each trio of `target`, `operation` and `data` define one call:
-    ///  - `target` is an index in the `bases` and `fyTokens` arrays, from which contract addresses the target will be determined.
-    ///  - `operation` is a numerical identifier for the call to be executed, from the enum `Operation`
-    ///  - `data` is an abi-encoded group of parameters, to be consumed by the function encoded in `operation`.
-    function batch(
-        PoolDataTypes.Operation[] calldata operations,
-        bytes[] calldata data
-    ) external payable returns(bytes[] memory results) {
-        require(operations.length == data.length, "Mismatched operation data");
-        PoolAddresses memory cache;
-
-        results = new bytes[](operations.length);
-
-        for (uint256 i = 0; i < operations.length; i += 1) {
-            PoolDataTypes.Operation operation = operations[i];
-            
-            if (operation == PoolDataTypes.Operation.ROUTE) {
-                (address base, address fyToken, bytes memory poolcall) = abi.decode(data[i], (address, address, bytes));
-                if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
-                results[i] = _route(cache, poolcall);
-
-            } else if (operation == PoolDataTypes.Operation.TRANSFER_TO_POOL) {
-                (address base, address fyToken, address token, uint128 wad) = abi.decode(data[i], (address, address, address, uint128));
-                if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
-                results[i] = abi.encode(_transferToPool(cache, token, wad));
-
-            } else if (operation == PoolDataTypes.Operation.FORWARD_PERMIT) {
-                (address base, address fyToken, address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s) = 
-                    abi.decode(data[i], (address, address, address, address, uint256, uint256, uint8, bytes32, bytes32));
-                if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
-                _forwardPermit(cache, token, spender, amount, deadline, v, r, s);
-                results[i] = abi.encode(true);
-
-            } else if (operation == PoolDataTypes.Operation.FORWARD_DAI_PERMIT) {
-                        (address base, address fyToken, address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s) = 
-                    abi.decode(data[i], (address, address, address, uint256, uint256, bool, uint8, bytes32, bytes32));
-                if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
-                _forwardDaiPermit(cache, spender, nonce, deadline, allowed, v, r, s);
-                results[i] = abi.encode(true);
-
-            } else if (operation == PoolDataTypes.Operation.JOIN_ETHER) {
-                (address base, address fyToken) = abi.decode(data[i], (address, address));
-                if (cache.base != base || cache.fyToken != fyToken) cache = PoolAddresses(base, fyToken, findPool(base, fyToken));
-                results[i] = abi.encode(_joinEther(cache.pool));
-
-            } else if (operation == PoolDataTypes.Operation.EXIT_ETHER) {
-                (address to) = abi.decode(data[i], (address));
-                results[i] = abi.encode(_exitEther(to));
-
-            } else {
-                revert("Invalid operation");
-            }
+    /// @notice Allows batched call to self (this contract).
+    /// @param calls An array of inputs for each call.
+    function batch(bytes[] calldata calls) external payable returns(bytes[] memory results) {
+        results = new bytes[](calls.length);
+        for (uint256 i = 0; i < calls.length; i++) {
+            (bool success, bytes memory result) = address(this).delegatecall(calls[i]);
+            if (!success) revert(RevertMsgExtractor.getRevertMsg(result));
+            results[i] = result;
         }
     }
 
@@ -97,41 +46,50 @@ contract PoolRouter {
     }
 
     /// @dev Allow users to trigger a token transfer to a pool, to be used with batch
-    function _transferToPool(PoolAddresses memory addresses, address token, uint128 wad)
-        private
+    function transferToPool(address base, address fyToken, address token, uint128 wad)
+        external payable
         returns (bool)
     {
-        require(token == addresses.base || token == addresses.fyToken || token == addresses.pool, "Mismatched token");
-        IERC20(token).safeTransferFrom(msg.sender, address(addresses.pool), wad);
+        // TODO: If we want to avoid anyone using this router to do arbitrary calls on arbitrary contracts, the PoolFactory needs to drop CREATE2
+        // Otherwise, anyone can create a pool with any two addresses, and use that to drain the wallet of any user
+        address pool = findPool(base, fyToken);
+        require(token == base || token == fyToken || token == pool, "Mismatched token");
+        IERC20(token).safeTransferFrom(msg.sender, pool, wad);
         return true;
     }
 
     /// @dev Allow users to route calls to a pool, to be used with batch
-    function _route(PoolAddresses memory addresses, bytes memory data)
-        private
+    function route(address base, address fyToken, bytes memory data)
+        external payable
         returns (bytes memory result)
     {
+        // TODO: Same issue as above. There is no guarantee the pool is not a malicious contract, although mining for a specific pool address is hard.
+        address pool = findPool(base, fyToken);
         bool success;
-        (success, result) = addresses.pool.call(data);
+        (success, result) = pool.call(data);
         if (!success) revert(RevertMsgExtractor.getRevertMsg(result));
     }
 
     // ---- Permit management ----
 
     /// @dev Execute an ERC2612 permit for the selected asset or fyToken, to be used with batch
-    function _forwardPermit(PoolAddresses memory addresses, address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
-        private
+    function forwardPermit(address base, address fyToken, address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
+        external payable
     {
-        require(token == addresses.base || token == addresses.fyToken || token == addresses.pool, "Mismatched token");
+        // TODO: Same issue as above. I can create a pool from two malicious tokens, so that permits can be forwarded to them.
+        address pool = findPool(base, fyToken);
+        require(token == base || token == fyToken || token == pool, "Mismatched token");
         IERC2612(token).permit(msg.sender, spender, amount, deadline, v, r, s);
     }
 
     /// @dev Execute a Dai-style permit for the selected asset or fyToken, to be used with batch
-    function _forwardDaiPermit(PoolAddresses memory addresses, address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s)
-        private
+    function forwardDaiPermit(address base, address fyToken, address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s)
+        external payable
     {
+        // TODO: Same issue as above. I can create a pool from two malicious tokens, so that permits can be forwarded to them.
+        findPool(base, fyToken);
         // Only the base token would ever be Dai
-        DaiAbstract(addresses.base).permit(msg.sender, spender, nonce, deadline, allowed, v, r, s);
+        DaiAbstract(base).permit(msg.sender, spender, nonce, deadline, allowed, v, r, s);
     }
 
     // ---- Ether management ----
@@ -142,10 +100,12 @@ contract PoolRouter {
     }
 
     /// @dev Accept Ether, wrap it and forward it to the to a pool
-    function _joinEther(address pool)
-        private
+    function joinEther(address base, address fyToken)
+        external payable
         returns (uint256 ethTransferred)
     {
+        // TODO: Same issue as above. There is no guarantee the pool is not a malicious contract, although mining for a specific pool address is hard.
+        address pool = findPool(base, fyToken);
         ethTransferred = address(this).balance;
 
         weth.deposit{ value: ethTransferred }();   // TODO: Test gas savings using WETH10 `depositTo`
@@ -153,8 +113,8 @@ contract PoolRouter {
     }
 
     /// @dev Unwrap Wrapped Ether held by this Router, and send the Ether
-    function _exitEther(address to)
-        private
+    function exitEther(address to)
+        external payable
         returns (uint256 ethTransferred)
     {
         ethTransferred = weth.balanceOf(address(this));
