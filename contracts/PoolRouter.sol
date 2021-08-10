@@ -65,8 +65,6 @@ contract PoolRouter is AccessControl {
         external payable
         returns (bool)
     {
-        // TODO: If we want to avoid anyone using this router to do arbitrary calls on arbitrary contracts, the PoolFactory needs to drop CREATE2
-        // Otherwise, anyone can create a pool with any two addresses, and use that to drain the wallet of any user
         address pool = findPool(base, fyToken);
         require(token == base || token == fyToken || token == pool, "Mismatched token");
         IERC20(token).safeTransferFrom(msg.sender, pool, wad);
@@ -78,7 +76,6 @@ contract PoolRouter is AccessControl {
         external payable
         returns (bytes memory result)
     {
-        // TODO: Same issue as above. There is no guarantee the pool is not a malicious contract, although mining for a specific pool address is hard.
         address pool = findPool(base, fyToken);
         bool success;
         (success, result) = pool.call(data);
@@ -91,7 +88,6 @@ contract PoolRouter is AccessControl {
     function forwardPermit(address base, address fyToken, address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
         external payable
     {
-        // TODO: Same issue as above. I can create a pool from two malicious tokens, so that permits can be forwarded to them.
         address pool = findPool(base, fyToken);
         require(token == base || token == fyToken || token == pool, "Mismatched token");
         IERC2612(token).permit(msg.sender, spender, amount, deadline, v, r, s);
@@ -119,7 +115,6 @@ contract PoolRouter is AccessControl {
         external payable
         returns (uint256 ethTransferred)
     {
-        // TODO: Same issue as above. There is no guarantee the pool is not a malicious contract, although mining for a specific pool address is hard.
         address pool = findPool(base, fyToken);
         ethTransferred = address(this).balance;
 
