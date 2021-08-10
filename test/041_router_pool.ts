@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 
-import { constants } from '@yield-protocol/utils-v2'
+import { constants, id } from '@yield-protocol/utils-v2'
 const { WAD } = constants
 
 import { CALCULATE_FROM_BASE } from '../src/constants'
@@ -56,13 +56,19 @@ describe('PoolRouter - Pool', async function () {
     fyToken2 = yieldSpace.fyTokens.get(fyToken2Id) as FYTokenMock
     pool1 = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyToken1Id) as Pool
     pool2 = (yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyToken2Id) as Pool
+
+    await router.router.grantRole(id('setTargets(address[],bool)'), owner)
+    await router.router.setTargets(
+      [base.address, fyToken1.address, fyToken2.address, pool1.address, pool2.address],
+      true
+    )
   })
 
   it('transfers base tokens to a pool', async () => {
     const baseBefore = await base.balanceOf(pool1.address)
     await base.mint(owner, WAD)
     await base.approve(router.address, WAD)
-    await router.transferToPool(base.address, fyToken1.address, base.address, WAD)
+    await router.transfer(base.address, pool1.address, WAD)
     expect(await base.balanceOf(pool1.address)).to.equal(baseBefore.add(WAD))
   })
 
@@ -70,7 +76,7 @@ describe('PoolRouter - Pool', async function () {
     const fyTokensBefore = await fyToken1.balanceOf(pool1.address)
     await fyToken1.mint(owner, WAD)
     await fyToken1.approve(router.address, WAD)
-    await router.transferToPool(base.address, fyToken1.address, fyToken1.address, WAD)
+    await router.transfer(fyToken1.address, pool1.address, WAD)
     expect(await fyToken1.balanceOf(pool1.address)).to.equal(fyTokensBefore.add(WAD))
   })
 
@@ -81,7 +87,7 @@ describe('PoolRouter - Pool', async function () {
 
     const poolTokensBefore = await pool1.balanceOf(pool1.address)
     await pool1.approve(router.address, WAD)
-    await router.transferToPool(base.address, fyToken1.address, pool1.address, WAD)
+    await router.transfer(pool1.address, pool1.address, WAD)
     expect(await pool1.balanceOf(pool1.address)).to.equal(poolTokensBefore.add(WAD))
   })
 
@@ -90,7 +96,7 @@ describe('PoolRouter - Pool', async function () {
     await base.mint(owner, WAD)
     await base.approve(router.address, WAD)
 
-    await router.batch([router.transferToPoolAction(base.address, fyToken1.address, base.address, WAD)])
+    await router.batch([router.transferAction(base.address, pool1.address, WAD)])
 
     expect(await base.balanceOf(pool1.address)).to.equal(baseBefore.add(WAD))
   })
@@ -100,7 +106,7 @@ describe('PoolRouter - Pool', async function () {
 
     await base.approve(router.address, WAD)
     await router.batch([
-      router.transferToPoolAction(base.address, fyToken1.address, base.address, WAD),
+      router.transferAction(base.address, pool1.address, WAD),
       router.sellBaseAction(base.address, fyToken1.address, owner, 0),
     ])
   })
@@ -110,7 +116,7 @@ describe('PoolRouter - Pool', async function () {
 
     await fyToken1.approve(router.address, WAD)
     await router.batch([
-      router.transferToPoolAction(base.address, fyToken1.address, fyToken1.address, WAD),
+      router.transferAction(fyToken1.address, pool1.address, WAD),
       router.sellFYTokenAction(base.address, fyToken1.address, owner, 0),
     ])
   })
@@ -120,7 +126,7 @@ describe('PoolRouter - Pool', async function () {
 
     await base.approve(router.address, WAD)
     await router.batch([
-      router.transferToPoolAction(base.address, fyToken1.address, base.address, WAD),
+      router.transferAction(base.address, pool1.address, WAD),
       router.mintWithBaseAction(base.address, fyToken1.address, owner, WAD.div(100), 0),
     ])
   })
@@ -128,7 +134,7 @@ describe('PoolRouter - Pool', async function () {
   it('transfers lp and burns for base', async () => {
     await pool1.approve(router.address, WAD)
     await router.batch([
-      router.transferToPoolAction(base.address, fyToken1.address, pool1.address, WAD),
+      router.transferAction(pool1.address, pool1.address, WAD),
       router.burnForBaseAction(base.address, fyToken1.address, owner, 0),
     ])
   })
@@ -137,7 +143,7 @@ describe('PoolRouter - Pool', async function () {
     beforeEach(async () => {
       await base.mint(owner, WAD)
       await base.approve(router.address, WAD)
-      await router.transferToPool(base.address, fyToken1.address, base.address, WAD)
+      await router.transfer(base.address, pool1.address, WAD)
     })
 
     it('retrieves tokens from a pool using route', async () => {

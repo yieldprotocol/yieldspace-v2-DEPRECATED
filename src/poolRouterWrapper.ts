@@ -32,20 +32,20 @@ export class PoolRouterWrapper {
     else return this.router.batch(actions, overrides)
   }
 
-  public forwardPermitAction(base: string, fyToken: string, token: string, spender: string, amount: BigNumberish, deadline: BigNumberish, v: BigNumberish, r: Buffer, s: Buffer): BytesLike {
-    return this.router.interface.encodeFunctionData('forwardPermit', [base, fyToken, token, spender, amount, deadline, v, r, s])
+  public forwardPermitAction(token: string, spender: string, amount: BigNumberish, deadline: BigNumberish, v: BigNumberish, r: Buffer, s: Buffer): BytesLike {
+    return this.router.interface.encodeFunctionData('forwardPermit', [token, spender, amount, deadline, v, r, s])
   }
 
-  public async forwardPermit(base: string, fyToken: string, token: string, spender: string, amount: BigNumberish, deadline: BigNumberish, v: BigNumberish, r: Buffer, s: Buffer): Promise<ContractTransaction> {
-    return this.router.forwardPermit(base, fyToken, token, spender, amount, deadline, v, r, s)
+  public async forwardPermit(token: string, spender: string, amount: BigNumberish, deadline: BigNumberish, v: BigNumberish, r: Buffer, s: Buffer): Promise<ContractTransaction> {
+    return this.router.forwardPermit(token, spender, amount, deadline, v, r, s)
   }
 
-  public forwardDaiPermitAction(base: string, fyToken: string, spender: string, nonce: BigNumberish, deadline: BigNumberish, allowed: boolean, v: BigNumberish, r: Buffer, s: Buffer): BytesLike {
-    return this.router.interface.encodeFunctionData('forwardDaiPermit', [base, fyToken, spender, nonce, deadline, allowed, v, r, s])
+  public forwardDaiPermitAction(token: string, spender: string, nonce: BigNumberish, deadline: BigNumberish, allowed: boolean, v: BigNumberish, r: Buffer, s: Buffer): BytesLike {
+    return this.router.interface.encodeFunctionData('forwardDaiPermit', [token, spender, nonce, deadline, allowed, v, r, s])
   }
 
-  public async forwardDaiPermit(base: string, fyToken: string, spender: string, nonce: BigNumberish, deadline: BigNumberish, allowed: boolean, v: BigNumberish, r: Buffer, s: Buffer): Promise<ContractTransaction> {
-    return this.router.forwardDaiPermit(base, fyToken, spender, nonce, deadline, allowed, v, r, s)
+  public async forwardDaiPermit(token: string, spender: string, nonce: BigNumberish, deadline: BigNumberish, allowed: boolean, v: BigNumberish, r: Buffer, s: Buffer): Promise<ContractTransaction> {
+    return this.router.forwardDaiPermit(token, spender, nonce, deadline, allowed, v, r, s)
   }
 
   public joinEtherAction(base: string, fyToken: string): BytesLike {
@@ -64,12 +64,12 @@ export class PoolRouterWrapper {
     return this.router.exitEther(to)
   }
 
-  public transferToPoolAction(base: string, fyToken: string, token: string, wad: BigNumberish): BytesLike {
-    return this.router.interface.encodeFunctionData('transferToPool', [base, fyToken, token, wad])
+  public transferAction(token: string, receiver: string, wad: BigNumberish): BytesLike {
+    return this.router.interface.encodeFunctionData('transfer', [token, receiver, wad])
   }
 
-  public async transferToPool(base: string, fyToken: string, token: string, wad: BigNumberish): Promise<ContractTransaction> {
-    return this.router.transferToPool(base, fyToken, token, wad)
+  public async transfer(token: string, receiver: string, wad: BigNumberish): Promise<ContractTransaction> {
+    return this.router.transfer(token, receiver, wad)
   }
 
   public routeAction(base: string, fyToken: string, poolcall: string): BytesLike {

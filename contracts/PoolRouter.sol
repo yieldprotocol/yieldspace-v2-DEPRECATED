@@ -18,26 +18,38 @@ contract PoolRouter is AccessControl {
     using AllTransferHelper for IERC20;
     using AllTransferHelper for address payable;
 
-    event ModuleSet(address indexed module, address indexed token, bool indexed set);
+    event ModuleSet(address indexed module, bool indexed set);
+    event TargetSet(address indexed target, bool indexed set);
 
     IPoolFactory public immutable factory;
     IWETH9 public immutable weth;
 
-    mapping(address => mapping(address => bool)) public modules;
+    mapping(address => bool) public modules;
+    mapping(address => bool) public targets;
 
     constructor(IPoolFactory factory_, IWETH9 weth_) {
         factory = factory_;
         weth = weth_;
     }
 
-    /// @dev Add or remove a module, and a token to transfer to it.
-    /// @notice If we just want to add a moudle, but no token, use the zero address for the latter
-    function setModule(address module, address token, bool set)
+    /// @dev Add or remove a module.
+    function setModule(address module, bool set)
         external
         auth
     {
-        modules[module][token] = set;
-        emit ModuleSet(module, token, set);
+        modules[module] = set;
+        emit ModuleSet(module, set);
+    }
+
+    /// @dev Add or remove permit or transfer target contracts.
+    function setTargets(address[] memory targets_, bool set)
+        external
+        auth
+    {
+        for (uint256 i; i < targets_.length; i++) {
+            targets[targets_[i]] = set;
+            emit TargetSet(targets_[i], set);
+        }
     }
 
     /// @dev Submit a series of calls for execution
@@ -61,13 +73,22 @@ contract PoolRouter is AccessControl {
     }
 
     /// @dev Allow users to trigger a token transfer to a pool, to be used with batch
-    function transferToPool(address base, address fyToken, address token, uint128 wad)
+    function transfer(address token, address receiver, uint128 wad)
         external payable
         returns (bool)
     {
-        address pool = findPool(base, fyToken);
-        require(token == base || token == fyToken || token == pool, "Mismatched token");
-        IERC20(token).safeTransferFrom(msg.sender, pool, wad);
+        require(targets[token], "Unknown token");
+        IERC20(token).safeTransferFrom(msg.sender, receiver, wad);
+        return true;
+    }
+
+    /// @dev Allow users to remove tokens from the Router, to be used with batch
+    function retrieve(address token, address receiver, uint128 wad)
+        external payable
+        returns (bool)
+    {
+        require(targets[token], "Unknown token");
+        IERC20(token).safeTransferFrom(address(this), receiver, wad);
         return true;
     }
 
@@ -85,22 +106,19 @@ contract PoolRouter is AccessControl {
     // ---- Permit management ----
 
     /// @dev Execute an ERC2612 permit for the selected asset or fyToken, to be used with batch
-    function forwardPermit(address base, address fyToken, address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
+    function forwardPermit(address token, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
         external payable
     {
-        address pool = findPool(base, fyToken);
-        require(token == base || token == fyToken || token == pool, "Mismatched token");
+        require(targets[token], "Unknown token");
         IERC2612(token).permit(msg.sender, spender, amount, deadline, v, r, s);
     }
 
     /// @dev Execute a Dai-style permit for the selected asset or fyToken, to be used with batch
-    function forwardDaiPermit(address base, address fyToken, address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s)
+    function forwardDaiPermit(address token, address spender, uint256 nonce, uint256 deadline, bool allowed, uint8 v, bytes32 r, bytes32 s)
         external payable
     {
-        // TODO: Same issue as above. I can create a pool from two malicious tokens, so that permits can be forwarded to them.
-        findPool(base, fyToken);
-        // Only the base token would ever be Dai
-        DaiAbstract(base).permit(msg.sender, spender, nonce, deadline, allowed, v, r, s);
+        require(targets[token], "Unknown token");
+        DaiAbstract(token).permit(msg.sender, spender, nonce, deadline, allowed, v, r, s);
     }
 
     // ---- Ether management ----
@@ -140,18 +158,9 @@ contract PoolRouter is AccessControl {
         external payable
         returns (bytes memory result)
     {
-        require (modules[module][address(0)], "Unregistered module");
+        require (modules[module], "Unknown module");
         bool success;
         (success, result) = module.delegatecall(data);
         if (!success) revert(RevertMsgExtractor.getRevertMsg(result));
-    }
-
-    /// @dev Allow users to trigger a token transfer to a module through the router, to be used with batch
-    function transferToModule(address module, address token, uint256 wad)
-        external payable
-    {
-        require (modules[module][token], "Unregistered token and module");
-
-        IERC20(token).safeTransferFrom(msg.sender, module, wad);
     }
 }

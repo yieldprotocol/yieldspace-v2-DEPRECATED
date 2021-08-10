@@ -1,5 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { constants, signatures } from '@yield-protocol/utils-v2'
+import { constants, signatures, id } from '@yield-protocol/utils-v2'
 const { WAD, MAX256, DAI } = constants
 const MAX = MAX256
 
@@ -54,6 +54,9 @@ describe('PoolRouter - Permit', async function () {
 
     dai = yieldSpace.bases.get(DAI) as Base
     fyDai = yieldSpace.fyTokens.get(fyDaiId) as FYToken
+
+    await router.router.grantRole(id('setTargets(address[],bool)'), owner)
+    await router.router.setTargets([base.address, dai.address, fyToken.address, fyDai.address, pool.address], true)
   })
 
   it('users can use the router to execute permit on an base', async () => {
@@ -70,9 +73,7 @@ describe('PoolRouter - Permit', async function () {
 
     const { v, r, s } = signatures.sign(permitDigest, signatures.privateKey0)
 
-    expect(
-      await router.forwardPermit(base.address, fyToken.address, base.address, router.address, amount, deadline, v, r, s)
-    )
+    expect(await router.forwardPermit(base.address, router.address, amount, deadline, v, r, s))
       .to.emit(base, 'Approval')
       .withArgs(owner, router.address, WAD)
 
@@ -93,19 +94,7 @@ describe('PoolRouter - Permit', async function () {
 
     const { v, r, s } = signatures.sign(permitDigest, signatures.privateKey0)
 
-    expect(
-      await router.forwardPermit(
-        base.address,
-        fyToken.address,
-        fyToken.address,
-        router.address,
-        amount,
-        deadline,
-        v,
-        r,
-        s
-      )
-    )
+    expect(await router.forwardPermit(fyToken.address, router.address, amount, deadline, v, r, s))
       .to.emit(fyToken, 'Approval')
       .withArgs(owner, router.address, WAD)
 
@@ -126,9 +115,7 @@ describe('PoolRouter - Permit', async function () {
 
     const { v, r, s } = signatures.sign(permitDigest, signatures.privateKey0)
 
-    expect(
-      await router.forwardPermit(base.address, fyToken.address, pool.address, router.address, amount, deadline, v, r, s)
-    )
+    expect(await router.forwardPermit(pool.address, router.address, amount, deadline, v, r, s))
       .to.emit(pool, 'Approval')
       .withArgs(owner, router.address, WAD)
 
@@ -149,21 +136,7 @@ describe('PoolRouter - Permit', async function () {
 
     const { v, r, s } = signatures.sign(permitDigest, signatures.privateKey0)
 
-    expect(
-      await router.batch([
-        router.forwardPermitAction(
-          base.address,
-          fyToken.address,
-          base.address,
-          router.address,
-          amount,
-          deadline,
-          v,
-          r,
-          s
-        ),
-      ])
-    )
+    expect(await router.batch([router.forwardPermitAction(base.address, router.address, amount, deadline, v, r, s)]))
       .to.emit(base, 'Approval')
       .withArgs(owner, router.address, WAD)
 
@@ -183,7 +156,7 @@ describe('PoolRouter - Permit', async function () {
 
     const { v, r, s } = signatures.sign(daiPermitDigest, signatures.privateKey0)
 
-    expect(await router.forwardDaiPermit(dai.address, fyDai.address, router.address, nonce, deadline, true, v, r, s))
+    expect(await router.forwardDaiPermit(dai.address, router.address, nonce, deadline, true, v, r, s))
       .to.emit(dai, 'Approval')
       .withArgs(owner, router.address, MAX)
 
@@ -204,9 +177,7 @@ describe('PoolRouter - Permit', async function () {
     const { v, r, s } = signatures.sign(daiPermitDigest, signatures.privateKey0)
 
     expect(
-      await router.batch([
-        router.forwardDaiPermitAction(dai.address, fyDai.address, router.address, nonce, deadline, true, v, r, s),
-      ])
+      await router.batch([router.forwardDaiPermitAction(dai.address, router.address, nonce, deadline, true, v, r, s)])
     )
       .to.emit(dai, 'Approval')
       .withArgs(owner, router.address, MAX)
