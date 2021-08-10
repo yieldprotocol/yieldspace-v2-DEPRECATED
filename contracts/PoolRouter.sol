@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.1;
 
+import "@yield-protocol/utils-v2/contracts/access/AccessControl.sol";
 import "@yield-protocol/utils-v2/contracts/token/IERC20.sol";
 import "@yield-protocol/utils-v2/contracts/token/IERC2612.sol";
 import "@yield-protocol/utils-v2/contracts/token/AllTransferHelper.sol";
@@ -13,16 +14,30 @@ import "@yield-protocol/yieldspace-interfaces/PoolDataTypes.sol";
 import "dss-interfaces/src/dss/DaiAbstract.sol";
 
 
-contract PoolRouter {
+contract PoolRouter is AccessControl {
     using AllTransferHelper for IERC20;
     using AllTransferHelper for address payable;
+
+    event ModuleSet(address indexed module, address indexed token, bool indexed set);
 
     IPoolFactory public immutable factory;
     IWETH9 public immutable weth;
 
+    mapping(address => mapping(address => bool)) public modules;
+
     constructor(IPoolFactory factory_, IWETH9 weth_) {
         factory = factory_;
         weth = weth_;
+    }
+
+    /// @dev Add or remove a module, and a token to transfer to it.
+    /// @notice If we just want to add a moudle, but no token, use the zero address for the latter
+    function setModule(address module, address token, bool set)
+        external
+        auth
+    {
+        modules[module][token] = set;
+        emit ModuleSet(module, token, set);
     }
 
     /// @dev Submit a series of calls for execution
@@ -121,5 +136,27 @@ contract PoolRouter {
 
         weth.withdraw(ethTransferred);   // TODO: Test gas savings using WETH10 `withdrawTo`
         payable(to).safeTransferETH(ethTransferred);
+    }
+
+    // ---- Module router ----
+
+    /// @dev Allow users to use functionality coded in a module, to be used with batch
+    function moduleCall(address module, bytes memory data)
+        external payable
+        returns (bytes memory result)
+    {
+        require (modules[module][address(0)], "Unregistered module");
+        bool success;
+        (success, result) = module.delegatecall(data);
+        if (!success) revert(RevertMsgExtractor.getRevertMsg(result));
+    }
+
+    /// @dev Allow users to trigger a token transfer to a module through the router, to be used with batch
+    function transferToModule(address module, address token, uint256 wad)
+        external payable
+    {
+        require (modules[module][token], "Unregistered token and module");
+
+        IERC20(token).safeTransferFrom(msg.sender, module, wad);
     }
 }
