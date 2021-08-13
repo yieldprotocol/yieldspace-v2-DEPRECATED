@@ -6,53 +6,26 @@ import "@yield-protocol/utils-v2/contracts/token/IERC20.sol";
 import "@yield-protocol/utils-v2/contracts/token/IERC20Metadata.sol";
 import "@yield-protocol/utils-v2/contracts/token/ERC20Permit.sol";
 import "@yield-protocol/utils-v2/contracts/token/SafeERC20Namer.sol";
-import "@yield-protocol/utils-v2/contracts/token/TransferHelper.sol";
+import "@yield-protocol/utils-v2/contracts/token/MinimalTransferHelper.sol";
+import "@yield-protocol/utils-v2/contracts/cast/CastU256U128.sol";
+import "@yield-protocol/utils-v2/contracts/cast/CastU256U112.sol";
+import "@yield-protocol/utils-v2/contracts/cast/CastU256I256.sol";
+import "@yield-protocol/utils-v2/contracts/cast/CastU128U112.sol";
+import "@yield-protocol/utils-v2/contracts/cast/CastU128I128.sol";
 import "@yield-protocol/yieldspace-interfaces/IPool.sol";
 import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
 import "@yield-protocol/vault-interfaces/IFYToken.sol";
 import "./YieldMath.sol";
 
 
-library SafeCast256 {
-    /// @dev Safely cast an uint256 to an uint112
-    function u112(uint256 x) internal pure returns (uint112 y) {
-        require (x <= type(uint112).max, "Cast overflow");
-        y = uint112(x);
-    }
-
-    /// @dev Safely cast an uint256 to an uint128
-    function u128(uint256 x) internal pure returns (uint128 y) {
-        require (x <= type(uint128).max, "Cast overflow");
-        y = uint128(x);
-    }
-
-    /// @dev Safe casting from uint256 to int256
-    function i256(uint256 x) internal pure returns(int256) {
-        require(x <= uint256(type(int256).max), "Cast overflow");
-        return int256(x);
-    }
-}
-
-library SafeCast128 {
-    /// @dev Safely cast an uint128 to an int128
-    function i128(uint128 x) internal pure returns (int128 y) {
-        require (x <= uint128(type(int128).max), "Cast overflow");
-        y = int128(x);
-    }
-
-    /// @dev Safely cast an uint128 to an uint112
-    function u112(uint128 x) internal pure returns (uint112 y) {
-        require (x <= uint128(type(uint112).max), "Cast overflow");
-        y = uint112(x);
-    }
-}
-
-
 /// @dev The Pool contract exchanges base for fyToken at a price defined by a specific formula.
 contract Pool is IPool, ERC20Permit, Ownable {
-    using SafeCast256 for uint256;
-    using SafeCast128 for uint128;
-    using TransferHelper for IERC20;
+    using CastU256U128 for uint256;
+    using CastU256U112 for uint256;
+    using CastU256I256 for uint256;
+    using CastU128U112 for uint128;
+    using CastU128I128 for uint128;
+    using MinimalTransferHelper for IERC20;
 
     event Trade(uint32 maturity, address indexed from, address indexed to, int256 bases, int256 fyTokens);
     event Liquidity(uint32 maturity, address indexed from, address indexed to, int256 bases, int256 fyTokens, int256 poolTokens);

@@ -4,7 +4,7 @@ pragma solidity 0.8.1;
 
 import "@yield-protocol/utils-v2/contracts/token/IERC20.sol";
 import "@yield-protocol/utils-v2/contracts/token/IERC2612.sol";
-import "@yield-protocol/utils-v2/contracts/token/AllTransferHelper.sol";
+import "@yield-protocol/utils-v2/contracts/token/TransferHelper.sol";
 import "@yield-protocol/utils-v2/contracts/utils/RevertMsgExtractor.sol";
 import "@yield-protocol/utils-v2/contracts/interfaces/IWETH9.sol";
 import "@yield-protocol/yieldspace-interfaces/IPool.sol";
@@ -14,8 +14,8 @@ import "dss-interfaces/src/dss/DaiAbstract.sol";
 
 
 contract PoolRouter {
-    using AllTransferHelper for IERC20;
-    using AllTransferHelper for address payable;
+    using TransferHelper for IERC20;
+    using TransferHelper for address payable;
 
     IPoolFactory public immutable factory;
     IWETH9 public immutable weth;
