@@ -19,6 +19,8 @@ import { ethers, waffle } from 'hardhat'
 import { expect } from 'chai'
 const { loadFixture } = waffle
 
+const ZERO_ADDRESS = '0x' + '00'.repeat(20)
+
 function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
   // Check that abs(x - y) < p:
   const diff = x.gt(y) ? BigNumber.from(x).sub(y) : BigNumber.from(y).sub(x) // Not sure why I have to convert x and y to BigNumber
@@ -37,9 +39,11 @@ describe('Pool - mint', async function () {
   let ownerAcc: SignerWithAddress
   let user1Acc: SignerWithAddress
   let user2Acc: SignerWithAddress
+  let user3Acc: SignerWithAddress
   let owner: string
   let user1: string
   let user2: string
+  let user3: string
 
   let yieldSpace: YieldSpaceEnvironment
 
@@ -66,6 +70,8 @@ describe('Pool - mint', async function () {
     user1 = user1Acc.address
     user2Acc = signers[2]
     user2 = user2Acc.address
+    user3Acc = signers[3]
+    user3 = user3Acc.address
   })
 
   beforeEach(async () => {
@@ -85,7 +91,7 @@ describe('Pool - mint', async function () {
 
     await expect(pool.mint(user2, CALCULATE_FROM_BASE, 0))
       .to.emit(pool, 'Liquidity')
-      .withArgs(maturity, user1, user2, initialBase.mul(-1), 0, initialBase)
+      .withArgs(maturity, user1, user2, ZERO_ADDRESS, initialBase.mul(-1), 0, initialBase)
 
     expect(await pool.balanceOf(user2)).to.equal(initialBase, 'User2 should have ' + initialBase + ' liquidity tokens')
 
@@ -128,7 +134,7 @@ describe('Pool - mint', async function () {
       await fyToken.connect(user1Acc).transfer(pool.address, expectedFYTokenIn)
       await expect(pool.mint(user2, CALCULATE_FROM_BASE, 0))
         .to.emit(pool, 'Liquidity')
-        .withArgs(maturity, user1, user2, WAD.mul(-1), expectedFYTokenIn.mul(-1), expectedMinted)
+        .withArgs(maturity, user1, user2, ZERO_ADDRESS, WAD.mul(-1), expectedFYTokenIn.mul(-1), expectedMinted)
 
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
 
@@ -151,7 +157,7 @@ describe('Pool - mint', async function () {
       await fyToken.connect(user1Acc).transfer(pool.address, expectedFYTokenIn.add(WAD))
       await expect(pool.mint(user2, CALCULATE_FROM_BASE, 0))
         .to.emit(pool, 'Liquidity')
-        .withArgs(maturity, user1, user2, WAD.mul(-1), expectedFYTokenIn.mul(-1), expectedMinted)
+        .withArgs(maturity, user1, user2, ZERO_ADDRESS, WAD.mul(-1), expectedFYTokenIn.mul(-1), expectedMinted)
 
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
 
@@ -174,7 +180,7 @@ describe('Pool - mint', async function () {
       await fyToken.connect(user1Acc).transfer(pool.address, fyTokenIn)
       await expect(pool.mint(user2, !CALCULATE_FROM_BASE, 0))
         .to.emit(pool, 'Liquidity')
-        .withArgs(maturity, user1, user2, expectedBaseIn.mul(-1), fyTokenIn.mul(-1), expectedMinted)
+        .withArgs(maturity, user1, user2, ZERO_ADDRESS, expectedBaseIn.mul(-1), fyTokenIn.mul(-1), expectedMinted)
 
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
 
@@ -201,6 +207,7 @@ describe('Pool - mint', async function () {
           maturity,
           user1,
           user2,
+          ZERO_ADDRESS,
           (await pool.getCache())[0].sub(baseCachedBefore).mul(-1),
           0,
           (await pool.totalSupply()).sub(poolSupplyBefore)
@@ -234,12 +241,13 @@ describe('Pool - mint', async function () {
       const [expectedBaseOut, expectedFYTokenOut] = await poolEstimator.burn(lpTokensIn)
 
       await pool.transfer(pool.address, lpTokensIn)
-      await expect(pool.burn(user2, 0, 0))
+      await expect(pool.burn(user2, user3, 0, 0))
         .to.emit(pool, 'Liquidity')
         .withArgs(
           maturity,
           user1,
           user2,
+          user3,
           baseBalance.sub(await base.balanceOf(pool.address)),
           fyTokenBalance.sub(await fyToken.balanceOf(pool.address)),
           lpTokensIn.mul(-1)
@@ -252,6 +260,9 @@ describe('Pool - mint', async function () {
       almostEqual(fyTokenOut, expectedFYTokenOut, fyTokenOut.div(10000))
       expect((await pool.getCache())[0]).to.equal(await pool.getBaseBalance())
       expect((await pool.getCache())[1]).to.equal(await pool.getFYTokenBalance())
+
+      expect(await base.balanceOf(user2)).to.equal(baseOut)
+      expect(await fyToken.balanceOf(user3)).to.equal(fyTokenOut)
     })
 
     it('burns liquidity tokens to Base', async () => {
@@ -263,7 +274,7 @@ describe('Pool - mint', async function () {
       await pool.transfer(pool.address, lpTokensIn)
       await expect(pool.burnForBase(user2, 0, OVERRIDES))
         .to.emit(pool, 'Liquidity')
-        .withArgs(maturity, user1, user2, baseBalance.sub(await base.balanceOf(pool.address)), 0, lpTokensIn.mul(-1))
+        .withArgs(maturity, user1, user2, ZERO_ADDRESS, baseBalance.sub(await base.balanceOf(pool.address)), 0, lpTokensIn.mul(-1))
 
       const baseOut = baseBalance.sub(await base.balanceOf(pool.address))
 

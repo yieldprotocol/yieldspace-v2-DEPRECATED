@@ -28,7 +28,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
     using MinimalTransferHelper for IERC20;
 
     event Trade(uint32 maturity, address indexed from, address indexed to, int256 bases, int256 fyTokens);
-    event Liquidity(uint32 maturity, address indexed from, address indexed to, int256 bases, int256 fyTokens, int256 poolTokens);
+    event Liquidity(uint32 maturity, address indexed from, address indexed to, address indexed fyTokenTo, int256 bases, int256 fyTokens, int256 poolTokens);
     event Sync(uint112 baseCached, uint112 fyTokenCached, uint256 cumulativeBalancesRatio);
     event ParameterSet(bytes32 parameter, int128 k);
 
@@ -281,19 +281,20 @@ contract Pool is IPool, ERC20Permit, Ownable {
         // Return any unused base if we did a trade, meaning slippage was involved.
         if (supply > 0 && fyTokenToBuy > 0) base.safeTransfer(to, baseReturned);
 
-        emit Liquidity(maturity, msg.sender, to, -(baseIn.i256()), -(fyTokenIn.i256()), tokensMinted.i256());
+        emit Liquidity(maturity, msg.sender, to, address(0), -(baseIn.i256()), -(fyTokenIn.i256()), tokensMinted.i256());
         return (baseIn, fyTokenIn, tokensMinted);
     }
 
     /// @dev Burn liquidity tokens in exchange for base and fyToken.
     /// The liquidity tokens need to be in this contract.
-    /// @param to Wallet receiving the base and fyToken.
+    /// @param baseTo Wallet receiving the base.
+    /// @param fyTokenTo Wallet receiving the fyToken.
     /// @return The amount of tokens burned and returned (tokensBurned, bases, fyTokens).
-    function burn(address to, uint256 minBaseOut, uint256 minFYTokenOut)
+    function burn(address baseTo, address fyTokenTo, uint256 minBaseOut, uint256 minFYTokenOut)
         external override
         returns (uint256, uint256, uint256)
     {
-        return _burnInternal(to, false, minBaseOut, minFYTokenOut);
+        return _burnInternal(baseTo, fyTokenTo, false, minBaseOut, minFYTokenOut);
     }
 
     /// @dev Burn liquidity tokens in exchange for base.
@@ -305,18 +306,19 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external override
         returns (uint256 tokensBurned, uint256 baseOut)
     {
-        (tokensBurned, baseOut, ) = _burnInternal(to, true, minBaseOut, 0);
+        (tokensBurned, baseOut, ) = _burnInternal(to, address(0), true, minBaseOut, 0);
     }
 
 
     /// @dev Burn liquidity tokens in exchange for base.
     /// The liquidity provider needs to have called `pool.approve`.
-    /// @param to Wallet receiving the base and fyToken.
+    /// @param baseTo Wallet receiving the base.
+    /// @param fyTokenTo Wallet receiving the fyToken.
     /// @param tradeToBase Whether the resulting fyToken should be traded for base tokens.
     /// @return tokensBurned The amount of pool tokens burned.
     /// @return tokenOut The amount of base tokens returned.
     /// @return fyTokenOut The amount of fyTokens returned.
-    function _burnInternal(address to, bool tradeToBase, uint256 minBaseOut, uint256 minFYTokenOut)
+    function _burnInternal(address baseTo, address fyTokenTo, bool tradeToBase, uint256 minBaseOut, uint256 minFYTokenOut)
         internal
         returns (uint256 tokensBurned, uint256 tokenOut, uint256 fyTokenOut)
     {
@@ -359,10 +361,10 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
         // Transfer assets
         _burn(address(this), tokensBurned);
-        base.safeTransfer(to, tokenOut);
-        if (fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
+        base.safeTransfer(baseTo, tokenOut);
+        if (fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(fyTokenTo, fyTokenOut);
 
-        emit Liquidity(maturity, msg.sender, to, tokenOut.i256(), fyTokenOut.i256(), -(tokensBurned.i256()));
+        emit Liquidity(maturity, msg.sender, baseTo, fyTokenTo, tokenOut.i256(), fyTokenOut.i256(), -(tokensBurned.i256()));
     }
 
     // ---- Trading ----
