@@ -274,7 +274,15 @@ describe('Pool - mint', async function () {
       await pool.transfer(pool.address, lpTokensIn)
       await expect(pool.burnForBase(user2, 0, OVERRIDES))
         .to.emit(pool, 'Liquidity')
-        .withArgs(maturity, user1, user2, ZERO_ADDRESS, baseBalance.sub(await base.balanceOf(pool.address)), 0, lpTokensIn.mul(-1))
+        .withArgs(
+          maturity,
+          user1,
+          user2,
+          ZERO_ADDRESS,
+          baseBalance.sub(await base.balanceOf(pool.address)),
+          0,
+          lpTokensIn.mul(-1)
+        )
 
       const baseOut = baseBalance.sub(await base.balanceOf(pool.address))
 

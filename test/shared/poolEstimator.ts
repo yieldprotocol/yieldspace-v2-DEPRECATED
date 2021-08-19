@@ -20,8 +20,8 @@ export class PoolEstimator {
   }
 
   public static async setup(pool: Pool): Promise<PoolEstimator> {
-    const base = await ethers.getContractAt('IERC20', await pool.base()) as IERC20
-    const fyToken = await ethers.getContractAt('IERC20', await pool.fyToken()) as IERC20
+    const base = (await ethers.getContractAt('IERC20', await pool.base())) as IERC20
+    const fyToken = (await ethers.getContractAt('IERC20', await pool.fyToken())) as IERC20
     return new PoolEstimator(pool, base, fyToken)
   }
 
@@ -30,7 +30,7 @@ export class PoolEstimator {
       await this.pool.getBaseBalance(),
       await this.pool.getFYTokenBalance(),
       (await this.pool.getBaseBalance()).sub((await this.pool.getCache())[0]),
-      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp()),
+      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp())
     )
   }
 
@@ -39,7 +39,7 @@ export class PoolEstimator {
       await this.pool.getBaseBalance(),
       await this.pool.getFYTokenBalance(),
       (await this.pool.getFYTokenBalance()).sub((await this.pool.getCache())[1]),
-      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp()),
+      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp())
     )
   }
 
@@ -48,7 +48,7 @@ export class PoolEstimator {
       await this.pool.getBaseBalance(),
       await this.pool.getFYTokenBalance(),
       BigNumber.from(tokenOut),
-      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp()),
+      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp())
     )
   }
 
@@ -57,14 +57,11 @@ export class PoolEstimator {
       await this.pool.getBaseBalance(),
       await this.pool.getFYTokenBalance(),
       BigNumber.from(tokenOut),
-      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp()),
+      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp())
     )
   }
 
-  public async mint(
-    input: BigNumber,
-    fromBase: boolean
-  ): Promise<[BigNumber, BigNumber]> {
+  public async mint(input: BigNumber, fromBase: boolean): Promise<[BigNumber, BigNumber]> {
     return mint(
       await this.base.balanceOf(this.pool.address),
       await this.fyToken.balanceOf(this.pool.address),
@@ -74,9 +71,7 @@ export class PoolEstimator {
     )
   }
 
-  public async burn(
-    lpTokens: BigNumber
-  ): Promise<[BigNumber, BigNumber]> {
+  public async burn(lpTokens: BigNumber): Promise<[BigNumber, BigNumber]> {
     return burn(
       await this.base.balanceOf(this.pool.address),
       await this.fyToken.balanceOf(this.pool.address),
@@ -85,29 +80,25 @@ export class PoolEstimator {
     )
   }
 
-  public async mintWithBase(
-    fyToken: BigNumber,
-  ): Promise<[BigNumber, BigNumber]> {
+  public async mintWithBase(fyToken: BigNumber): Promise<[BigNumber, BigNumber]> {
     return mintWithBase(
       await this.base.balanceOf(this.pool.address),
       await this.pool.getFYTokenBalance(),
       await this.fyToken.balanceOf(this.pool.address),
       await this.pool.totalSupply(),
       fyToken,
-      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp()),
+      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp())
     )
   }
 
-  public async burnForBase(
-    lpTokens: BigNumber,
-  ): Promise<BigNumber> {
+  public async burnForBase(lpTokens: BigNumber): Promise<BigNumber> {
     return burnForBase(
       await this.base.balanceOf(this.pool.address),
       await this.pool.getFYTokenBalance(),
       await this.fyToken.balanceOf(this.pool.address),
       await this.pool.totalSupply(),
       lpTokens,
-      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp()),
+      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp())
     )
   }
 }
