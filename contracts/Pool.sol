@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.6;
 
-import "@yield-protocol/utils-v2/contracts/access/Ownable.sol";
 import "@yield-protocol/utils-v2/contracts/token/IERC20.sol";
 import "@yield-protocol/utils-v2/contracts/token/IERC20Metadata.sol";
 import "@yield-protocol/utils-v2/contracts/token/ERC20Permit.sol";
@@ -19,7 +18,7 @@ import "./YieldMath.sol";
 
 
 /// @dev The Pool contract exchanges base for fyToken at a price defined by a specific formula.
-contract Pool is IPool, ERC20Permit, Ownable {
+contract Pool is IPool, ERC20Permit {
     using CastU256U128 for uint256;
     using CastU256U112 for uint256;
     using CastU256I256 for uint256;
@@ -30,12 +29,10 @@ contract Pool is IPool, ERC20Permit, Ownable {
     event Trade(uint32 maturity, address indexed from, address indexed to, int256 bases, int256 fyTokens);
     event Liquidity(uint32 maturity, address indexed from, address indexed to, address indexed fyTokenTo, int256 bases, int256 fyTokens, int256 poolTokens);
     event Sync(uint112 baseCached, uint112 fyTokenCached, uint256 cumulativeBalancesRatio);
-    event ParameterSet(bytes32 parameter, int128 k);
 
-    int128 private k1 = int128(uint128(uint256((1 << 64))) / 315576000); // 1 / Seconds in 10 years, in 64.64
-    int128 private g1 = int128(uint128(uint256((950 << 64))) / 1000); // To be used when selling base to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
-    int128 private k2 = int128(uint128(uint256((1 << 64))) / 315576000); // k is stored twice to be able to recover with 1 SLOAD alongside both g1 and g2
-    int128 private g2 = int128(uint128(uint256((1000 << 64))) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
+    int128 public immutable k; // 1 / Seconds in 10 years, in 64.64
+    int128 public immutable g1; // To be used when selling base to the pool
+    int128 public immutable g2; // To be used when selling fyToken to the pool
     uint32 public immutable override maturity;
 
     IERC20 public immutable override base;
@@ -61,6 +58,10 @@ contract Pool is IPool, ERC20Permit, Ownable {
         uint256 _maturity = _fyToken.maturity();
         require (_maturity <= type(uint32).max, "Pool: Maturity too far in the future");
         maturity = uint32(_maturity);
+
+        k = IPoolFactory(msg.sender).k();
+        g1 = IPoolFactory(msg.sender).g1();
+        g2 = IPoolFactory(msg.sender).g2();
     }
 
     /// @dev Trading can only be done before maturity
@@ -70,44 +71,6 @@ contract Pool is IPool, ERC20Permit, Ownable {
             "Pool: Too late"
         );
         _;
-    }
-
-    // ---- Administration ----
-
-    /// @dev Set the k, g1 or g2 parameters
-    function setParameter(bytes32 parameter, int128 value)
-        external onlyOwner
-    {
-        if (parameter == "k") k1 = k2 = value;
-        else if (parameter == "g1") g1 = value;
-        else if (parameter == "g2") g2 = value;
-        else revert("Pool: Unrecognized parameter");
-        emit ParameterSet(parameter, value);
-    }
-
-    /// @dev Get k
-    function getK()
-        external view
-        returns (int128)
-    {
-        assert(k1 == k2);
-        return k1;
-    }
-
-    /// @dev Get g1
-    function getG1()
-        external view
-        returns (int128)
-    {
-        return g1;
-    }
-
-    /// @dev Get g2
-    function getG2()
-        external view
-        returns (int128)
-    {
-        return g2;
     }
 
     // ---- Balances management ----
@@ -335,14 +298,13 @@ contract Pool is IPool, ERC20Permit, Ownable {
         fyTokenOut = (tokensBurned * fyTokenBalance) / supply;
 
         if (tradeToBase) {
-            (int128 _k, int128 _g2) = (k2, g2);
             tokenOut += YieldMath.baseOutForFYTokenIn(                      // This is a virtual sell
                 _baseCached - tokenOut.u128(),                              // Cache, minus virtual burn
                 _fyTokenCached - fyTokenOut.u128(),                         // Cache, minus virtual burn
                 fyTokenOut.u128(),                                          // Sell the virtual fyToken obtained
                 maturity - uint32(block.timestamp),                         // This can't be called after maturity
-                _k,
-                _g2
+                k,
+                g2
             );
             fyTokenOut = 0;
         }
@@ -433,14 +395,13 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
-        (int128 _k, int128 _g1) = (k1, g1);
         uint128 fyTokenOut = YieldMath.fyTokenOutForBaseIn(
             baseBalance,
             fyTokenBalance,
             baseIn,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            _k,
-            _g1
+            k,
+            g1
         );
 
         require(
@@ -518,14 +479,13 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
-        (int128 _k, int128 _g2) = (k2, g2);
         return YieldMath.fyTokenInForBaseOut(
             baseBalance,
             fyTokenBalance,
             tokenOut,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            _k,
-            _g2
+            k,
+            g2
         );
     }
 
@@ -593,14 +553,13 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
-        (int128 _k, int128 _g2) = (k2, g2);
         return YieldMath.baseOutForFYTokenIn(
             baseBalance,
             fyTokenBalance,
             fyTokenIn,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            _k,
-            _g2
+            k,
+            g2
         );
     }
 
@@ -671,14 +630,13 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
-        (int128 _k, int128 _g1) = (k1, g1);
         uint128 baseIn = YieldMath.baseInForFYTokenOut(
             baseBalance,
             fyTokenBalance,
             fyTokenOut,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            _k,
-            _g1
+            k,
+            g1
         );
 
         require(

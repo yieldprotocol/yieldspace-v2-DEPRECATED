@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 import { BaseProvider } from '@ethersproject/providers'
 
-import { constants } from '@yield-protocol/utils-v2'
+import { constants, id } from '@yield-protocol/utils-v2'
 const { DAI, ETH, USDC, THREE_MONTHS } = constants
 
 import { CALCULATE_FROM_BASE } from '../../src/constants'
@@ -87,6 +87,11 @@ export class YieldSpaceEnvironment {
     })
     factory = ((await PoolFactoryFactory.deploy()) as unknown) as PoolFactory
     await factory.deployed()
+
+    await factory.grantRoles([
+      id('setParameter(bytes32,int128)'),
+      id('createPool(address,address)'),
+    ], ownerAdd)
 
     const PoolRouterFactory = await ethers.getContractFactory('PoolRouter')
     innerRouter = ((await PoolRouterFactory.deploy(factory.address, weth9.address)) as unknown) as PoolRouter
