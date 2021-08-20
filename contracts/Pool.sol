@@ -77,7 +77,7 @@ contract Pool is IPool, ERC20Permit {
 
     /// @dev Updates the cache to match the actual balances.
     function sync() external {
-        _update(getBaseBalance(), getFYTokenBalance(), baseCached, fyTokenCached);
+        _update(_getBaseBalance(), _getFYTokenBalance(), baseCached, fyTokenCached);
     }
 
     /// @dev Returns the cached balances & last updated timestamp.
@@ -96,12 +96,28 @@ contract Pool is IPool, ERC20Permit {
         public view override
         returns(uint112)
     {
-        return (fyToken.balanceOf(address(this)) + _totalSupply).u112();
+        return _getFYTokenBalance();
     }
 
     /// @dev Returns the base balance
     function getBaseBalance()
         public view override
+        returns(uint112)
+    {
+        return _getBaseBalance();
+    }
+
+    /// @dev Returns the "virtual" fyToken balance, which is the real balance plus the pool token supply.
+    function _getFYTokenBalance()
+        internal view
+        returns(uint112)
+    {
+        return (fyToken.balanceOf(address(this)) + _totalSupply).u112();
+    }
+
+    /// @dev Returns the base balance
+    function _getBaseBalance()
+        internal view
         returns(uint112)
     {
         return base.balanceOf(address(this)).u112();
@@ -112,7 +128,7 @@ contract Pool is IPool, ERC20Permit {
         external override
         returns(uint128 retrieved)
     {
-        retrieved = getBaseBalance() - baseCached; // Cache can never be above balances
+        retrieved = _getBaseBalance() - baseCached; // Cache can never be above balances
         base.safeTransfer(to, retrieved);
         // Now the current balances match the cache, so no need to update the TWAR
     }
@@ -122,7 +138,7 @@ contract Pool is IPool, ERC20Permit {
         external override
         returns(uint128 retrieved)
     {
-        retrieved = getFYTokenBalance() - fyTokenCached; // Cache can never be above balances
+        retrieved = _getFYTokenBalance() - fyTokenCached; // Cache can never be above balances
         IERC20(address(fyToken)).safeTransfer(to, retrieved);
         // Now the balances match the cache, so no need to update the TWAR
     }
@@ -343,8 +359,8 @@ contract Pool is IPool, ERC20Permit {
         // Calculate trade
         (uint112 _baseCached, uint112 _fyTokenCached) =
             (baseCached, fyTokenCached);
-        uint112 _baseBalance = getBaseBalance();
-        uint112 _fyTokenBalance = getFYTokenBalance();
+        uint112 _baseBalance = _getBaseBalance();
+        uint112 _fyTokenBalance = _getFYTokenBalance();
         uint128 baseIn = _baseBalance - _baseCached;
         uint128 fyTokenOut = _sellBasePreview(
             baseIn,
@@ -423,7 +439,7 @@ contract Pool is IPool, ERC20Permit {
         returns(uint128)
     {
         // Calculate trade
-        uint128 fyTokenBalance = getFYTokenBalance();
+        uint128 fyTokenBalance = _getFYTokenBalance();
         (uint112 _baseCached, uint112 _fyTokenCached) =
             (baseCached, fyTokenCached);
         uint128 fyTokenIn = _buyBasePreview(
@@ -501,8 +517,8 @@ contract Pool is IPool, ERC20Permit {
         // Calculate trade
         (uint112 _baseCached, uint112 _fyTokenCached) =
             (baseCached, fyTokenCached);
-        uint112 _fyTokenBalance = getFYTokenBalance();
-        uint112 _baseBalance = getBaseBalance();
+        uint112 _fyTokenBalance = _getFYTokenBalance();
+        uint112 _baseBalance = _getBaseBalance();
         uint128 fyTokenIn = _fyTokenBalance - _fyTokenCached;
         uint128 baseOut = _sellFYTokenPreview(
             fyTokenIn,
@@ -574,7 +590,7 @@ contract Pool is IPool, ERC20Permit {
         returns(uint128)
     {
         // Calculate trade
-        uint128 baseBalance = getBaseBalance();
+        uint128 baseBalance = _getBaseBalance();
         (uint112 _baseCached, uint112 _fyTokenCached) =
             (baseCached, fyTokenCached);
         uint128 baseIn = _buyFYTokenPreview(
