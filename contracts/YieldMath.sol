@@ -335,6 +335,29 @@ library YieldMath {
   uint256 public constant VAR = 1e12;                // The logarithm math used is not precise to the wei, but can deviate up to 1e12 from the real value.
 
   /**
+   * Calculate a YieldSpace pool invariant according to the whitepaper
+   */
+  function invariant(uint128 baseReserves, uint128 fyTokenReserves, uint128 timeTillMaturity, int128 k)
+      public pure returns(uint128)
+  {
+    unchecked {
+      // a = (1 - k * timeTillMaturity)
+      int128 a = int128(ONE).sub(k.mul(timeTillMaturity.fromUInt()));
+      require (a > 0, "YieldMath: Too far from maturity");
+
+      uint256 sum =
+      uint256(baseReserves.pow(uint128 (a), ONE)) +
+      uint256(fyTokenReserves.pow(uint128 (a), ONE)) >> 1;
+      require(sum < MAX, "YieldMath: Sum overflow");
+
+      uint256 result = uint256(uint128(sum).pow(ONE, uint128(a))) << 1;
+      require (result < MAX, "YieldMath: Result overflow");
+
+      return uint128(result);
+    }
+  }
+
+  /**
    * Calculate the amount of fyToken a user would get for given amount of Base.
    * https://www.desmos.com/calculator/5nf2xuy6yb
    * @param baseReserves base reserves amount
@@ -529,50 +552,4 @@ library YieldMath {
       return uint128(a);
     }
   }
-
-  /**
-   * Estimate in Base the value of reserves at protocol initialization time.
-   *
-   * @param baseReserves base reserves amount
-   * @param fyTokenReserves fyToken reserves amount
-   * @param timeTillMaturity time till maturity in seconds
-   * @param k time till maturity coefficient, multiplied by 2^64
-   * @param c0 price of base in terms of Base, multiplied by 2^64
-   * @return estimated value of reserves
-   */
-  function initialReservesValue(
-    uint128 baseReserves, uint128 fyTokenReserves, uint128 timeTillMaturity,
-    int128 k, int128 c0)
-  external pure returns(uint128) {
-    unchecked {
-      uint256 normalizedBaseReserves = c0.mulu(baseReserves);
-      require(normalizedBaseReserves <= MAX);
-
-      // a = (1 - k * timeTillMaturity)
-      int128 a = int128(ONE).sub(k.mul(timeTillMaturity.fromUInt()));
-      require(a > 0);
-
-      uint256 sum =
-        uint256(uint128(normalizedBaseReserves).pow(uint128(a), ONE)) +
-        uint256(fyTokenReserves.pow(uint128(a), ONE)) >> 1;
-      require(sum <= MAX);
-
-      uint256 result = uint256(uint128(sum).pow(ONE, uint128(a))) << 1;
-      require(result <= MAX);
-
-      return uint128(result);
-    }
-  }
 }
-
-
-
-
-
-
-
-
-
-
-
-
