@@ -18,6 +18,8 @@ import { ethers, waffle } from 'hardhat'
 import { expect } from 'chai'
 const { loadFixture } = waffle
 
+const ZERO_ADDRESS = '0x' + '00'.repeat(20)
+
 function almostEqual(x: BigNumber, y: BigNumber, p: BigNumber) {
   // Check that abs(x - y) < p:
   const diff = x.gt(y) ? BigNumber.from(x).sub(y) : BigNumber.from(y).sub(x) // Not sure why I have to convert x and y to BigNumber
@@ -148,7 +150,7 @@ describe('Pool - usdc', async function () {
 
       await expect(pool.connect(user1Acc).mint(user2, CALCULATE_FROM_BASE, 0))
         .to.emit(pool, 'Liquidity')
-        .withArgs(maturity, user1, user2, WAD.mul(-1), expectedFYTokenIn.mul(-1), expectedMinted)
+        .withArgs(maturity, user1, user2, ZERO_ADDRESS, WAD.mul(-1), expectedFYTokenIn.mul(-1), expectedMinted)
 
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
 
@@ -165,11 +167,12 @@ describe('Pool - usdc', async function () {
       const [expectedBaseOut, expectedFYTokenOut] = await poolEstimator.burn(lpTokensIn)
 
       await pool.connect(user1Acc).transfer(pool.address, lpTokensIn)
-      await expect(pool.connect(user1Acc).burn(user2, 0, 0))
+      await expect(pool.connect(user1Acc).burn(user2, user2, 0, 0))
         .to.emit(pool, 'Liquidity')
         .withArgs(
           maturity,
           user1,
+          user2,
           user2,
           baseBalance.sub(await base.balanceOf(pool.address)),
           fyTokenBalance.sub(await fyToken.balanceOf(pool.address)),
