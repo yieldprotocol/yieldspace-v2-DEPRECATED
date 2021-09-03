@@ -677,7 +677,7 @@ contract Pool is IPool, ERC20Permit {
             getFYTokenBalance(),
             _totalSupply,
             maturity - uint32(block.timestamp),
-            k1
+            k
         );
     }
 }
