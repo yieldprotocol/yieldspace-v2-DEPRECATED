@@ -30,10 +30,11 @@ contract Pool is IPool, ERC20Permit {
     event Liquidity(uint32 maturity, address indexed from, address indexed to, address indexed fyTokenTo, int256 bases, int256 fyTokens, int256 poolTokens);
     event Sync(uint112 baseCached, uint112 fyTokenCached, uint256 cumulativeBalancesRatio);
 
-    int128 public immutable k; // 1 / Seconds in 10 years, in 64.64
-    int128 public immutable g1; // To be used when selling base to the pool
-    int128 public immutable g2; // To be used when selling fyToken to the pool
+    int128 public immutable k;              // 1 / Seconds in 10 years, in 64.64
+    int128 public immutable g1;             // To be used when selling base to the pool
+    int128 public immutable g2;             // To be used when selling fyToken to the pool
     uint32 public immutable override maturity;
+    uint96 public immutable scaleFactor;    // Scale up to 18 low decimal tokens to get the right precision in YieldMath
 
     IERC20 public immutable override base;
     IFYToken public immutable override fyToken;
@@ -51,17 +52,21 @@ contract Pool is IPool, ERC20Permit {
             SafeERC20Namer.tokenDecimals(IPoolFactory(msg.sender).nextBase())
         )
     {
-        IFYToken _fyToken = IFYToken(IPoolFactory(msg.sender).nextFYToken());
+        IPoolFactory _factory = IPoolFactory(msg.sender);
+        IFYToken _fyToken = IFYToken(_factory.nextFYToken());
+        IERC20 _base = IERC20(_factory.nextBase());
         fyToken = _fyToken;
-        base = IERC20(IPoolFactory(msg.sender).nextBase());
+        base = _base;
 
         uint256 _maturity = _fyToken.maturity();
         require (_maturity <= type(uint32).max, "Pool: Maturity too far in the future");
         maturity = uint32(_maturity);
 
-        k = IPoolFactory(msg.sender).k();
-        g1 = IPoolFactory(msg.sender).g1();
-        g2 = IPoolFactory(msg.sender).g2();
+        k = _factory.k();
+        g1 = _factory.g1();
+        g2 = _factory.g2();
+
+        scaleFactor = uint96(10 ** (18 - SafeERC20Namer.tokenDecimals(address(_base))));
     }
 
     /// @dev Trading can only be done before maturity
@@ -315,13 +320,13 @@ contract Pool is IPool, ERC20Permit {
 
         if (tradeToBase) {
             tokenOut += YieldMath.baseOutForFYTokenIn(                      // This is a virtual sell
-                _baseCached - tokenOut.u128(),                              // Cache, minus virtual burn
-                _fyTokenCached - fyTokenOut.u128(),                         // Cache, minus virtual burn
-                fyTokenOut.u128(),                                          // Sell the virtual fyToken obtained
+                (_baseCached - tokenOut.u128()) * scaleFactor,              // Cache, minus virtual burn
+                (_fyTokenCached - fyTokenOut.u128()) * scaleFactor,         // Cache, minus virtual burn
+                fyTokenOut.u128() * scaleFactor,                            // Sell the virtual fyToken obtained
                 maturity - uint32(block.timestamp),                         // This can't be called after maturity
                 k,
                 g2
-            );
+            ) / scaleFactor;
             fyTokenOut = 0;
         }
 
@@ -412,13 +417,13 @@ contract Pool is IPool, ERC20Permit {
         returns(uint128)
     {
         uint128 fyTokenOut = YieldMath.fyTokenOutForBaseIn(
-            baseBalance,
-            fyTokenBalance,
-            baseIn,
+            baseBalance * scaleFactor,
+            fyTokenBalance * scaleFactor,
+            baseIn * scaleFactor,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
             k,
             g1
-        );
+        ) / scaleFactor;
 
         require(
             fyTokenBalance - fyTokenOut >= baseBalance + baseIn,
@@ -496,13 +501,13 @@ contract Pool is IPool, ERC20Permit {
         returns(uint128)
     {
         return YieldMath.fyTokenInForBaseOut(
-            baseBalance,
-            fyTokenBalance,
-            tokenOut,
+            baseBalance * scaleFactor,
+            fyTokenBalance * scaleFactor,
+            tokenOut * scaleFactor,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
             k,
             g2
-        );
+        ) / scaleFactor;
     }
 
     /// @dev Sell fyToken for base
@@ -570,13 +575,13 @@ contract Pool is IPool, ERC20Permit {
         returns(uint128)
     {
         return YieldMath.baseOutForFYTokenIn(
-            baseBalance,
-            fyTokenBalance,
-            fyTokenIn,
+            baseBalance * scaleFactor,
+            fyTokenBalance * scaleFactor,
+            fyTokenIn * scaleFactor,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
             k,
             g2
-        );
+        ) / scaleFactor;
     }
 
     /// @dev Buy fyToken for base
@@ -647,13 +652,13 @@ contract Pool is IPool, ERC20Permit {
         returns(uint128)
     {
         uint128 baseIn = YieldMath.baseInForFYTokenOut(
-            baseBalance,
-            fyTokenBalance,
-            fyTokenOut,
+            baseBalance * scaleFactor,
+            fyTokenBalance * scaleFactor,
+            fyTokenOut * scaleFactor,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
             k,
             g1
-        );
+        ) / scaleFactor;
 
         require(
             fyTokenBalance - fyTokenOut >= baseBalance + baseIn,

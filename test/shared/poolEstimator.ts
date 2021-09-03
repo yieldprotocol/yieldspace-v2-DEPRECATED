@@ -30,7 +30,8 @@ export class PoolEstimator {
       await this.pool.getBaseBalance(),
       await this.pool.getFYTokenBalance(),
       (await this.pool.getBaseBalance()).sub((await this.pool.getCache())[0]),
-      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp())
+      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp()),
+      await this.pool.scaleFactor()
     )
   }
 
@@ -39,7 +40,8 @@ export class PoolEstimator {
       await this.pool.getBaseBalance(),
       await this.pool.getFYTokenBalance(),
       (await this.pool.getFYTokenBalance()).sub((await this.pool.getCache())[1]),
-      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp())
+      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp()),
+      await this.pool.scaleFactor()
     )
   }
 
@@ -48,7 +50,8 @@ export class PoolEstimator {
       await this.pool.getBaseBalance(),
       await this.pool.getFYTokenBalance(),
       BigNumber.from(tokenOut),
-      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp())
+      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp()),
+      await this.pool.scaleFactor()
     )
   }
 
@@ -57,7 +60,8 @@ export class PoolEstimator {
       await this.pool.getBaseBalance(),
       await this.pool.getFYTokenBalance(),
       BigNumber.from(tokenOut),
-      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp())
+      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp()),
+      await this.pool.scaleFactor()
     )
   }
 
@@ -87,7 +91,8 @@ export class PoolEstimator {
       await this.fyToken.balanceOf(this.pool.address),
       await this.pool.totalSupply(),
       fyToken,
-      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp())
+      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp()),
+      await this.pool.scaleFactor()
     )
   }
 
@@ -98,7 +103,8 @@ export class PoolEstimator {
       await this.fyToken.balanceOf(this.pool.address),
       await this.pool.totalSupply(),
       lpTokens,
-      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp())
+      BigNumber.from(await this.pool.maturity()).sub(await currentTimestamp()),
+      await this.pool.scaleFactor()
     )
   }
 }
