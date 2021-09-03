@@ -88,10 +88,7 @@ export class YieldSpaceEnvironment {
     factory = ((await PoolFactoryFactory.deploy()) as unknown) as PoolFactory
     await factory.deployed()
 
-    await factory.grantRoles([
-      id('setParameter(bytes32,int128)'),
-      id('createPool(address,address)'),
-    ], ownerAdd)
+    await factory.grantRoles([id('setParameter(bytes32,int128)'), id('createPool(address,address)')], ownerAdd)
 
     const PoolRouterFactory = await ethers.getContractFactory('PoolRouter')
     innerRouter = ((await PoolRouterFactory.deploy(factory.address, weth9.address)) as unknown) as PoolRouter
