@@ -667,4 +667,17 @@ contract Pool is IPool, ERC20Permit {
 
         return baseIn;
     }
+
+    /// @dev Calculate the invariant for this pool
+    function invariant()
+        public view returns (uint128)
+    {
+        return YieldMath.invariant(
+            getBaseBalance(),
+            getFYTokenBalance(),
+            _totalSupply,
+            maturity - uint32(block.timestamp),
+            k
+        );
+    }
 }

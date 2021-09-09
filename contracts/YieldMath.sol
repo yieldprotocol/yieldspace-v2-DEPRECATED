@@ -337,9 +337,11 @@ library YieldMath {
   /**
    * Calculate a YieldSpace pool invariant according to the whitepaper
    */
-  function invariant(uint128 baseReserves, uint128 fyTokenReserves, uint128 timeTillMaturity, int128 k)
+  function invariant(uint128 baseReserves, uint128 fyTokenReserves, uint256 totalSupply, uint128 timeTillMaturity, int128 k)
       public pure returns(uint128)
   {
+    if (totalSupply == 0) return 0;
+
     unchecked {
       // a = (1 - k * timeTillMaturity)
       int128 a = int128(ONE).sub(k.mul(timeTillMaturity.fromUInt()));
@@ -350,7 +352,7 @@ library YieldMath {
       uint256(fyTokenReserves.pow(uint128 (a), ONE)) >> 1;
       require(sum < MAX, "YieldMath: Sum overflow");
 
-      uint256 result = uint256(uint128(sum).pow(ONE, uint128(a))) << 1;
+      uint256 result = uint256(uint128(sum).pow(ONE, uint128(a))) / totalSupply;
       require (result < MAX, "YieldMath: Result overflow");
 
       return uint128(result);
