@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.6;
 
-import "@yield-protocol/utils-v2/contracts/access/Ownable.sol";
 import "@yield-protocol/utils-v2/contracts/token/IERC20.sol";
 import "@yield-protocol/utils-v2/contracts/token/IERC20Metadata.sol";
 import "@yield-protocol/utils-v2/contracts/token/ERC20Permit.sol";
@@ -19,7 +18,7 @@ import "./YieldMath.sol";
 
 
 /// @dev The Pool contract exchanges base for fyToken at a price defined by a specific formula.
-contract Pool is IPool, ERC20Permit, Ownable {
+contract Pool is IPool, ERC20Permit {
     using CastU256U128 for uint256;
     using CastU256U112 for uint256;
     using CastU256I256 for uint256;
@@ -28,15 +27,14 @@ contract Pool is IPool, ERC20Permit, Ownable {
     using MinimalTransferHelper for IERC20;
 
     event Trade(uint32 maturity, address indexed from, address indexed to, int256 bases, int256 fyTokens);
-    event Liquidity(uint32 maturity, address indexed from, address indexed to, int256 bases, int256 fyTokens, int256 poolTokens);
+    event Liquidity(uint32 maturity, address indexed from, address indexed to, address indexed fyTokenTo, int256 bases, int256 fyTokens, int256 poolTokens);
     event Sync(uint112 baseCached, uint112 fyTokenCached, uint256 cumulativeBalancesRatio);
-    event ParameterSet(bytes32 parameter, int128 k);
 
-    int128 private k1 = int128(uint128(uint256((1 << 64))) / 315576000); // 1 / Seconds in 10 years, in 64.64
-    int128 private g1 = int128(uint128(uint256((950 << 64))) / 1000); // To be used when selling base to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
-    int128 private k2 = int128(uint128(uint256((1 << 64))) / 315576000); // k is stored twice to be able to recover with 1 SLOAD alongside both g1 and g2
-    int128 private g2 = int128(uint128(uint256((1000 << 64))) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
+    int128 public immutable k;              // 1 / Seconds in 10 years, in 64.64
+    int128 public immutable g1;             // To be used when selling base to the pool
+    int128 public immutable g2;             // To be used when selling fyToken to the pool
     uint32 public immutable override maturity;
+    uint96 public immutable scaleFactor;    // Scale up to 18 low decimal tokens to get the right precision in YieldMath
 
     IERC20 public immutable override base;
     IFYToken public immutable override fyToken;
@@ -54,13 +52,21 @@ contract Pool is IPool, ERC20Permit, Ownable {
             SafeERC20Namer.tokenDecimals(IPoolFactory(msg.sender).nextBase())
         )
     {
-        IFYToken _fyToken = IFYToken(IPoolFactory(msg.sender).nextFYToken());
+        IPoolFactory _factory = IPoolFactory(msg.sender);
+        IFYToken _fyToken = IFYToken(_factory.nextFYToken());
+        IERC20 _base = IERC20(_factory.nextBase());
         fyToken = _fyToken;
-        base = IERC20(IPoolFactory(msg.sender).nextBase());
+        base = _base;
 
         uint256 _maturity = _fyToken.maturity();
         require (_maturity <= type(uint32).max, "Pool: Maturity too far in the future");
         maturity = uint32(_maturity);
+
+        k = _factory.k();
+        g1 = _factory.g1();
+        g2 = _factory.g2();
+
+        scaleFactor = uint96(10 ** (18 - SafeERC20Namer.tokenDecimals(address(_base))));
     }
 
     /// @dev Trading can only be done before maturity
@@ -72,49 +78,11 @@ contract Pool is IPool, ERC20Permit, Ownable {
         _;
     }
 
-    // ---- Administration ----
-
-    /// @dev Set the k, g1 or g2 parameters
-    function setParameter(bytes32 parameter, int128 value)
-        external onlyOwner
-    {
-        if (parameter == "k") k1 = k2 = value;
-        else if (parameter == "g1") g1 = value;
-        else if (parameter == "g2") g2 = value;
-        else revert("Pool: Unrecognized parameter");
-        emit ParameterSet(parameter, value);
-    }
-
-    /// @dev Get k
-    function getK()
-        external view
-        returns (int128)
-    {
-        assert(k1 == k2);
-        return k1;
-    }
-
-    /// @dev Get g1
-    function getG1()
-        external view
-        returns (int128)
-    {
-        return g1;
-    }
-
-    /// @dev Get g2
-    function getG2()
-        external view
-        returns (int128)
-    {
-        return g2;
-    }
-
     // ---- Balances management ----
 
     /// @dev Updates the cache to match the actual balances.
     function sync() external {
-        _update(getBaseBalance(), getFYTokenBalance(), baseCached, fyTokenCached);
+        _update(_getBaseBalance(), _getFYTokenBalance(), baseCached, fyTokenCached);
     }
 
     /// @dev Returns the cached balances & last updated timestamp.
@@ -133,12 +101,28 @@ contract Pool is IPool, ERC20Permit, Ownable {
         public view override
         returns(uint112)
     {
-        return (fyToken.balanceOf(address(this)) + _totalSupply).u112();
+        return _getFYTokenBalance();
     }
 
     /// @dev Returns the base balance
     function getBaseBalance()
         public view override
+        returns(uint112)
+    {
+        return _getBaseBalance();
+    }
+
+    /// @dev Returns the "virtual" fyToken balance, which is the real balance plus the pool token supply.
+    function _getFYTokenBalance()
+        internal view
+        returns(uint112)
+    {
+        return (fyToken.balanceOf(address(this)) + _totalSupply).u112();
+    }
+
+    /// @dev Returns the base balance
+    function _getBaseBalance()
+        internal view
         returns(uint112)
     {
         return base.balanceOf(address(this)).u112();
@@ -149,7 +133,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external override
         returns(uint128 retrieved)
     {
-        retrieved = getBaseBalance() - baseCached; // Cache can never be above balances
+        retrieved = _getBaseBalance() - baseCached; // Cache can never be above balances
         base.safeTransfer(to, retrieved);
         // Now the current balances match the cache, so no need to update the TWAR
     }
@@ -159,7 +143,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external override
         returns(uint128 retrieved)
     {
-        retrieved = getFYTokenBalance() - fyTokenCached; // Cache can never be above balances
+        retrieved = _getFYTokenBalance() - fyTokenCached; // Cache can never be above balances
         IERC20(address(fyToken)).safeTransfer(to, retrieved);
         // Now the balances match the cache, so no need to update the TWAR
     }
@@ -281,19 +265,20 @@ contract Pool is IPool, ERC20Permit, Ownable {
         // Return any unused base if we did a trade, meaning slippage was involved.
         if (supply > 0 && fyTokenToBuy > 0) base.safeTransfer(to, baseReturned);
 
-        emit Liquidity(maturity, msg.sender, to, -(baseIn.i256()), -(fyTokenIn.i256()), tokensMinted.i256());
+        emit Liquidity(maturity, msg.sender, to, address(0), -(baseIn.i256()), -(fyTokenIn.i256()), tokensMinted.i256());
         return (baseIn, fyTokenIn, tokensMinted);
     }
 
     /// @dev Burn liquidity tokens in exchange for base and fyToken.
     /// The liquidity tokens need to be in this contract.
-    /// @param to Wallet receiving the base and fyToken.
+    /// @param baseTo Wallet receiving the base.
+    /// @param fyTokenTo Wallet receiving the fyToken.
     /// @return The amount of tokens burned and returned (tokensBurned, bases, fyTokens).
-    function burn(address to, uint256 minBaseOut, uint256 minFYTokenOut)
+    function burn(address baseTo, address fyTokenTo, uint256 minBaseOut, uint256 minFYTokenOut)
         external override
         returns (uint256, uint256, uint256)
     {
-        return _burnInternal(to, false, minBaseOut, minFYTokenOut);
+        return _burnInternal(baseTo, fyTokenTo, false, minBaseOut, minFYTokenOut);
     }
 
     /// @dev Burn liquidity tokens in exchange for base.
@@ -305,18 +290,19 @@ contract Pool is IPool, ERC20Permit, Ownable {
         external override
         returns (uint256 tokensBurned, uint256 baseOut)
     {
-        (tokensBurned, baseOut, ) = _burnInternal(to, true, minBaseOut, 0);
+        (tokensBurned, baseOut, ) = _burnInternal(to, address(0), true, minBaseOut, 0);
     }
 
 
     /// @dev Burn liquidity tokens in exchange for base.
     /// The liquidity provider needs to have called `pool.approve`.
-    /// @param to Wallet receiving the base and fyToken.
+    /// @param baseTo Wallet receiving the base.
+    /// @param fyTokenTo Wallet receiving the fyToken.
     /// @param tradeToBase Whether the resulting fyToken should be traded for base tokens.
     /// @return tokensBurned The amount of pool tokens burned.
     /// @return tokenOut The amount of base tokens returned.
     /// @return fyTokenOut The amount of fyTokens returned.
-    function _burnInternal(address to, bool tradeToBase, uint256 minBaseOut, uint256 minFYTokenOut)
+    function _burnInternal(address baseTo, address fyTokenTo, bool tradeToBase, uint256 minBaseOut, uint256 minFYTokenOut)
         internal
         returns (uint256 tokensBurned, uint256 tokenOut, uint256 fyTokenOut)
     {
@@ -333,15 +319,14 @@ contract Pool is IPool, ERC20Permit, Ownable {
         fyTokenOut = (tokensBurned * fyTokenBalance) / supply;
 
         if (tradeToBase) {
-            (int128 _k, int128 _g2) = (k2, g2);
             tokenOut += YieldMath.baseOutForFYTokenIn(                      // This is a virtual sell
-                _baseCached - tokenOut.u128(),                              // Cache, minus virtual burn
-                _fyTokenCached - fyTokenOut.u128(),                         // Cache, minus virtual burn
-                fyTokenOut.u128(),                                          // Sell the virtual fyToken obtained
+                (_baseCached - tokenOut.u128()) * scaleFactor,              // Cache, minus virtual burn
+                (_fyTokenCached - fyTokenOut.u128()) * scaleFactor,         // Cache, minus virtual burn
+                fyTokenOut.u128() * scaleFactor,                            // Sell the virtual fyToken obtained
                 maturity - uint32(block.timestamp),                         // This can't be called after maturity
-                _k,
-                _g2
-            );
+                k,
+                g2
+            ) / scaleFactor;
             fyTokenOut = 0;
         }
 
@@ -359,10 +344,10 @@ contract Pool is IPool, ERC20Permit, Ownable {
 
         // Transfer assets
         _burn(address(this), tokensBurned);
-        base.safeTransfer(to, tokenOut);
-        if (fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(to, fyTokenOut);
+        base.safeTransfer(baseTo, tokenOut);
+        if (fyTokenOut > 0) IERC20(address(fyToken)).safeTransfer(fyTokenTo, fyTokenOut);
 
-        emit Liquidity(maturity, msg.sender, to, tokenOut.i256(), fyTokenOut.i256(), -(tokensBurned.i256()));
+        emit Liquidity(maturity, msg.sender, baseTo, fyTokenTo, tokenOut.i256(), fyTokenOut.i256(), -(tokensBurned.i256()));
     }
 
     // ---- Trading ----
@@ -379,8 +364,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
         // Calculate trade
         (uint112 _baseCached, uint112 _fyTokenCached) =
             (baseCached, fyTokenCached);
-        uint112 _baseBalance = getBaseBalance();
-        uint112 _fyTokenBalance = getFYTokenBalance();
+        uint112 _baseBalance = _getBaseBalance();
+        uint112 _fyTokenBalance = _getFYTokenBalance();
         uint128 baseIn = _baseBalance - _baseCached;
         uint128 fyTokenOut = _sellBasePreview(
             baseIn,
@@ -431,15 +416,14 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
-        (int128 _k, int128 _g1) = (k1, g1);
         uint128 fyTokenOut = YieldMath.fyTokenOutForBaseIn(
-            baseBalance,
-            fyTokenBalance,
-            baseIn,
+            baseBalance * scaleFactor,
+            fyTokenBalance * scaleFactor,
+            baseIn * scaleFactor,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            _k,
-            _g1
-        );
+            k,
+            g1
+        ) / scaleFactor;
 
         require(
             fyTokenBalance - fyTokenOut >= baseBalance + baseIn,
@@ -460,7 +444,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         returns(uint128)
     {
         // Calculate trade
-        uint128 fyTokenBalance = getFYTokenBalance();
+        uint128 fyTokenBalance = _getFYTokenBalance();
         (uint112 _baseCached, uint112 _fyTokenCached) =
             (baseCached, fyTokenCached);
         uint128 fyTokenIn = _buyBasePreview(
@@ -516,15 +500,14 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
-        (int128 _k, int128 _g2) = (k2, g2);
         return YieldMath.fyTokenInForBaseOut(
-            baseBalance,
-            fyTokenBalance,
-            tokenOut,
+            baseBalance * scaleFactor,
+            fyTokenBalance * scaleFactor,
+            tokenOut * scaleFactor,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            _k,
-            _g2
-        );
+            k,
+            g2
+        ) / scaleFactor;
     }
 
     /// @dev Sell fyToken for base
@@ -539,8 +522,8 @@ contract Pool is IPool, ERC20Permit, Ownable {
         // Calculate trade
         (uint112 _baseCached, uint112 _fyTokenCached) =
             (baseCached, fyTokenCached);
-        uint112 _fyTokenBalance = getFYTokenBalance();
-        uint112 _baseBalance = getBaseBalance();
+        uint112 _fyTokenBalance = _getFYTokenBalance();
+        uint112 _baseBalance = _getBaseBalance();
         uint128 fyTokenIn = _fyTokenBalance - _fyTokenCached;
         uint128 baseOut = _sellFYTokenPreview(
             fyTokenIn,
@@ -591,15 +574,14 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
-        (int128 _k, int128 _g2) = (k2, g2);
         return YieldMath.baseOutForFYTokenIn(
-            baseBalance,
-            fyTokenBalance,
-            fyTokenIn,
+            baseBalance * scaleFactor,
+            fyTokenBalance * scaleFactor,
+            fyTokenIn * scaleFactor,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            _k,
-            _g2
-        );
+            k,
+            g2
+        ) / scaleFactor;
     }
 
     /// @dev Buy fyToken for base
@@ -613,7 +595,7 @@ contract Pool is IPool, ERC20Permit, Ownable {
         returns(uint128)
     {
         // Calculate trade
-        uint128 baseBalance = getBaseBalance();
+        uint128 baseBalance = _getBaseBalance();
         (uint112 _baseCached, uint112 _fyTokenCached) =
             (baseCached, fyTokenCached);
         uint128 baseIn = _buyFYTokenPreview(
@@ -669,15 +651,14 @@ contract Pool is IPool, ERC20Permit, Ownable {
         beforeMaturity
         returns(uint128)
     {
-        (int128 _k, int128 _g1) = (k1, g1);
         uint128 baseIn = YieldMath.baseInForFYTokenOut(
-            baseBalance,
-            fyTokenBalance,
-            fyTokenOut,
+            baseBalance * scaleFactor,
+            fyTokenBalance * scaleFactor,
+            fyTokenOut * scaleFactor,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            _k,
-            _g1
-        );
+            k,
+            g1
+        ) / scaleFactor;
 
         require(
             fyTokenBalance - fyTokenOut >= baseBalance + baseIn,
@@ -685,5 +666,18 @@ contract Pool is IPool, ERC20Permit, Ownable {
         );
 
         return baseIn;
+    }
+
+    /// @dev Calculate the invariant for this pool
+    function invariant()
+        public view returns (uint128)
+    {
+        return YieldMath.invariant(
+            getBaseBalance(),
+            getFYTokenBalance(),
+            _totalSupply,
+            maturity - uint32(block.timestamp),
+            k
+        );
     }
 }
