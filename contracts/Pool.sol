@@ -69,15 +69,6 @@ contract Pool is IPool, ERC20Permit {
         scaleFactor = uint96(10 ** (18 - SafeERC20Namer.tokenDecimals(address(_base))));
     }
 
-    /// @dev Trading can only be done before maturity
-    modifier beforeMaturity() {
-        require(
-            block.timestamp < maturity,
-            "Pool: Too late"
-        );
-        _;
-    }
-
     // ---- Balances management ----
 
     /// @dev Updates the cache to match the actual balances.
@@ -413,7 +404,6 @@ contract Pool is IPool, ERC20Permit {
         uint112 fyTokenBalance
     )
         private view
-        beforeMaturity
         returns(uint128)
     {
         uint128 fyTokenOut = YieldMath.fyTokenOutForBaseIn(
@@ -497,7 +487,6 @@ contract Pool is IPool, ERC20Permit {
         uint112 fyTokenBalance
     )
         private view
-        beforeMaturity
         returns(uint128)
     {
         return YieldMath.fyTokenInForBaseOut(
@@ -571,7 +560,6 @@ contract Pool is IPool, ERC20Permit {
         uint112 fyTokenBalance
     )
         private view
-        beforeMaturity
         returns(uint128)
     {
         return YieldMath.baseOutForFYTokenIn(
@@ -648,7 +636,6 @@ contract Pool is IPool, ERC20Permit {
         uint128 fyTokenBalance
     )
         private view
-        beforeMaturity
         returns(uint128)
     {
         uint128 baseIn = YieldMath.baseInForFYTokenOut(
