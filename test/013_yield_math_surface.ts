@@ -54,6 +54,8 @@ describe('YieldMath - Surface', async function () {
     BigNumber.from('40000000'),
   ]
 
+  const scaleFactor = BigNumber.from('1')
+
   before(async () => {
     const YieldMathFactory = await ethers.getContractFactory('YieldMath')
     yieldMathLibrary = ((await YieldMathFactory.deploy()) as unknown) as YieldMath
@@ -81,7 +83,7 @@ describe('YieldMath - Surface', async function () {
               debugLog(`${baseBalance}, ${fyTokenBalanceDelta}, ${tradeSize}, ${timeTillMaturity}`)
               const fyTokenBalance = baseBalance.add(fyTokenBalanceDelta)
               let offChain, onChain
-              offChain = sellFYToken(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity)
+              offChain = sellFYToken(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity, scaleFactor)
               onChain = await yieldMath.baseOutForFYTokenIn(
                 baseBalance,
                 fyTokenBalance,
@@ -94,7 +96,7 @@ describe('YieldMath - Surface', async function () {
               debugLog(`onChain sellFYToken: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = sellBase(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity)
+              offChain = sellBase(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity, scaleFactor)
               onChain = await yieldMath.fyTokenOutForBaseIn(
                 baseBalance,
                 fyTokenBalance,
@@ -107,7 +109,7 @@ describe('YieldMath - Surface', async function () {
               debugLog(`onChain sellBase: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = buyBase(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity)
+              offChain = buyBase(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity, scaleFactor)
               onChain = await yieldMath.fyTokenInForBaseOut(
                 baseBalance,
                 fyTokenBalance,
@@ -120,7 +122,7 @@ describe('YieldMath - Surface', async function () {
               debugLog(`onChain buyBase: ${onChain}`)
               almostEqual(onChain, offChain, PRECISION)
 
-              offChain = buyFYToken(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity)
+              offChain = buyFYToken(baseBalance, fyTokenBalance, tradeSize, timeTillMaturity, scaleFactor)
               onChain = await yieldMath.baseInForFYTokenOut(
                 baseBalance,
                 fyTokenBalance,
