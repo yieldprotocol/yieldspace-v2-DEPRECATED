@@ -337,14 +337,14 @@ library YieldMath {
   /**
    * Calculate a YieldSpace pool invariant according to the whitepaper
    */
-  function invariant(uint128 baseReserves, uint128 fyTokenReserves, uint256 totalSupply, uint128 timeTillMaturity, int128 k)
+  function invariant(uint128 baseReserves, uint128 fyTokenReserves, uint256 totalSupply, uint128 timeTillMaturity, int128 ts)
       public pure returns(uint128)
   {
     if (totalSupply == 0) return 0;
 
     unchecked {
-      // a = (1 - k * timeTillMaturity)
-      int128 a = int128(ONE).sub(k.mul(timeTillMaturity.fromUInt()));
+      // a = (1 - ts * timeTillMaturity)
+      int128 a = int128(ONE).sub(ts.mul(timeTillMaturity.fromUInt()));
       require (a > 0, "YieldMath: Too far from maturity");
 
       uint256 sum =
@@ -366,16 +366,16 @@ library YieldMath {
    * @param fyTokenReserves fyToken reserves amount
    * @param baseAmount base amount to be traded
    * @param timeTillMaturity time till maturity in seconds
-   * @param k time till maturity coefficient, multiplied by 2^64
+   * @param ts time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
    * @return the amount of fyToken a user would get for given amount of Base
    */
   function fyTokenOutForBaseIn(
     uint128 baseReserves, uint128 fyTokenReserves, uint128 baseAmount,
-    uint128 timeTillMaturity, int128 k, int128 g)
+    uint128 timeTillMaturity, int128 ts, int128 g)
   public pure returns(uint128) {
     unchecked {
-      uint128 a = _computeA(timeTillMaturity, k, g);
+      uint128 a = _computeA(timeTillMaturity, ts, g);
 
       // za = baseReserves ** a
       uint256 za = baseReserves.pow(a, ONE);
@@ -411,16 +411,16 @@ library YieldMath {
    * @param fyTokenReserves fyToken reserves amount
    * @param fyTokenAmount fyToken amount to be traded
    * @param timeTillMaturity time till maturity in seconds
-   * @param k time till maturity coefficient, multiplied by 2^64
+   * @param ts time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
    * @return the amount of Base a user would get for given amount of fyToken
    */
   function baseOutForFYTokenIn(
     uint128 baseReserves, uint128 fyTokenReserves, uint128 fyTokenAmount,
-    uint128 timeTillMaturity, int128 k, int128 g)
+    uint128 timeTillMaturity, int128 ts, int128 g)
   public pure returns(uint128) {
     unchecked {
-      uint128 a = _computeA(timeTillMaturity, k, g);
+      uint128 a = _computeA(timeTillMaturity, ts, g);
 
       // za = baseReserves ** a
       uint256 za = baseReserves.pow(a, ONE);
@@ -456,16 +456,16 @@ library YieldMath {
    * @param fyTokenReserves fyToken reserves amount
    * @param baseAmount Base amount to be traded
    * @param timeTillMaturity time till maturity in seconds
-   * @param k time till maturity coefficient, multiplied by 2^64
+   * @param ts time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
    * @return the amount of fyToken a user could sell for given amount of Base
    */
   function fyTokenInForBaseOut(
     uint128 baseReserves, uint128 fyTokenReserves, uint128 baseAmount,
-    uint128 timeTillMaturity, int128 k, int128 g)
+    uint128 timeTillMaturity, int128 ts, int128 g)
   public pure returns(uint128) {
     unchecked {
-      uint128 a = _computeA(timeTillMaturity, k, g);
+      uint128 a = _computeA(timeTillMaturity, ts, g);
 
       // za = baseReserves ** a
       uint256 za = baseReserves.pow(a, ONE);
@@ -501,17 +501,17 @@ library YieldMath {
    * @param fyTokenReserves fyToken reserves amount
    * @param fyTokenAmount fyToken amount to be traded
    * @param timeTillMaturity time till maturity in seconds
-   * @param k time till maturity coefficient, multiplied by 2^64
+   * @param ts time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
    * @return the amount of base a user would have to pay for given amount of
    *         fyToken
    */
   function baseInForFYTokenOut(
     uint128 baseReserves, uint128 fyTokenReserves, uint128 fyTokenAmount,
-    uint128 timeTillMaturity, int128 k, int128 g)
+    uint128 timeTillMaturity, int128 ts, int128 g)
   public pure returns(uint128) {
     unchecked {
-      uint128 a = _computeA(timeTillMaturity, k, g);
+      uint128 a = _computeA(timeTillMaturity, ts, g);
 
       // za = baseReserves ** a
       uint256 za = baseReserves.pow(a, ONE);
@@ -540,11 +540,11 @@ library YieldMath {
     }
   }
 
-  function _computeA(uint128 timeTillMaturity, int128 k, int128 g) private pure returns (uint128) {
+  function _computeA(uint128 timeTillMaturity, int128 ts, int128 g) private pure returns (uint128) {
     unchecked {
-      // t = k * timeTillMaturity
-      int128 t = k.mul(timeTillMaturity.fromUInt());
-      require(t >= 0, "YieldMath: t must be positive"); // Meaning neither T or k can be negative
+      // t = ts * timeTillMaturity
+      int128 t = ts.mul(timeTillMaturity.fromUInt());
+      require(t >= 0, "YieldMath: t must be positive"); // Meaning neither T or ts can be negative
 
       // a = (1 - gt)
       int128 a = int128(ONE).sub(g.mul(t));

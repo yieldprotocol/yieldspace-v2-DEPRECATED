@@ -14,7 +14,7 @@ export const SECONDS_PER_YEAR: number = (365 * 24 * 60 * 60);
 const ZERO = ZERO_DEC;
 const ONE = ONE_DEC;
 const TWO = TWO_DEC;
-const k = new Decimal(1 / secondsInTenYears.toNumber()); // inv of seconds in 4 years
+const ts = new Decimal(1 / secondsInTenYears.toNumber()); // inv of seconds in 4 years
 const g1 = new Decimal(950 / 1000);
 const g2 = new Decimal(1000 / 950);
 const precisionFee = new Decimal(1000000000000);
@@ -229,7 +229,7 @@ export function sellBase(
   const x = (new Decimal(base.toString())).mul(scaleFactor_);
 
   const g = withNoFee ? ONE : g1;
-  const t = k.mul(timeTillMaturity_);
+  const t = ts.mul(timeTillMaturity_);
   const a = ONE.sub(g.mul(t));
   const invA = ONE.div(a);
 
@@ -267,7 +267,7 @@ export function sellFYToken(
   const fyDai_ = (new Decimal(fyToken.toString())).mul(scaleFactor_);
 
   const g = withNoFee ? ONE : g2;
-  const t = k.mul(timeTillMaturity_);
+  const t = ts.mul(timeTillMaturity_);
   const a = ONE.sub(g.mul(t));
   const invA = ONE.div(a);
 
@@ -305,7 +305,7 @@ export function buyBase(
   const x = (new Decimal(base.toString())).mul(scaleFactor_);
 
   const g = withNoFee ? ONE : g2;
-  const t = k.mul(timeTillMaturity_);
+  const t = ts.mul(timeTillMaturity_);
   const a = ONE.sub(g.mul(t));
   const invA = ONE.div(a);
 
@@ -343,7 +343,7 @@ export function buyFYToken(
   const fyDai_ = (new Decimal(fyToken.toString())).mul(scaleFactor_);
 
   const g = withNoFee ? ONE : g1;
-  const t = k.mul(timeTillMaturity_);
+  const t = ts.mul(timeTillMaturity_);
   const a = ONE.sub(g.mul(t));
   const invA = ONE.div(a);
 

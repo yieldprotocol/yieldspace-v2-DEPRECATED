@@ -16,7 +16,7 @@ contract PoolFactory is IPoolFactory, AccessControl {
 
   address public override nextBase;
   address public override nextFYToken;
-  int128 public override k = int128(uint128(uint256((1 << 64))) / 315576000); // 1 / Seconds in 10 years, in 64.64
+  int128 public override ts = int128(uint128(uint256((1 << 64))) / 315576000); // 1 / Seconds in 10 years, in 64.64
   int128 public override g1 = int128(uint128(uint256((950 << 64))) / 1000); // To be used when selling base to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
   int128 public override g2 = int128(uint128(uint256((1000 << 64))) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
 
@@ -87,12 +87,12 @@ contract PoolFactory is IPoolFactory, AccessControl {
     return address(pool);
   }
 
-  /// @dev Set the k, g1 or g2 parameters
+  /// @dev Set the ts, g1 or g2 parameters
   function setParameter(bytes32 parameter, int128 value)
       external
       auth
   {
-      if (parameter == "k") k = value;
+      if (parameter == "ts") ts = value;
       else if (parameter == "g1") g1 = value;
       else if (parameter == "g2") g2 = value;
       else revert("Pool: Unrecognized parameter");

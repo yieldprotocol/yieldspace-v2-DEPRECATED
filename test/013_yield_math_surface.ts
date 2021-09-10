@@ -8,7 +8,7 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 
-import { k, g1, g2 } from '../src/constants'
+import { ts, g1, g2 } from '../src/constants'
 
 import { sellBase, sellFYToken, buyBase, buyFYToken } from '../src/yieldspace'
 
@@ -89,7 +89,7 @@ describe('YieldMath - Surface', async function () {
                 fyTokenBalance,
                 tradeSize,
                 timeTillMaturity,
-                k,
+                ts,
                 g2
               )
               debugLog(`offChain sellFYToken: ${offChain}`)
@@ -102,7 +102,7 @@ describe('YieldMath - Surface', async function () {
                 fyTokenBalance,
                 tradeSize,
                 timeTillMaturity,
-                k,
+                ts,
                 g1
               )
               debugLog(`offChain sellBase: ${offChain}`)
@@ -115,7 +115,7 @@ describe('YieldMath - Surface', async function () {
                 fyTokenBalance,
                 tradeSize,
                 timeTillMaturity,
-                k,
+                ts,
                 g2
               )
               debugLog(`offChain buyBase: ${offChain}`)
@@ -128,7 +128,7 @@ describe('YieldMath - Surface', async function () {
                 fyTokenBalance,
                 tradeSize,
                 timeTillMaturity,
-                k,
+                ts,
                 g1
               )
               debugLog(`offChain buyFYToken: ${offChain}`)
