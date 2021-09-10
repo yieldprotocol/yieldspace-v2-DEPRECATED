@@ -5,7 +5,7 @@ import { YieldMath } from '../typechain/YieldMath'
 
 import { BigNumber } from 'ethers'
 
-import { ONE64, k, g1, g2 } from '../src/constants'
+import { ONE64, ts, g1, g2 } from '../src/constants'
 
 import { ethers } from 'hardhat'
 import { solidity } from 'ethereum-waffle'
@@ -68,7 +68,14 @@ describe('YieldMath - Curve', async function () {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.fyTokenOutForBaseIn(baseBalance, fyTokenBalance, baseAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.fyTokenOutForBaseIn(
+            baseBalance,
+            fyTokenBalance,
+            baseAmount,
+            timeTillMaturity,
+            ts,
+            g_
+          )
         }
 
         expect(result).to.be.gt(previousResult)
@@ -94,7 +101,7 @@ describe('YieldMath - Curve', async function () {
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
 
-          result = await yieldMath.fyTokenOutForBaseIn(baseBalance, fyTokenBalance, baseAmount, t, k, g1)
+          result = await yieldMath.fyTokenOutForBaseIn(baseBalance, fyTokenBalance, baseAmount, t, ts, g1)
 
           debugLog('      ' + result.toString())
           if (j == 0) {
@@ -130,7 +137,14 @@ describe('YieldMath - Curve', async function () {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.baseOutForFYTokenIn(baseBalance, fyTokenBalance, baseAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.baseOutForFYTokenIn(
+            baseBalance,
+            fyTokenBalance,
+            baseAmount,
+            timeTillMaturity,
+            ts,
+            g_
+          )
         }
 
         expect(result).to.be.gt(previousResult)
@@ -155,7 +169,7 @@ describe('YieldMath - Curve', async function () {
         var previousResult = minimum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          result = await yieldMath.baseOutForFYTokenIn(baseBalance, fyTokenBalance, baseAmount, t, k, g2)
+          result = await yieldMath.baseOutForFYTokenIn(baseBalance, fyTokenBalance, baseAmount, t, ts, g2)
 
           debugLog('      ' + result.toString())
           if (j == 0) {
@@ -191,7 +205,14 @@ describe('YieldMath - Curve', async function () {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.fyTokenInForBaseOut(baseBalance, fyTokenBalance, baseAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.fyTokenInForBaseOut(
+            baseBalance,
+            fyTokenBalance,
+            baseAmount,
+            timeTillMaturity,
+            ts,
+            g_
+          )
         }
 
         expect(result).to.be.gt(previousResult)
@@ -216,7 +237,7 @@ describe('YieldMath - Curve', async function () {
         var previousResult = maximum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          result = await yieldMath.fyTokenInForBaseOut(baseBalance, fyTokenBalance, baseAmount, t, k, g2)
+          result = await yieldMath.fyTokenInForBaseOut(baseBalance, fyTokenBalance, baseAmount, t, ts, g2)
 
           debugLog('      ' + result.toString())
           if (j == 0) {
@@ -252,7 +273,14 @@ describe('YieldMath - Curve', async function () {
         var previousResult = BigNumber.from('0')
         for (var j = 0; j < g.length; j++) {
           var g_ = BigNumber.from(g[j][0]).mul(ONE64).div(BigNumber.from(g[j][1]))
-          result = await yieldMath.baseInForFYTokenOut(baseBalance, fyTokenBalance, baseAmount, timeTillMaturity, k, g_)
+          result = await yieldMath.baseInForFYTokenOut(
+            baseBalance,
+            fyTokenBalance,
+            baseAmount,
+            timeTillMaturity,
+            ts,
+            g_
+          )
         }
 
         expect(result).to.be.gt(previousResult)
@@ -277,7 +305,7 @@ describe('YieldMath - Curve', async function () {
         var previousResult = minimum
         for (var j = 0; j < timeTillMaturity.length; j++) {
           var t = timeTillMaturity[j]
-          result = await yieldMath.baseInForFYTokenOut(baseBalance, fyTokenBalance, baseAmount, t, k, g1)
+          result = await yieldMath.baseInForFYTokenOut(baseBalance, fyTokenBalance, baseAmount, t, ts, g1)
 
           debugLog('      ' + result.toString())
           if (j == 0) {

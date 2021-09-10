@@ -30,7 +30,7 @@ contract Pool is IPool, ERC20Permit {
     event Liquidity(uint32 maturity, address indexed from, address indexed to, address indexed fyTokenTo, int256 bases, int256 fyTokens, int256 poolTokens);
     event Sync(uint112 baseCached, uint112 fyTokenCached, uint256 cumulativeBalancesRatio);
 
-    int128 public immutable k;              // 1 / Seconds in 10 years, in 64.64
+    int128 public immutable ts;              // 1 / Seconds in 10 years, in 64.64
     int128 public immutable g1;             // To be used when selling base to the pool
     int128 public immutable g2;             // To be used when selling fyToken to the pool
     uint32 public immutable override maturity;
@@ -62,7 +62,7 @@ contract Pool is IPool, ERC20Permit {
         require (_maturity <= type(uint32).max, "Pool: Maturity too far in the future");
         maturity = uint32(_maturity);
 
-        k = _factory.k();
+        ts = _factory.ts();
         g1 = _factory.g1();
         g2 = _factory.g2();
 
@@ -324,7 +324,7 @@ contract Pool is IPool, ERC20Permit {
                 (_fyTokenCached - fyTokenOut.u128()) * scaleFactor,         // Cache, minus virtual burn
                 fyTokenOut.u128() * scaleFactor,                            // Sell the virtual fyToken obtained
                 maturity - uint32(block.timestamp),                         // This can't be called after maturity
-                k,
+                ts,
                 g2
             ) / scaleFactor;
             fyTokenOut = 0;
@@ -421,7 +421,7 @@ contract Pool is IPool, ERC20Permit {
             fyTokenBalance * scaleFactor,
             baseIn * scaleFactor,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            k,
+            ts,
             g1
         ) / scaleFactor;
 
@@ -505,7 +505,7 @@ contract Pool is IPool, ERC20Permit {
             fyTokenBalance * scaleFactor,
             tokenOut * scaleFactor,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            k,
+            ts,
             g2
         ) / scaleFactor;
     }
@@ -579,7 +579,7 @@ contract Pool is IPool, ERC20Permit {
             fyTokenBalance * scaleFactor,
             fyTokenIn * scaleFactor,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            k,
+            ts,
             g2
         ) / scaleFactor;
     }
@@ -656,7 +656,7 @@ contract Pool is IPool, ERC20Permit {
             fyTokenBalance * scaleFactor,
             fyTokenOut * scaleFactor,
             maturity - uint32(block.timestamp),             // This can't be called after maturity
-            k,
+            ts,
             g1
         ) / scaleFactor;
 
@@ -677,7 +677,7 @@ contract Pool is IPool, ERC20Permit {
             getFYTokenBalance(),
             _totalSupply,
             maturity - uint32(block.timestamp),
-            k
+            ts
         );
     }
 }

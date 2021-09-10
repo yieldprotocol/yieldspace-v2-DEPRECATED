@@ -79,7 +79,10 @@ export class YieldSpaceEnvironment {
     })
     factory = ((await PoolFactoryFactory.deploy()) as unknown) as PoolFactory
     await factory.deployed()
-    await factory.grantRoles([id('setParameter(bytes32,int128)'), id('createPool(address,address)')], ownerAdd)
+    await factory.grantRoles(
+      [id(factory.interface, 'setParameter(bytes32,int128)'), id(factory.interface, 'createPool(address,address)')],
+      ownerAdd
+    )
 
     const initialFYToken = initialBase.div(9)
     const bases: Map<string, ERC20> = new Map()

@@ -14,16 +14,16 @@ contract YieldMathWrapper {
    * @param fyTokenReserves fyToken reserves amount
    * @param baseAmount Base amount to be traded
    * @param timeTillMaturity time till maturity in seconds
-   * @param k time till maturity coefficient, multiplied by 2^64
+   * @param ts time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
    * @return the amount of fyToken a user would get for given amount of Base
    */
   function fyTokenOutForBaseIn(
     uint128 baseReserves, uint128 fyTokenReserves, uint128 baseAmount,
-    uint128 timeTillMaturity, int128 k, int128 g)
+    uint128 timeTillMaturity, int128 ts, int128 g)
   public pure returns(uint128) {
     return YieldMath.fyTokenOutForBaseIn(
-      baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g
+      baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, ts, g
     );
   }
 
@@ -34,16 +34,16 @@ contract YieldMathWrapper {
    * @param fyTokenReserves fyToken reserves amount
    * @param fyTokenAmount fyToken amount to be traded
    * @param timeTillMaturity time till maturity in seconds
-   * @param k time till maturity coefficient, multiplied by 2^64
+   * @param ts time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
    * @return the amount of Base a user would get for given amount of fyToken
    */
   function baseOutForFYTokenIn(
     uint128 baseReserves, uint128 fyTokenReserves, uint128 fyTokenAmount,
-    uint128 timeTillMaturity, int128 k, int128 g)
+    uint128 timeTillMaturity, int128 ts, int128 g)
   public pure returns(uint128) {
     return YieldMath.baseOutForFYTokenIn(
-      baseReserves, fyTokenReserves, fyTokenAmount, timeTillMaturity, k, g
+      baseReserves, fyTokenReserves, fyTokenAmount, timeTillMaturity, ts, g
     );
   }
 
@@ -54,16 +54,16 @@ contract YieldMathWrapper {
    * @param fyTokenReserves fyToken reserves amount
    * @param baseAmount Base amount to be traded
    * @param timeTillMaturity time till maturity in seconds
-   * @param k time till maturity coefficient, multiplied by 2^64
+   * @param ts time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
    * @return the amount of fyToken a user could sell for given amount of Base
    */
   function fyTokenInForBaseOut(
     uint128 baseReserves, uint128 fyTokenReserves, uint128 baseAmount,
-    uint128 timeTillMaturity, int128 k, int128 g)
+    uint128 timeTillMaturity, int128 ts, int128 g)
   public pure returns(uint128) {
     return YieldMath.fyTokenInForBaseOut(
-      baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, k, g
+      baseReserves, fyTokenReserves, baseAmount, timeTillMaturity, ts, g
     );
   }
 
@@ -75,17 +75,17 @@ contract YieldMathWrapper {
    * @param fyTokenReserves fyToken reserves amount
    * @param fyTokenAmount fyToken amount to be traded
    * @param timeTillMaturity time till maturity in seconds
-   * @param k time till maturity coefficient, multiplied by 2^64
+   * @param ts time till maturity coefficient, multiplied by 2^64
    * @param g fee coefficient, multiplied by 2^64
    * @return the amount of Base a user would have to pay for given amount of
    *         fyToken
    */
   function baseInForFYTokenOut(
     uint128 baseReserves, uint128 fyTokenReserves, uint128 fyTokenAmount,
-    uint128 timeTillMaturity, int128 k, int128 g)
+    uint128 timeTillMaturity, int128 ts, int128 g)
   public pure returns(uint128) {
     return YieldMath.baseInForFYTokenOut(
-      baseReserves, fyTokenReserves, fyTokenAmount, timeTillMaturity, k, g
+      baseReserves, fyTokenReserves, fyTokenAmount, timeTillMaturity, ts, g
     );
   }
 
