@@ -670,7 +670,8 @@ contract Pool is IPool, ERC20Permit {
 
     /// @dev Calculate the invariant for this pool
     function invariant()
-        public view returns (uint128)
+        public view override
+        returns (uint128)
     {
         return YieldMath.invariant(
             getBaseBalance(),
