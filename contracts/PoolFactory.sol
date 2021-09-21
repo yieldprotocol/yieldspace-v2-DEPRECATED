@@ -2,6 +2,7 @@
 pragma solidity 0.8.6;
 
 import "@yield-protocol/utils-v2/contracts/access/AccessControl.sol";
+import "@yield-protocol/utils-v2/contracts/utils/IsContract.sol";
 import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
 import "./Pool.sol";
 
@@ -19,18 +20,6 @@ contract PoolFactory is IPoolFactory, AccessControl {
   int128 public override ts = int128(uint128(uint256((1 << 64))) / 315576000); // 1 / Seconds in 10 years, in 64.64
   int128 public override g1 = int128(uint128(uint256((950 << 64))) / 1000); // To be used when selling base to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
   int128 public override g2 = int128(uint128(uint256((1000 << 64))) / 950); // To be used when selling fyToken to the pool. All constants are `ufixed`, to divide them they must be converted to uint256
-
-  /// @dev Returns true if `account` is a contract.
-  function isContract(address account) internal view returns (bool) {
-      // This method relies on extcodesize, which returns 0 for contracts in
-      // construction, since the code is only stored at the end of the
-      // constructor execution.
-
-      uint256 size;
-      // solhint-disable-next-line no-inline-assembly
-      assembly { size := extcodesize(account) }
-      return size > 0;
-  }
 
   /// @dev Calculate the deterministic addreess of a pool, based on the base token & fy token.
   /// @param base Address of the base token (such as Base).
@@ -59,7 +48,7 @@ contract PoolFactory is IPoolFactory, AccessControl {
   function getPool(address base, address fyToken) external view override returns (address pool) {
     pool = _calculatePoolAddress(base, fyToken);
 
-    if(!isContract(pool)) {
+    if(!IsContract.isContract(pool)) {
       pool = address(0);
     }
   }
