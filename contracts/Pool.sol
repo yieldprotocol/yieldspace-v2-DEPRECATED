@@ -673,11 +673,12 @@ contract Pool is IPool, ERC20Permit {
         public view override
         returns (uint128)
     {
+        uint32 timeToMaturity = (maturity > uint32(block.timestamp)) ? maturity - uint32(block.timestamp) : 0;
         return YieldMath.invariant(
             getBaseBalance(),
             getFYTokenBalance(),
             _totalSupply,
-            maturity - uint32(block.timestamp),
+            timeToMaturity,
             ts
         );
     }
