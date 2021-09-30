@@ -132,18 +132,20 @@ export class YieldSpaceEnvironment {
         fyTokenPoolPairs.set(fyTokenId, pool)
 
         // init pool
-        if (baseId === ETH) {
-          break // TODO: Fix when we can give `initialBase` ether to the deployer
-          await weth9.deposit({ value: initialBase })
-          await weth9.transfer(pool.address, initialBase)
-        } else {
-          await base.mint(pool.address, initialBase)
+        if (initialBase !== BigNumber.from(0)){
+          if (baseId === ETH) {
+            break // TODO: Fix when we can give `initialBase` ether to the deployer
+            await weth9.deposit({ value: initialBase })
+            await weth9.transfer(pool.address, initialBase)
+          } else {
+            await base.mint(pool.address, initialBase)
+          }
+          await pool.mint(ownerAdd, CALCULATE_FROM_BASE, 0)
+    
+          // skew pool to 5% interest rate
+          await fyToken.mint(pool.address, initialFYToken)
+          await pool.sync()    
         }
-        await pool.mint(ownerAdd, CALCULATE_FROM_BASE, 0)
-
-        // skew pool to 5% interest rate
-        await fyToken.mint(pool.address, initialFYToken)
-        await pool.sync()
       }
     }
 
