@@ -331,6 +331,7 @@ library YieldMath {
   using Exp64x64 for uint128;
 
   uint128 public constant ONE = 0x10000000000000000; // In 64.64
+  uint128 public constant TWO = 0x20000000000000000; // In 64.64
   uint256 public constant MAX = type(uint128).max;   // Used for overflow checks
   uint256 public constant VAR = 1e12;                // The logarithm math used is not precise to the wei, but can deviate up to 1e12 from the real value.
 
@@ -532,6 +533,34 @@ library YieldMath {
 
       // result = (sum ** (1/a)) - baseReserves
       uint256 result = uint256(uint128(sum).pow(ONE, a)) - uint256(baseReserves);
+      require(result <= MAX, "YieldMath: Rounding induced error");
+
+      result = result < MAX - VAR ? result + VAR : MAX; // Add error guard, ceiling the result at max
+
+      return uint128(result);
+    }
+  }
+
+  /**
+   * Calculate the amount of fyTokens that can't be accessed as it would mean the pool has negative interest.
+   * See section 6.3 of the Yieldspace whitepaper
+   */
+  function inaccessibleFYTokens(
+    uint128 baseReserves, uint128 fyTokenReserves,
+    uint128 timeTillMaturity, int128 ts, int128 g)
+  public pure returns(uint128) {
+    unchecked {
+      uint128 a = _computeA(timeTillMaturity, ts, g);
+
+      // xa = baseReserves ** a
+      uint128 xa = baseReserves.pow(a, ONE);
+
+      // ya = fyTokenReserves ** a
+      uint128 ya = fyTokenReserves.pow(a, ONE);
+
+      int128 xy2 = (xa+ya).divu(TWO);
+
+      uint result = uint256(uint128(xy2).pow(ONE, a));
       require(result <= MAX, "YieldMath: Rounding induced error");
 
       result = result < MAX - VAR ? result + VAR : MAX; // Add error guard, ceiling the result at max

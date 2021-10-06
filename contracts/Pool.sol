@@ -228,7 +228,7 @@ contract Pool is IPool, ERC20Permit {
                     fyTokenToBuy.u128(),
                     _baseCached,
                     _fyTokenCached
-                ); 
+                );
             }
 
             if (calculateFromBase) {   // We use all the available base tokens, surplus is in fyTokens
@@ -242,7 +242,7 @@ contract Pool is IPool, ERC20Permit {
                 baseIn = baseToSell + ((_baseCached + baseToSell) * tokensMinted) / supply;
                 uint256 _baseBalance = base.balanceOf(address(this));
                 require(_baseBalance - _baseCached >= baseIn, "Pool: Not enough base token in");
-                
+
                 // If we did a trade means we came in through `mintWithBase`, and want to return the base token surplus
                 if (fyTokenToBuy > 0) baseReturned = (_baseBalance - _baseCached) - baseIn;
             }
@@ -306,7 +306,7 @@ contract Pool is IPool, ERC20Permit {
         internal
         returns (uint256 tokensBurned, uint256 tokenOut, uint256 fyTokenOut)
     {
-        
+
         tokensBurned = _balanceOf[address(this)];
         uint256 supply = _totalSupply;
         uint256 fyTokenBalance = fyToken.balanceOf(address(this));          // use the real balance rather than the virtual one
@@ -666,6 +666,38 @@ contract Pool is IPool, ERC20Permit {
         );
 
         return baseIn;
+    }
+
+    /// @dev max amount of fyTokens that can be bought from the pool
+    function availableFYTokens() external view returns (uint128){
+        return _availableFYTokens();
+    }
+
+    /// @dev max amount of fyTokens that can be bought from the pool
+    function _availableFYTokens() internal view returns (uint128){
+        (uint112 _baseCached, uint112 _fyTokenCached) = (baseCached, fyTokenCached);
+
+        if (_baseCached == _fyTokenCached) return 0;
+
+        uint128 inaccessible = YieldMath.inaccessibleFYTokens(
+            _baseCached * scaleFactor,
+            _fyTokenCached * scaleFactor,
+            maturity - uint32(block.timestamp),
+            ts,
+            g1
+        ) / scaleFactor;
+
+        return inaccessible > fyTokenCached ? 0 : fyTokenCached - inaccessible;
+    }
+
+    /// @dev max amount of Base that can be sold to the the pool
+    function availableToLend() external view returns (uint) {
+        uint128 available = _availableFYTokens();
+        if (available > 0){
+            (uint112 _baseCached, uint112 _fyTokenCached) = (baseCached, fyTokenCached);
+            return _buyFYTokenPreview(available, _baseCached, _fyTokenCached);
+        }
+        return 0;
     }
 
     /// @dev Calculate the invariant for this pool
