@@ -14,7 +14,7 @@ export const SECONDS_PER_YEAR: number = (365 * 24 * 60 * 60);
 const ZERO = ZERO_DEC;
 const ONE = ONE_DEC;
 const TWO = TWO_DEC;
-const k = new Decimal(1 / secondsInTenYears.toNumber()); // inv of seconds in 4 years
+const ts = new Decimal(1 / secondsInTenYears.toNumber()); // inv of seconds in 4 years
 const g1 = new Decimal(950 / 1000);
 const g2 = new Decimal(1000 / 950);
 const precisionFee = new Decimal(1000000000000);
@@ -153,6 +153,7 @@ export function burn(
  * @param { BigNumber | string } totalSupply
  * @param { BigNumber | string } fyToken
  * @param { BigNumber | string } timeTillMaturity
+ * @param { BigNumber | string } scaleFactor
  * @returns {[BigNumber, BigNumber]}
  */
 export function mintWithBase(
@@ -162,13 +163,14 @@ export function mintWithBase(
   supply: BigNumber|string,
   fyToken: BigNumber|string,
   timeTillMaturity: BigNumber|string,
+  scaleFactor: BigNumber|string,
 ): [BigNumber, BigNumber] {
   const Z = new Decimal(baseBalance.toString());
   const YR = new Decimal(fyTokenBalanceReal.toString());
   const S = new Decimal(supply.toString());
   const y = new Decimal(fyToken.toString());
   // buyFyToken:
-  const z1 = new Decimal(buyFYToken(baseBalance, fyTokenBalanceVirtual, fyToken, timeTillMaturity).toString());
+  const z1 = new Decimal(buyFYToken(baseBalance, fyTokenBalanceVirtual, fyToken, timeTillMaturity, scaleFactor).toString());
   // Mint specifying how much fyToken to take in. Reverse of `mint`.
   const m = (S.mul(y)).div(YR.sub(y));
   const z2 = ((Z.add(z1)).mul(m)).div(S);
@@ -182,6 +184,7 @@ export function mintWithBase(
  * @param { BigNumber | string } totalSupply
  * @param { BigNumber | string } lpTokens
  * @param { BigNumber | string } timeTillMaturity
+ * @param { BigNumber | string } scaleFactor
  * @returns { BigNumber }
  */
 export function burnForBase(
@@ -191,11 +194,12 @@ export function burnForBase(
   supply: BigNumber,
   lpTokens: BigNumber,
   timeTillMaturity: BigNumber,
+  scaleFactor: BigNumber|string,
 ): BigNumber {
   // Burn FyToken
   const [z1, y] = burn(baseBalance, fyTokenBalanceReal, supply, lpTokens);
   // Sell FyToken for base
-  const z2 = sellFYToken(baseBalance, fyTokenBalanceVirtual, y, timeTillMaturity);
+  const z2 = sellFYToken(baseBalance, fyTokenBalanceVirtual, y, timeTillMaturity, scaleFactor);
   const z1D = new Decimal(z1.toString());
   const z2D = new Decimal(z2.toString());
   return toBn(z1D.add(z2D));
@@ -206,6 +210,7 @@ export function burnForBase(
  * @param { BigNumber | string } fyTokenBalance
  * @param { BigNumber | string } base
  * @param { BigNumber | string } timeTillMaturity
+ * @param { BigNumber | string } scaleFactor
  * @param { boolean } withNoFee
  * @returns { BigNumber }
  */
@@ -214,15 +219,17 @@ export function sellBase(
   fyTokenBalance: BigNumber | string,
   base: BigNumber | string,
   timeTillMaturity: BigNumber | string,
+  scaleFactor: BigNumber|string,
   withNoFee: boolean = false, // optional: default === false
 ): BigNumber {
-  const baseBalance_ = new Decimal(baseBalance.toString());
-  const fyTokenBalance_ = new Decimal(fyTokenBalance.toString());
+  const scaleFactor_ = new Decimal(scaleFactor.toString());
+  const baseBalance_ = (new Decimal(baseBalance.toString())).mul(scaleFactor_);
+  const fyTokenBalance_ = (new Decimal(fyTokenBalance.toString())).mul(scaleFactor_);
   const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
-  const x = new Decimal(base.toString());
+  const x = (new Decimal(base.toString())).mul(scaleFactor_);
 
   const g = withNoFee ? ONE : g1;
-  const t = k.mul(timeTillMaturity_);
+  const t = ts.mul(timeTillMaturity_);
   const a = ONE.sub(g.mul(t));
   const invA = ONE.div(a);
 
@@ -233,7 +240,7 @@ export function sellBase(
   const y = fyTokenBalance_.sub(sum.pow(invA));
   const yFee = y.sub(precisionFee);
 
-  return toBn(yFee);
+  return toBn(yFee.div(scaleFactor_));
 }
 
 /**
@@ -241,6 +248,7 @@ export function sellBase(
  * @param { BigNumber | string } fyTokenBalance
  * @param { BigNumber | string } fyToken
  * @param { BigNumber | string } timeTillMaturity
+ * @param { BigNumber | string } scaleFactor
  * @param { boolean } withNoFee
  * @returns { BigNumber }
  */
@@ -249,15 +257,17 @@ export function sellFYToken(
   fyTokenBalance: BigNumber | string,
   fyToken: BigNumber | string,
   timeTillMaturity: BigNumber | string,
+  scaleFactor: BigNumber|string,
   withNoFee: boolean = false, // optional: default === false
 ): BigNumber {
-  const baseBalance_ = new Decimal(baseBalance.toString());
-  const fyTokenBalance_ = new Decimal(fyTokenBalance.toString());
+  const scaleFactor_ = new Decimal(scaleFactor.toString());
+  const baseBalance_ = (new Decimal(baseBalance.toString())).mul(scaleFactor_);
+  const fyTokenBalance_ = (new Decimal(fyTokenBalance.toString())).mul(scaleFactor_);
   const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
-  const fyDai_ = new Decimal(fyToken.toString());
+  const fyDai_ = (new Decimal(fyToken.toString())).mul(scaleFactor_);
 
   const g = withNoFee ? ONE : g2;
-  const t = k.mul(timeTillMaturity_);
+  const t = ts.mul(timeTillMaturity_);
   const a = ONE.sub(g.mul(t));
   const invA = ONE.div(a);
 
@@ -268,7 +278,7 @@ export function sellFYToken(
   const y = baseBalance_.sub(sum.pow(invA));
   const yFee = y.sub(precisionFee);
 
-  return toBn(yFee);
+  return toBn(yFee.div(scaleFactor_));
 }
 
 /**
@@ -276,6 +286,7 @@ export function sellFYToken(
  * @param { BigNumber | string } fyTokenBalance
  * @param { BigNumber | string } base
  * @param { BigNumber | string } timeTillMaturity
+ * @param { BigNumber | string } scaleFactor
  * @param { boolean } withNoFee
  * @returns { BigNumber }
  */
@@ -284,15 +295,17 @@ export function buyBase(
   fyTokenBalance: BigNumber | string,
   base: BigNumber | string,
   timeTillMaturity: BigNumber | string,
+  scaleFactor: BigNumber|string,
   withNoFee: boolean = false, // optional: default === false
 ): BigNumber {
-  const baseBalance_ = new Decimal(baseBalance.toString());
-  const fyTokenBalance_ = new Decimal(fyTokenBalance.toString());
+  const scaleFactor_ = new Decimal(scaleFactor.toString());
+  const baseBalance_ = (new Decimal(baseBalance.toString())).mul(scaleFactor_);
+  const fyTokenBalance_ = (new Decimal(fyTokenBalance.toString())).mul(scaleFactor_);
   const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
-  const x = new Decimal(base.toString());
+  const x = (new Decimal(base.toString())).mul(scaleFactor_);
 
   const g = withNoFee ? ONE : g2;
-  const t = k.mul(timeTillMaturity_);
+  const t = ts.mul(timeTillMaturity_);
   const a = ONE.sub(g.mul(t));
   const invA = ONE.div(a);
 
@@ -303,7 +316,7 @@ export function buyBase(
   const y = (sum.pow(invA)).sub(fyTokenBalance_);
   const yFee = y.add(precisionFee);
 
-  return toBn(yFee);
+  return toBn(yFee.div(scaleFactor_));
 }
 
 /**
@@ -311,6 +324,7 @@ export function buyBase(
  * @param { BigNumber | string } fyTokenBalance
  * @param { BigNumber | string } fyToken
  * @param { BigNumber | string } timeTillMaturity
+ * @param { BigNumber | string } scaleFactor
  * @param { boolean } withNoFee
  * @returns { BigNumber }
  */
@@ -319,15 +333,17 @@ export function buyFYToken(
   fyTokenBalance: BigNumber | string,
   fyToken: BigNumber | string,
   timeTillMaturity: BigNumber | string,
+  scaleFactor: BigNumber|string,
   withNoFee: boolean = false, // optional: default === false
 ): BigNumber {
-  const baseBalance_ = new Decimal(baseBalance.toString());
-  const fyTokenBalance_ = new Decimal(fyTokenBalance.toString());
+  const scaleFactor_ = new Decimal(scaleFactor.toString());
+  const baseBalance_ = (new Decimal(baseBalance.toString())).mul(scaleFactor_);
+  const fyTokenBalance_ = (new Decimal(fyTokenBalance.toString())).mul(scaleFactor_);
   const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
-  const fyDai_ = new Decimal(fyToken.toString());
+  const fyDai_ = (new Decimal(fyToken.toString())).mul(scaleFactor_);
 
   const g = withNoFee ? ONE : g1;
-  const t = k.mul(timeTillMaturity_);
+  const t = ts.mul(timeTillMaturity_);
   const a = ONE.sub(g.mul(t));
   const invA = ONE.div(a);
 
@@ -338,7 +354,7 @@ export function buyFYToken(
   const y = (sum.pow(invA)).sub(baseBalance_);
   const yFee = y.add(precisionFee);
 
-  return toBn(yFee);
+  return toBn(yFee.div(scaleFactor_));
 }
 
 /**
@@ -346,6 +362,7 @@ export function buyFYToken(
  * @param { BigNumber | string } fyTokenBalance
  * @param { BigNumber | string } fyToken
  * @param { BigNumber | string } timeTillMaturity
+ * @param { BigNumber | string } scaleFactor
  * @returns { BigNumber }
  */
 export function getFee(
@@ -353,17 +370,18 @@ export function getFee(
   fyTokenBalance: BigNumber | string,
   fyToken: BigNumber | string,
   timeTillMaturity: BigNumber | string,
+  scaleFactor: BigNumber|string,
 ): BigNumber {
   let fee_: Decimal = ZERO;
   const fyDai_: BigNumber = BigNumber.isBigNumber(fyToken) ? fyToken : BigNumber.from(fyToken);
 
   if (fyDai_.gte(ethers.constants.Zero)) {
-    const daiWithFee: BigNumber = buyFYToken(baseBalance, fyTokenBalance, fyToken, timeTillMaturity);
-    const daiWithoutFee: BigNumber = buyFYToken(baseBalance, fyTokenBalance, fyToken, timeTillMaturity, true);
+    const daiWithFee: BigNumber = buyFYToken(baseBalance, fyTokenBalance, fyToken, timeTillMaturity, scaleFactor);
+    const daiWithoutFee: BigNumber = buyFYToken(baseBalance, fyTokenBalance, fyToken, timeTillMaturity, scaleFactor, true);
     fee_ = (new Decimal(daiWithFee.toString())).sub(new Decimal(daiWithoutFee.toString()));
   } else {
-    const daiWithFee:BigNumber = sellFYToken(baseBalance, fyTokenBalance, fyDai_.mul(BigNumber.from('-1')), timeTillMaturity);
-    const daiWithoutFee:BigNumber = sellFYToken(baseBalance, fyTokenBalance, fyDai_.mul(BigNumber.from('-1')), timeTillMaturity, true);
+    const daiWithFee:BigNumber = sellFYToken(baseBalance, fyTokenBalance, fyDai_.mul(BigNumber.from('-1')), timeTillMaturity, scaleFactor);
+    const daiWithoutFee:BigNumber = sellFYToken(baseBalance, fyTokenBalance, fyDai_.mul(BigNumber.from('-1')), timeTillMaturity, scaleFactor, true);
     fee_ = (new Decimal(daiWithoutFee.toString())).sub(new Decimal(daiWithFee.toString()));
   }
   return toBn(fee_);

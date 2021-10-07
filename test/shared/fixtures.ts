@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 import { BaseProvider } from '@ethersproject/providers'
 
-import { constants } from '@yield-protocol/utils-v2'
+import { constants, id } from '@yield-protocol/utils-v2'
 const { DAI, ETH, USDC, THREE_MONTHS } = constants
 
 import { CALCULATE_FROM_BASE } from '../../src/constants'
@@ -37,7 +37,12 @@ export class YieldSpaceEnvironment {
   }
 
   // Set up a test environment with pools according to the cartesian product of the base ids and the fyToken ids
-  public static async setup(owner: SignerWithAddress, baseIds: Array<string>, maturityIds: Array<string>, initialBase: BigNumber) {
+  public static async setup(
+    owner: SignerWithAddress,
+    baseIds: Array<string>,
+    maturityIds: Array<string>,
+    initialBase: BigNumber
+  ) {
     const ownerAdd = await owner.getAddress()
 
     let yieldMathLibrary: YieldMath
@@ -45,15 +50,15 @@ export class YieldSpaceEnvironment {
     let factory: PoolFactory
 
     const WETH9Factory = await ethers.getContractFactory('WETH9Mock')
-    const weth9 = ((await WETH9Factory.deploy()) as unknown) as unknown as ERC20
+    const weth9 = (((await WETH9Factory.deploy()) as unknown) as unknown) as ERC20
     await weth9.deployed()
 
     const DaiFactory = await ethers.getContractFactory('DaiMock')
-    const dai = ((await DaiFactory.deploy('DAI', 'DAI')) as unknown) as unknown as ERC20
+    const dai = (((await DaiFactory.deploy('DAI', 'DAI')) as unknown) as unknown) as ERC20
     await dai.deployed()
 
     const USDCFactory = await ethers.getContractFactory('USDCMock')
-    const usdc = ((await USDCFactory.deploy('USDC', 'USDC')) as unknown) as unknown as ERC20
+    const usdc = (((await USDCFactory.deploy('USDC', 'USDC')) as unknown) as unknown) as ERC20
     await usdc.deployed()
 
     const BaseFactory = await ethers.getContractFactory('BaseMock')
@@ -65,7 +70,7 @@ export class YieldSpaceEnvironment {
     const SafeERC20NamerFactory = await ethers.getContractFactory('SafeERC20Namer')
     safeERC20NamerLibrary = ((await SafeERC20NamerFactory.deploy()) as unknown) as SafeERC20Namer
     await safeERC20NamerLibrary.deployed()
-    
+
     const PoolFactoryFactory = await ethers.getContractFactory('PoolFactory', {
       libraries: {
         YieldMath: yieldMathLibrary.address,
@@ -74,6 +79,10 @@ export class YieldSpaceEnvironment {
     })
     factory = ((await PoolFactoryFactory.deploy()) as unknown) as PoolFactory
     await factory.deployed()
+    await factory.grantRoles(
+      [id(factory.interface, 'setParameter(bytes32,int128)'), id(factory.interface, 'createPool(address,address)')],
+      ownerAdd
+    )
 
     const initialFYToken = initialBase.div(9)
     const bases: Map<string, ERC20> = new Map()
@@ -119,12 +128,12 @@ export class YieldSpaceEnvironment {
         // deploy base/fyToken pool
         const calculatedAddress = await factory.calculatePoolAddress(base.address, fyToken.address)
         await factory.createPool(base.address, fyToken.address)
-        const pool = (await ethers.getContractAt('Pool', calculatedAddress, owner) as unknown) as Pool
+        const pool = ((await ethers.getContractAt('Pool', calculatedAddress, owner)) as unknown) as Pool
         fyTokenPoolPairs.set(fyTokenId, pool)
 
         // init pool
         if (baseId === ETH) {
-          break; // TODO: Fix when we can give `initialBase` ether to the deployer
+          break // TODO: Fix when we can give `initialBase` ether to the deployer
           await weth9.deposit({ value: initialBase })
           await weth9.transfer(pool.address, initialBase)
         } else {
