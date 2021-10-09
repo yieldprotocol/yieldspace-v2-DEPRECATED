@@ -7,7 +7,7 @@ const MAX = MAX128
 import { CALCULATE_FROM_BASE } from '../src/constants'
 
 import { PoolEstimator } from './shared/poolEstimator'
-import { Pool } from '../typechain/Pool'
+import { Pool } from '../typechain'
 import { BaseMock as Base } from '../typechain/BaseMock'
 import { FYTokenMock as FYToken } from '../typechain/FYTokenMock'
 import { YieldSpaceEnvironment } from './shared/fixtures'
@@ -112,7 +112,7 @@ describe('Pool - usdc', async function () {
     const fyTokenInPreview = await pool.connect(user1Acc).buyBasePreview(baseOut)
     const expectedFYTokenIn = await poolEstimator.buyBase(baseOut)
 
-    await fyToken.mint(pool.address, fyTokens)
+    await fyToken.mint(pool.address, fyTokenInPreview)
 
     await expect(pool.connect(user1Acc).buyBase(user2, baseOut, MAX, OVERRIDES))
       .to.emit(pool, 'Trade')
@@ -218,7 +218,7 @@ describe('Pool - usdc', async function () {
       const baseInPreview = await pool.buyFYTokenPreview(fyTokenOut)
       const expectedBaseIn = await poolEstimator.buyFYToken(fyTokenOut)
 
-      await base.mint(pool.address, bases)
+      await base.mint(pool.address, baseInPreview)
 
       await expect(pool.connect(user1Acc).buyFYToken(user2, fyTokenOut, MAX, OVERRIDES))
         .to.emit(pool, 'Trade')
