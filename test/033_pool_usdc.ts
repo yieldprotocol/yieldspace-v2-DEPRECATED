@@ -168,7 +168,7 @@ describe('Pool - usdc', async function () {
       const [expectedBaseOut, expectedFYTokenOut] = await poolEstimator.burn(lpTokensIn)
 
       await pool.connect(user1Acc).transfer(pool.address, lpTokensIn)
-      await expect(pool.connect(user1Acc).burn(user2, user2, 0, 0))
+      await expect(pool.connect(user1Acc).burn(user2, user2, 0))
         .to.emit(pool, 'Liquidity')
         .withArgs(
           maturity,
