@@ -73,11 +73,7 @@ describe('Pool - mintWithBase', async function () {
     BigNumber.from('10'),
     BigNumber.from('100'),
   ]
-  const timesTillMaturity = [
-    30,
-    30000,
-    30000000,
-  ]
+  const timesTillMaturity = [30, 30000, 30000000]
 
   const scaleFactor = BigNumber.from('1')
 
@@ -110,9 +106,8 @@ describe('Pool - mintWithBase', async function () {
         for (var fyTokenVirtualReservesDeltaMultiplier of fyTokenVirtualReservesDeltas) {
           for (var tradeSizeDivisor of tradeSizes) {
             for (var timeTillMaturity of timesTillMaturity) {
-
-              const snapshotId = await ethers.provider.send("evm_snapshot", []);
-              await ethers.provider.send("evm_mine", [maturity.toNumber() - timeTillMaturity]);
+              const snapshotId = await ethers.provider.send('evm_snapshot', [])
+              await ethers.provider.send('evm_mine', [maturity.toNumber() - timeTillMaturity])
 
               const baseReserve = baseReserveMultiplier.mul(poolSupply)
               const reservesDelta = fyTokenVirtualReservesDeltaMultiplier.mul(poolSupply)
@@ -131,8 +126,16 @@ describe('Pool - mintWithBase', async function () {
               await pool.sync()
 
               let fyTokenToBuy: BigNumber
-              try{
-                fyTokenToBuy = BigNumber.from(fyDaiForMint(baseReserve, fyTokenRealReserve, fyTokenVirtualReserve, trade, BigNumber.from(timeTillMaturity)))
+              try {
+                fyTokenToBuy = BigNumber.from(
+                  fyDaiForMint(
+                    baseReserve,
+                    fyTokenRealReserve,
+                    fyTokenVirtualReserve,
+                    trade,
+                    BigNumber.from(timeTillMaturity)
+                  )
+                )
               } catch (e) {
                 console.log(`
                   Aborted trade:
@@ -143,8 +146,8 @@ describe('Pool - mintWithBase', async function () {
                   trade:            ${trade}
                   timeTillMaturity: ${timeTillMaturity}
                 `)
-                await ethers.provider.send("evm_revert", [snapshotId]);
-                continue;
+                await ethers.provider.send('evm_revert', [snapshotId])
+                continue
               }
               /* console.log(`
                 supply:           ${await pool.totalSupply()}
@@ -168,7 +171,7 @@ describe('Pool - mintWithBase', async function () {
                 surplus:          ${trade.sub(result[0])}
               `)
 
-              await ethers.provider.send("evm_revert", [snapshotId]);
+              await ethers.provider.send('evm_revert', [snapshotId])
             }
           }
         }
