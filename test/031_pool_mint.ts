@@ -228,8 +228,10 @@ describe('Pool - mint', async function () {
     it("doesn't mint beyond slippage", async () => {
       const fyTokenToBuy = WAD.div(1000)
       await base.mint(pool.address, WAD)
-      await expect(pool.mintWithBase(user2, fyTokenToBuy, MAX, OVERRIDES)).to.be.revertedWith(
-        'Pool: Not enough tokens minted'
+      const ratio = WAD.mul(await base.balanceOf(pool.address)).div(await fyToken.balanceOf(pool.address))
+      await fyToken.mint(pool.address, WAD)
+      await expect(pool.mintWithBase(user2, fyTokenToBuy, ratio, OVERRIDES)).to.be.revertedWith(
+        'Pool: Base ratio too low'
       )
     })
 
