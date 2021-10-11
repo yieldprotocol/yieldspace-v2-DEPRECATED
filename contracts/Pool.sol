@@ -30,11 +30,11 @@ contract Pool is IPool, ERC20Permit {
     event Liquidity(uint32 maturity, address indexed from, address indexed to, address indexed fyTokenTo, int256 bases, int256 fyTokens, int256 poolTokens);
     event Sync(uint112 baseCached, uint112 fyTokenCached, uint256 cumulativeBalancesRatio);
 
-    int128 public immutable ts;              // 1 / Seconds in 10 years, in 64.64
-    int128 public immutable g1;             // To be used when selling base to the pool
-    int128 public immutable g2;             // To be used when selling fyToken to the pool
+    int128 public immutable override ts;              // 1 / Seconds in 10 years, in 64.64
+    int128 public immutable override g1;             // To be used when selling base to the pool
+    int128 public immutable override g2;             // To be used when selling fyToken to the pool
     uint32 public immutable override maturity;
-    uint96 public immutable scaleFactor;    // Scale up to 18 low decimal tokens to get the right precision in YieldMath
+    uint96 public immutable override scaleFactor;    // Scale up to 18 low decimal tokens to get the right precision in YieldMath
 
     IERC20 public immutable override base;
     IFYToken public immutable override fyToken;
@@ -90,7 +90,7 @@ contract Pool is IPool, ERC20Permit {
     /// @return Cached virtual FY token balance.
     /// @return Timestamp that balances were last cached.
     function getCache()
-        external view
+        external view override
         returns (uint112, uint112, uint32)
     {
         return (baseCached, fyTokenCached, blockTimestampLast);
@@ -666,20 +666,5 @@ contract Pool is IPool, ERC20Permit {
         );
 
         return baseIn;
-    }
-
-    /// @dev Calculate the invariant for this pool
-    function invariant()
-        public view override
-        returns (uint128)
-    {
-        uint32 timeToMaturity = (maturity > uint32(block.timestamp)) ? maturity - uint32(block.timestamp) : 0;
-        return YieldMath.invariant(
-            getBaseBalance(),
-            getFYTokenBalance(),
-            _totalSupply,
-            timeToMaturity,
-            ts
-        );
     }
 }
