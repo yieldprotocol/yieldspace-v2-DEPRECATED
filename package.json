@@ -1,10 +1,11 @@
 {
   "name": "@yield-protocol/yieldspace-v2",
-  "version": "0.11.0-rc2",
+  "version": "0.11.0-rc3",
   "description": "YieldSpace v2 contracts",
   "author": "Yield Inc.",
   "files": [
     "contracts/*.sol",
+    "contracts/extensions/*.sol",
     "dist"
   ],
   "main": "dist/index.js",
