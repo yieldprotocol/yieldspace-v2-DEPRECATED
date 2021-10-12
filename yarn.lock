@@ -2304,10 +2304,10 @@
   resolved "https://registry.yarnpkg.com/@yield-protocol/vault-interfaces/-/vault-interfaces-2.0.41.tgz#4831495e1317ea2cd09c21b49501bfb73d2ca68e"
   integrity sha512-KeARm+VJ5aqYiA/GfDvc/LIm7NQtx1hbsV2EZvzjVoMbNyj+tWDQ4uZmM4cCkNz4cXNvz6Bi+l4GgkcVrdA4Aw==
 
-"@yield-protocol/yieldspace-interfaces@^2.3.0-rc5":
-  version "2.3.0-rc5"
-  resolved "https://registry.yarnpkg.com/@yield-protocol/yieldspace-interfaces/-/yieldspace-interfaces-2.3.0-rc5.tgz#da0a98912ee33f93337e2a4830905f8bd0656850"
-  integrity sha512-UHI9nAt5C4WUCqCTI8bxbpz6GS4FI7V5TCpSqcz73jtdoG0d44W/FIe3aYNjNXiLM/bPLc7NOVxqhkGyueYn8Q==
+"@yield-protocol/yieldspace-interfaces@^2.3.0-rc6":
+  version "2.3.0-rc6"
+  resolved "https://registry.yarnpkg.com/@yield-protocol/yieldspace-interfaces/-/yieldspace-interfaces-2.3.0-rc6.tgz#5fbd0da0ce8c6cf5a34c4d55b143a1a383c63dc9"
+  integrity sha512-JeM2L4ive3bSWPnwGYB9vLjFPrFEH/P90gd+HLklOOaI5fw9BGN/PhFly0z/ESBZb+GR1kfRGY5mpbsVWVTimw==
 
 abab@^2.0.0:
   version "2.0.5"

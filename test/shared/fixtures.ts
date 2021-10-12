@@ -2,7 +2,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { BaseProvider } from '@ethersproject/providers'
 
 import { constants, id } from '@yield-protocol/utils-v2'
-const { DAI, ETH, USDC, THREE_MONTHS } = constants
+const { DAI, ETH, USDC, THREE_MONTHS, MAX256 } = constants
+const MAX = MAX256
 
 import { CALCULATE_FROM_BASE } from '../../src/constants'
 
@@ -140,7 +141,7 @@ export class YieldSpaceEnvironment {
           } else {
             await base.mint(pool.address, initialBase)
           }
-          await pool.mint(ownerAdd, CALCULATE_FROM_BASE, 0)
+          await pool.mint(ownerAdd, CALCULATE_FROM_BASE, 0, MAX)
 
           // skew pool to 5% interest rate
           await fyToken.mint(pool.address, initialFYToken)
