@@ -228,8 +228,10 @@ describe('Pool - mint', async function () {
     it("doesn't mint beyond slippage", async () => {
       const fyTokenToBuy = WAD.div(1000)
       await base.mint(pool.address, WAD)
-      await expect(pool.mintWithBase(user2, fyTokenToBuy, MAX, OVERRIDES)).to.be.revertedWith(
-        'Pool: Not enough tokens minted'
+      const ratio = WAD.mul(await base.balanceOf(pool.address)).div(await fyToken.balanceOf(pool.address))
+      await fyToken.mint(pool.address, WAD)
+      await expect(pool.mintWithBase(user2, fyTokenToBuy, ratio, OVERRIDES)).to.be.revertedWith(
+        'Pool: Base ratio too low'
       )
     })
 
@@ -241,7 +243,7 @@ describe('Pool - mint', async function () {
       const [expectedBaseOut, expectedFYTokenOut] = await poolEstimator.burn(lpTokensIn)
 
       await pool.transfer(pool.address, lpTokensIn)
-      await expect(pool.burn(user2, user3, 0, 0))
+      await expect(pool.burn(user2, user3, 0))
         .to.emit(pool, 'Liquidity')
         .withArgs(
           maturity,
@@ -294,7 +296,9 @@ describe('Pool - mint', async function () {
     it("doesn't burn beyond slippage", async () => {
       const lpTokensIn = WAD.mul(2)
       await pool.transfer(pool.address, lpTokensIn)
-      await expect(pool.burnForBase(user2, MAX, OVERRIDES)).to.be.revertedWith('Pool: Not enough base tokens obtained')
+      const ratio = WAD.mul(await base.balanceOf(pool.address)).div(await fyToken.balanceOf(pool.address))
+      await fyToken.mint(pool.address, WAD)
+      await expect(pool.burnForBase(user2, ratio, OVERRIDES)).to.be.revertedWith('Pool: Base ratio too low')
     })
   })
 })
