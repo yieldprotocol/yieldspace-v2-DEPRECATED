@@ -171,7 +171,7 @@ contract Pool is IPool, ERC20Permit {
     /// @param to Wallet receiving the minted liquidity tokens.
     /// @param calculateFromBase Calculate the amount of tokens to mint from the base tokens available, leaving a fyToken surplus.
     /// @param minRatio Minimum ratio of base to fyToken in the pool.
-    /// @param maxRatio Minimum ratio of base to fyToken in the pool.
+    /// @param maxRatio Maximum ratio of base to fyToken in the pool.
     /// @return The amount of liquidity tokens minted.
     function mint(address to, bool calculateFromBase, uint256 minRatio, uint256 maxRatio)
         external override
@@ -186,7 +186,7 @@ contract Pool is IPool, ERC20Permit {
     /// @param to Wallet receiving the minted liquidity tokens.
     /// @param fyTokenToBuy Amount of `fyToken` being bought in the Pool, from this we calculate how much base it will be taken in.
     /// @param minRatio Minimum ratio of base to fyToken in the pool.
-    /// @param maxRatio Minimum ratio of base to fyToken in the pool.
+    /// @param maxRatio Maximum ratio of base to fyToken in the pool.
     /// @return The amount of liquidity tokens minted.
     function mintWithBase(address to, uint256 fyTokenToBuy, uint256 minRatio, uint256 maxRatio)
         external override
@@ -274,7 +274,7 @@ contract Pool is IPool, ERC20Permit {
     /// @param baseTo Wallet receiving the base.
     /// @param fyTokenTo Wallet receiving the fyToken.
     /// @param minRatio Minimum ratio of base to fyToken in the pool.
-    /// @param maxRatio Minimum ratio of base to fyToken in the pool.
+    /// @param maxRatio Maximum ratio of base to fyToken in the pool.
     /// @return The amount of tokens burned and returned (tokensBurned, bases, fyTokens).
     function burn(address baseTo, address fyTokenTo, uint256 minRatio, uint256 maxRatio)
         external override
