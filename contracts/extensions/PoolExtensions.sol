@@ -1,12 +1,27 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.6;
 
-import "./Pool.sol";
+import "@yield-protocol/yieldspace-interfaces/IPool.sol";
+import "../YieldMath.sol";
+
 
 library PoolExtensions {
 
+    /// @dev Calculate the invariant for this pool
+    function invariant(IPool pool) external view returns (uint128) {
+        uint32 maturity = pool.maturity();
+        uint32 timeToMaturity = (maturity > uint32(block.timestamp)) ? maturity - uint32(block.timestamp) : 0;
+        return YieldMath.invariant(
+            pool.getBaseBalance(),
+            pool.getFYTokenBalance(),
+            pool.totalSupply(),
+            timeToMaturity,
+            pool.ts()
+        );
+    }
+
     /// @dev max amount of fyTokens that can be bought from the pool
-    function maxFYTokenOut(Pool pool) external view returns (uint128) {
+    function maxFYTokenOut(IPool pool) external view returns (uint128) {
         (uint112 _baseCached, uint112 _fyTokenCached,) = pool.getCache();
         uint96 scaleFactor = pool.scaleFactor();
         return YieldMath.maxFYTokenOut(
@@ -19,7 +34,7 @@ library PoolExtensions {
     }
 
     /// @dev max amount of fyTokens that can be sold into the pool
-    function maxFYTokenIn(Pool pool) external view returns (uint128) {
+    function maxFYTokenIn(IPool pool) external view returns (uint128) {
         (uint112 _baseCached, uint112 _fyTokenCached,) = pool.getCache();
         uint96 scaleFactor = pool.scaleFactor();
         return YieldMath.maxFYTokenIn(
@@ -32,7 +47,7 @@ library PoolExtensions {
     }
 
     /// @dev max amount of Base that can be sold to the pool
-    function maxBaseIn(Pool pool) external view returns (uint128) {
+    function maxBaseIn(IPool pool) external view returns (uint128) {
         (uint112 _baseCached, uint112 _fyTokenCached,) = pool.getCache();
         uint96 scaleFactor = pool.scaleFactor();
         return YieldMath.maxBaseIn(
@@ -45,7 +60,7 @@ library PoolExtensions {
     }
 
     /// @dev max amount of Base that can be bought from the pool
-    function maxBaseOut(Pool pool) external view returns (uint128) {
+    function maxBaseOut(IPool pool) external view returns (uint128) {
         (uint112 _baseCached, uint112 _fyTokenCached,) = pool.getCache();
         uint96 scaleFactor = pool.scaleFactor();
         return YieldMath.maxBaseOut(
