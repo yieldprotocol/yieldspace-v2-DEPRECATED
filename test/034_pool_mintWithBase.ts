@@ -117,7 +117,7 @@ describe('Pool - mintWithBase', async function () {
 
               // Initialize to supply
               await base.mint(pool.address, poolSupply)
-              await pool.mint(owner, true, 0)
+              await pool.mint(owner, true, 0, MAX)
 
               // Donate to reserves
               const baseDonation = baseReserve.sub(poolSupply)
@@ -166,7 +166,7 @@ describe('Pool - mintWithBase', async function () {
               /* console.log(`
                 baseSold (on):    ${await pool.buyFYTokenPreview(fyTokenToBuy)}
               `) */
-              const result = await pool.callStatic.mintWithBase(owner, fyTokenToBuy, 0, OVERRIDES)
+              const result = await pool.callStatic.mintWithBase(owner, fyTokenToBuy, 0, MAX, OVERRIDES)
               /* console.log(`
                 baseIn:           ${result[0]}
                 surplus:          ${trade.sub(result[0])}
