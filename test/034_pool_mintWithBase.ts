@@ -117,7 +117,7 @@ describe('Pool - mintWithBase', async function () {
 
               // Initialize to supply
               await base.mint(pool.address, poolSupply)
-              await pool.mint(owner, true, 0)
+              await pool.mint(owner, true, 0, MAX)
 
               // Donate to reserves
               const baseDonation = baseReserve.sub(poolSupply)
@@ -137,7 +137,8 @@ describe('Pool - mintWithBase', async function () {
                   )
                 )
               } catch (e) {
-                console.log(`
+                // A number of trades will revert, in very unusual conditions such as very unbalanced trades, or seconds to maturity. That's fine.
+                /* console.log(`
                   Aborted trade:
                   supply:           ${await pool.totalSupply()}
                   baseReserves:     ${await pool.getBaseBalance()}
@@ -145,7 +146,7 @@ describe('Pool - mintWithBase', async function () {
                   fyTokenVirtual:   ${await pool.getFYTokenBalance()}
                   trade:            ${trade}
                   timeTillMaturity: ${timeTillMaturity}
-                `)
+                `) */
                 await ethers.provider.send('evm_revert', [snapshotId])
                 continue
               }
@@ -165,11 +166,12 @@ describe('Pool - mintWithBase', async function () {
               /* console.log(`
                 baseSold (on):    ${await pool.buyFYTokenPreview(fyTokenToBuy)}
               `) */
-              const result = await pool.callStatic.mintWithBase(owner, fyTokenToBuy, 0, OVERRIDES)
-              console.log(`
+              const result = await pool.callStatic.mintWithBase(owner, fyTokenToBuy, 0, MAX, OVERRIDES)
+              /* console.log(`
                 baseIn:           ${result[0]}
                 surplus:          ${trade.sub(result[0])}
-              `)
+              `) */
+              // TODO: Verify that the surplus is below a 0.005% of the trade (fyDaiForMint targets 0.001% to 0.002%)
 
               await ethers.provider.send('evm_revert', [snapshotId])
             }

@@ -170,13 +170,14 @@ contract Pool is IPool, ERC20Permit {
     /// A proportional amount of fyTokens needs to be present in this contract, also unaccounted for.
     /// @param to Wallet receiving the minted liquidity tokens.
     /// @param calculateFromBase Calculate the amount of tokens to mint from the base tokens available, leaving a fyToken surplus.
-    /// @param minTokensMinted Minimum amount of liquidity tokens received.
+    /// @param minRatio Minimum ratio of base to fyToken in the pool.
+    /// @param maxRatio Minimum ratio of base to fyToken in the pool.
     /// @return The amount of liquidity tokens minted.
-    function mint(address to, bool calculateFromBase, uint256 minTokensMinted)
+    function mint(address to, bool calculateFromBase, uint256 minRatio, uint256 maxRatio)
         external override
         returns (uint256, uint256, uint256)
     {
-        return _mintInternal(to, calculateFromBase, 0, minTokensMinted);
+        return _mintInternal(to, calculateFromBase, 0, minRatio, maxRatio);
     }
 
     /// @dev Mint liquidity tokens in exchange for adding only base
@@ -184,13 +185,14 @@ contract Pool is IPool, ERC20Permit {
     /// The base tokens need to be present in this contract, unaccounted for.
     /// @param to Wallet receiving the minted liquidity tokens.
     /// @param fyTokenToBuy Amount of `fyToken` being bought in the Pool, from this we calculate how much base it will be taken in.
-    /// @param minTokensMinted Minimum amount of liquidity tokens received.
+    /// @param minRatio Minimum ratio of base to fyToken in the pool.
+    /// @param maxRatio Minimum ratio of base to fyToken in the pool.
     /// @return The amount of liquidity tokens minted.
-    function mintWithBase(address to, uint256 fyTokenToBuy, uint256 minTokensMinted)
+    function mintWithBase(address to, uint256 fyTokenToBuy, uint256 minRatio, uint256 maxRatio)
         external override
         returns (uint256, uint256, uint256)
     {
-        return _mintInternal(to, false, fyTokenToBuy, minTokensMinted);
+        return _mintInternal(to, false, fyTokenToBuy, minRatio, maxRatio);
     }
 
     /// @dev Mint liquidity tokens in exchange for adding only base, if fyTokenToBuy > 0.
@@ -198,27 +200,33 @@ contract Pool is IPool, ERC20Permit {
     /// @param to Wallet receiving the minted liquidity tokens.
     /// @param calculateFromBase Calculate the amount of tokens to mint from the base tokens available, leaving a fyToken surplus.
     /// @param fyTokenToBuy Amount of `fyToken` being bought in the Pool, from this we calculate how much base it will be taken in.
-    /// @param minTokensMinted Minimum amount of liquidity tokens received.
-    /// @return The amount of liquidity tokens minted.
-    function _mintInternal(address to, bool calculateFromBase, uint256 fyTokenToBuy, uint256 minTokensMinted)
+    /// @param minRatio Minimum ratio of base to fyToken in the pool.
+    /// @param maxRatio Minimum ratio of base to fyToken in the pool.
+    function _mintInternal(address to, bool calculateFromBase, uint256 fyTokenToBuy, uint256 minRatio, uint256 maxRatio)
         internal
-        returns (uint256, uint256, uint256)
+        returns (uint256 baseIn, uint256 fyTokenIn, uint256 tokensMinted)
     {
         // Gather data
         uint256 supply = _totalSupply;
         (uint112 _baseCached, uint112 _fyTokenCached) =
             (baseCached, fyTokenCached);
         uint256 _realFYTokenCached = _fyTokenCached - supply;    // The fyToken cache includes the virtual fyToken, equal to the supply
+        uint256 baseBalance = base.balanceOf(address(this));
+        uint256 fyTokenBalance = fyToken.balanceOf(address(this));
+
+        // Slippage
+        require (
+            fyTokenBalance == 0 || (
+                baseBalance * 1e18 / fyTokenBalance >= minRatio &&
+                baseBalance * 1e18 / fyTokenBalance <= maxRatio
+            ),
+            "Pool: Reserves ratio changed"
+        );
 
         // Calculate trade
-        uint256 tokensMinted;
-        uint256 baseIn;
-        uint256 baseReturned;
-        uint256 fyTokenIn;
-
         if (supply == 0) {
             require (calculateFromBase && fyTokenToBuy == 0, "Pool: Initialize only from base");
-            baseIn = base.balanceOf(address(this)) - _baseCached;
+            baseIn = baseBalance - _baseCached;
             tokensMinted = baseIn;   // If supply == 0 we are initializing the pool and tokensMinted == baseIn; fyTokenIn == 0
         } else {
             // There is an optional virtual trade before the mint
@@ -232,24 +240,17 @@ contract Pool is IPool, ERC20Permit {
             }
 
             if (calculateFromBase) {   // We use all the available base tokens, surplus is in fyTokens
-                baseIn = base.balanceOf(address(this)) - _baseCached;
+                baseIn = baseBalance - _baseCached;
                 tokensMinted = (supply * baseIn) / _baseCached;
                 fyTokenIn = (_realFYTokenCached * tokensMinted) / supply;
-                require(_realFYTokenCached + fyTokenIn <= fyToken.balanceOf(address(this)), "Pool: Not enough fyToken in");
+                require(_realFYTokenCached + fyTokenIn <= fyTokenBalance, "Pool: Not enough fyToken in");
             } else {                   // We use all the available fyTokens, plus a virtual trade if it happened, surplus is in base tokens
-                fyTokenIn = fyToken.balanceOf(address(this)) - _realFYTokenCached;
+                fyTokenIn = fyTokenBalance - _realFYTokenCached;
                 tokensMinted = (supply * (fyTokenToBuy + fyTokenIn)) / (_realFYTokenCached - fyTokenToBuy);
                 baseIn = baseToSell + ((_baseCached + baseToSell) * tokensMinted) / supply;
-                uint256 _baseBalance = base.balanceOf(address(this));
-                require(_baseBalance - _baseCached >= baseIn, "Pool: Not enough base token in");
-                
-                // If we did a trade means we came in through `mintWithBase`, and want to return the base token surplus
-                if (fyTokenToBuy > 0) baseReturned = (_baseBalance - _baseCached) - baseIn;
+                require(baseBalance - _baseCached >= baseIn, "Pool: Not enough base token in");
             }
         }
-
-        // Slippage
-        require (tokensMinted >= minTokensMinted, "Pool: Not enough tokens minted");
 
         // Update TWAR
         _update(
@@ -262,35 +263,38 @@ contract Pool is IPool, ERC20Permit {
         // Execute mint
         _mint(to, tokensMinted);
 
-        // Return any unused base if we did a trade, meaning slippage was involved.
-        if (supply > 0 && fyTokenToBuy > 0) base.safeTransfer(to, baseReturned);
+        // Return any unused base if we did a trade
+        if (supply > 0 && fyTokenToBuy > 0) base.safeTransfer(to, (baseBalance - _baseCached) - baseIn);
 
         emit Liquidity(maturity, msg.sender, to, address(0), -(baseIn.i256()), -(fyTokenIn.i256()), tokensMinted.i256());
-        return (baseIn, fyTokenIn, tokensMinted);
     }
 
     /// @dev Burn liquidity tokens in exchange for base and fyToken.
     /// The liquidity tokens need to be in this contract.
     /// @param baseTo Wallet receiving the base.
     /// @param fyTokenTo Wallet receiving the fyToken.
+    /// @param minRatio Minimum ratio of base to fyToken in the pool.
+    /// @param maxRatio Minimum ratio of base to fyToken in the pool.
     /// @return The amount of tokens burned and returned (tokensBurned, bases, fyTokens).
-    function burn(address baseTo, address fyTokenTo, uint256 minBaseOut, uint256 minFYTokenOut)
+    function burn(address baseTo, address fyTokenTo, uint256 minRatio, uint256 maxRatio)
         external override
         returns (uint256, uint256, uint256)
     {
-        return _burnInternal(baseTo, fyTokenTo, false, minBaseOut, minFYTokenOut);
+        return _burnInternal(baseTo, fyTokenTo, false, minRatio, maxRatio);
     }
 
     /// @dev Burn liquidity tokens in exchange for base.
     /// The liquidity provider needs to have called `pool.approve`.
     /// @param to Wallet receiving the base and fyToken.
+    /// @param minRatio Minimum ratio of base to fyToken in the pool.
+    /// @param maxRatio Minimum ratio of base to fyToken in the pool.
     /// @return tokensBurned The amount of lp tokens burned.
     /// @return baseOut The amount of base tokens returned.
-    function burnForBase(address to, uint256 minBaseOut)
+    function burnForBase(address to, uint256 minRatio, uint256 maxRatio)
         external override
         returns (uint256 tokensBurned, uint256 baseOut)
     {
-        (tokensBurned, baseOut, ) = _burnInternal(to, address(0), true, minBaseOut, 0);
+        (tokensBurned, baseOut, ) = _burnInternal(to, address(0), true, minRatio, maxRatio);
     }
 
 
@@ -299,10 +303,12 @@ contract Pool is IPool, ERC20Permit {
     /// @param baseTo Wallet receiving the base.
     /// @param fyTokenTo Wallet receiving the fyToken.
     /// @param tradeToBase Whether the resulting fyToken should be traded for base tokens.
+    /// @param minRatio Minimum ratio of base to fyToken in the pool.
+    /// @param maxRatio Minimum ratio of base to fyToken in the pool.
     /// @return tokensBurned The amount of pool tokens burned.
     /// @return tokenOut The amount of base tokens returned.
     /// @return fyTokenOut The amount of fyTokens returned.
-    function _burnInternal(address baseTo, address fyTokenTo, bool tradeToBase, uint256 minBaseOut, uint256 minFYTokenOut)
+    function _burnInternal(address baseTo, address fyTokenTo, bool tradeToBase, uint256 minRatio, uint256 maxRatio)
         internal
         returns (uint256 tokensBurned, uint256 tokenOut, uint256 fyTokenOut)
     {
@@ -313,6 +319,15 @@ contract Pool is IPool, ERC20Permit {
         uint256 baseBalance = base.balanceOf(address(this));
         (uint112 _baseCached, uint112 _fyTokenCached) =
             (baseCached, fyTokenCached);
+
+        // Slippage
+        require (
+            fyTokenBalance == 0 || (
+                baseBalance * 1e18 / fyTokenBalance >= minRatio &&
+                baseBalance * 1e18 / fyTokenBalance <= maxRatio
+            ),
+            "Pool: Reserves ratio changed"
+        );
 
         // Calculate trade
         tokenOut = (tokensBurned * baseBalance) / supply;
@@ -329,10 +344,6 @@ contract Pool is IPool, ERC20Permit {
             ) / scaleFactor;
             fyTokenOut = 0;
         }
-
-        // Slippage
-        require (tokenOut >= minBaseOut, "Pool: Not enough base tokens obtained");
-        require (fyTokenOut >= minFYTokenOut, "Pool: Not enough fyToken obtained");
 
         // Update TWAR
         _update(

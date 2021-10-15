@@ -420,12 +420,11 @@ export function fyDaiForMint(
   const baseBalance_ = new Decimal(baseBalance.toString());
   const fyDaiRealBalance_ = new Decimal(fyDaiRealBalance.toString());
   const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
-  const supply = new Decimal(fyDaiVirtualBalance.sub(fyDaiRealBalance).toString())
   const x = new Decimal(base.toString());
   let min = ZERO;
   let max = x.mul(TWO);
   let yOut = Decimal.floor((min.add(max)).div(TWO));
-  let zIn
+  let zIn: Decimal
 
   let i = 0;
   while (true) {
@@ -479,14 +478,14 @@ export function fyDaiForMint(
     fyTokenOut: ${BigNumber.from(yOut.toFixed(0))}
     timeTillMaturity: ${timeTillMaturity_}
     scaleFactor: ${BigNumber.from('1')}
-  `) */
+  `)
   const Z_1 = baseBalance_.add(zIn); // New base balance
   const z_1 = x.sub(zIn) // My remaining base
   const Y_1 = fyDaiRealBalance_.sub(yOut); // New fyToken balance
   const y_1 = yOut // My fyToken
   const pz = z_1.div(z_1.add(y_1)); // base proportion in my assets
   const PZ = Z_1.div(Z_1.add(Y_1)); // base proportion in the balances
-  /* console.log(`
+  console.log(`
     Z_1: ${Z_1.floor().toFixed()}
     Y_1: ${Y_1.floor().toFixed()}
     z_1: ${z_1.floor().toFixed()}

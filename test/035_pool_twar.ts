@@ -1,6 +1,10 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 import { CALCULATE_FROM_BASE } from '../src/constants'
 
+import { constants } from '@yield-protocol/utils-v2'
+const { WAD, MAX128 } = constants
+const MAX = MAX128
+
 import { Pool } from '../typechain/Pool'
 import { BaseMock as Base } from '../typechain/BaseMock'
 import { YieldSpaceEnvironment } from './shared/fixtures'
@@ -67,7 +71,7 @@ describe('Pool - TWAR', async function () {
     poolFromUser1 = pool.connect(user1Acc)
 
     await base.mint(pool.address, initialBase)
-    await poolFromUser1.mint(user1, CALCULATE_FROM_BASE, 0)
+    await poolFromUser1.mint(user1, CALCULATE_FROM_BASE, 0, MAX)
   })
 
   it('calculates the TWAR price', async () => {
