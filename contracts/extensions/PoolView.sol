@@ -27,4 +27,14 @@ contract PoolView {
     function maxBaseOut(IPool pool) external view returns (uint128) {
         return pool.maxBaseOut();
     }
+
+    function retrievableBase(IPool pool) external view returns (uint256) {
+        (uint112 baseCached,,) = pool.getCache();
+        return pool.base().balanceOf(address(pool)) - baseCached;
+    }
+
+    function retrievableFYToken(IPool pool) external view returns (uint256) {
+        (, uint112 fyTokenCached,) = pool.getCache();
+        return pool.fyToken().balanceOf(address(pool)) + pool.totalSupply() - fyTokenCached;
+    }
 }

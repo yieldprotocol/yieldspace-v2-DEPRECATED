@@ -91,6 +91,18 @@ describe('YieldMathExtensions - allowances', async function () {
     await poolView.deployed()
   })
 
+  it('computes the retrievable base', async () => {
+    const retrievableBaseBefore = await poolView.retrievableBase(pool.address)
+    await base.mint(pool.address, oneUSDC)
+    expect(await poolView.retrievableBase(pool.address)).to.equal(retrievableBaseBefore.add(oneUSDC))
+  })
+
+  it('computes the retrievable fyToken', async () => {
+    const retrievableFYTokenBefore = await poolView.retrievableFYToken(pool.address)
+    await fyToken.mint(pool.address, oneUSDC)
+    expect(await poolView.retrievableFYToken(pool.address)).to.equal(retrievableFYTokenBefore.add(oneUSDC))
+  })
+
   it('computes the pool allowances after fyToken sale', async () => {
     //given
     const maxFYTokenInBefore = await poolView.maxFYTokenIn(pool.address)
