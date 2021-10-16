@@ -4,7 +4,7 @@ import { constants } from '@yield-protocol/utils-v2'
 import { CALCULATE_FROM_BASE } from '../src/constants'
 
 import { PoolEstimator } from './shared/poolEstimator'
-import { Pool, PoolExtensions, YieldMath, YieldMath__factory } from '../typechain'
+import { Pool, YieldMathExtensions, YieldMath, YieldMath__factory } from '../typechain'
 import { BaseMock as Base } from '../typechain/BaseMock'
 import { FYTokenMock as FYToken } from '../typechain/FYTokenMock'
 import { YieldSpaceEnvironment } from './shared/fixtures'
@@ -12,8 +12,8 @@ import { YieldSpaceEnvironment } from './shared/fixtures'
 import { BigNumber, utils } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { expect } from 'chai'
-import { PoolExtensionsWrapper } from '../typechain/PoolExtensionsWrapper'
-import { PoolExtensionsWrapper__factory } from '../typechain/factories/PoolExtensionsWrapper__factory'
+import { PoolView } from '../typechain/PoolView'
+import { PoolView__factory } from '../typechain/factories/PoolView__factory'
 
 const { MAX128, USDC } = constants
 const MAX = MAX128
@@ -22,7 +22,7 @@ const { parseUnits } = utils
 
 const { loadFixture } = waffle
 
-describe('PoolExtensions - allowances', async function () {
+describe('YieldMathExtensions - allowances', async function () {
   this.timeout(0)
 
   const oneUSDC = BigNumber.from(parseUnits('1', 6))
@@ -40,7 +40,7 @@ describe('PoolExtensions - allowances', async function () {
 
   let pool: Pool
   let poolEstimator: PoolEstimator
-  let poolExtensions: PoolExtensionsWrapper
+  let yieldMathExtensions: PoolView
 
   let base: Base
   let fyToken: FYToken
@@ -77,26 +77,26 @@ describe('PoolExtensions - allowances', async function () {
 
     const yieldMathLibrary = await ((await ethers.getContractFactory('YieldMath')) as YieldMath__factory).deploy()
     await yieldMathLibrary.deployed()
-    const poolExtensionsLibrary = await ((await ethers.getContractFactory('PoolExtensions', {
+    const yieldMathExtensionsLibrary = await ((await ethers.getContractFactory('YieldMathExtensions', {
       libraries: {
         YieldMath: yieldMathLibrary.address,
       },
     })) as YieldMath__factory).deploy()
-    await poolExtensionsLibrary.deployed()
-    poolExtensions = await ((await ethers.getContractFactory('PoolExtensionsWrapper', {
+    await yieldMathExtensionsLibrary.deployed()
+    yieldMathExtensions = await ((await ethers.getContractFactory('PoolView', {
       libraries: {
-        PoolExtensions: poolExtensionsLibrary.address,
+        YieldMathExtensions: yieldMathExtensionsLibrary.address,
       },
-    })) as PoolExtensionsWrapper__factory).deploy()
-    await poolExtensions.deployed()
+    })) as PoolView__factory).deploy()
+    await yieldMathExtensions.deployed()
   })
 
   it('computes the pool allowances after fyToken sale', async () => {
     //given
-    const maxFYTokenInBefore = await poolExtensions.maxFYTokenIn(pool.address)
-    const maxFYTokenOutBefore = await poolExtensions.maxFYTokenOut(pool.address)
-    const maxBaseInBefore = await poolExtensions.maxBaseIn(pool.address)
-    const maxBaseOutBefore = await poolExtensions.maxBaseOut(pool.address)
+    const maxFYTokenInBefore = await yieldMathExtensions.maxFYTokenIn(pool.address)
+    const maxFYTokenOutBefore = await yieldMathExtensions.maxFYTokenOut(pool.address)
+    const maxBaseInBefore = await yieldMathExtensions.maxBaseIn(pool.address)
+    const maxBaseOutBefore = await yieldMathExtensions.maxBaseOut(pool.address)
     const fyTokenIn = oneUSDC
 
     expect(maxFYTokenInBefore).to.be.gt(0)
@@ -114,10 +114,10 @@ describe('PoolExtensions - allowances', async function () {
       .withArgs(maturity, user1, user2, await base.balanceOf(user2), fyTokenIn.mul(-1))
 
     //then
-    const maxFYTokenIn = await poolExtensions.maxFYTokenIn(pool.address)
-    const maxFYTokenOut = await poolExtensions.maxFYTokenOut(pool.address)
-    const maxBaseIn = await poolExtensions.maxBaseIn(pool.address)
-    const maxBaseOut = await poolExtensions.maxBaseOut(pool.address)
+    const maxFYTokenIn = await yieldMathExtensions.maxFYTokenIn(pool.address)
+    const maxFYTokenOut = await yieldMathExtensions.maxFYTokenOut(pool.address)
+    const maxBaseIn = await yieldMathExtensions.maxBaseIn(pool.address)
+    const maxBaseOut = await yieldMathExtensions.maxBaseOut(pool.address)
 
     expect(maxFYTokenInBefore).to.be.gt(maxFYTokenIn)
     expect(maxFYTokenOutBefore).to.be.lt(maxFYTokenOut)
@@ -137,10 +137,10 @@ describe('PoolExtensions - allowances', async function () {
 
   it('computes the pool allowances after base purchase', async () => {
     //given
-    const maxFYTokenInBefore = await poolExtensions.maxFYTokenIn(pool.address)
-    const maxFYTokenOutBefore = await poolExtensions.maxFYTokenOut(pool.address)
-    const maxBaseInBefore = await poolExtensions.maxBaseIn(pool.address)
-    const maxBaseOutBefore = await poolExtensions.maxBaseOut(pool.address)
+    const maxFYTokenInBefore = await yieldMathExtensions.maxFYTokenIn(pool.address)
+    const maxFYTokenOutBefore = await yieldMathExtensions.maxFYTokenOut(pool.address)
+    const maxBaseInBefore = await yieldMathExtensions.maxBaseIn(pool.address)
+    const maxBaseOutBefore = await yieldMathExtensions.maxBaseOut(pool.address)
     const fyTokenCachedBefore = (await pool.getCache())[1]
     const baseOut = oneUSDC
 
@@ -151,10 +151,10 @@ describe('PoolExtensions - allowances', async function () {
       .withArgs(maturity, user1, user2, baseOut, (await pool.getCache())[1].sub(fyTokenCachedBefore).mul(-1))
 
     //then
-    const maxFYTokenIn = await poolExtensions.maxFYTokenIn(pool.address)
-    const maxFYTokenOut = await poolExtensions.maxFYTokenOut(pool.address)
-    const maxBaseIn = await poolExtensions.maxBaseIn(pool.address)
-    const maxBaseOut = await poolExtensions.maxBaseOut(pool.address)
+    const maxFYTokenIn = await yieldMathExtensions.maxFYTokenIn(pool.address)
+    const maxFYTokenOut = await yieldMathExtensions.maxFYTokenOut(pool.address)
+    const maxBaseIn = await yieldMathExtensions.maxBaseIn(pool.address)
+    const maxBaseOut = await yieldMathExtensions.maxBaseOut(pool.address)
 
     expect(maxFYTokenInBefore).to.be.gt(maxFYTokenIn)
     expect(maxFYTokenOutBefore).to.be.lt(maxFYTokenOut)
@@ -181,10 +181,10 @@ describe('PoolExtensions - allowances', async function () {
 
     it('computes the pool allowances after base sale', async () => {
       //given
-      const maxFYTokenInBefore = await poolExtensions.maxFYTokenIn(pool.address)
-      const maxFYTokenOutBefore = await poolExtensions.maxFYTokenOut(pool.address)
-      const maxBaseInBefore = await poolExtensions.maxBaseIn(pool.address)
-      const maxBaseOutBefore = await poolExtensions.maxBaseOut(pool.address)
+      const maxFYTokenInBefore = await yieldMathExtensions.maxFYTokenIn(pool.address)
+      const maxFYTokenOutBefore = await yieldMathExtensions.maxFYTokenOut(pool.address)
+      const maxBaseInBefore = await yieldMathExtensions.maxBaseIn(pool.address)
+      const maxBaseOutBefore = await yieldMathExtensions.maxBaseOut(pool.address)
       const baseIn = oneUSDC
 
       //when
@@ -194,10 +194,10 @@ describe('PoolExtensions - allowances', async function () {
         .withArgs(maturity, user1, user2, baseIn.mul(-1), await fyToken.balanceOf(user2))
 
       //then
-      const maxFYTokenIn = await poolExtensions.maxFYTokenIn(pool.address)
-      const maxFYTokenOut = await poolExtensions.maxFYTokenOut(pool.address)
-      const maxBaseIn = await poolExtensions.maxBaseIn(pool.address)
-      const maxBaseOut = await poolExtensions.maxBaseOut(pool.address)
+      const maxFYTokenIn = await yieldMathExtensions.maxFYTokenIn(pool.address)
+      const maxFYTokenOut = await yieldMathExtensions.maxFYTokenOut(pool.address)
+      const maxBaseIn = await yieldMathExtensions.maxBaseIn(pool.address)
+      const maxBaseOut = await yieldMathExtensions.maxBaseOut(pool.address)
 
       expect(maxFYTokenInBefore).to.be.lt(maxFYTokenIn)
       expect(maxFYTokenOutBefore).to.be.gt(maxFYTokenOut)
@@ -217,10 +217,10 @@ describe('PoolExtensions - allowances', async function () {
 
     it('computes the pool allowances after fyToken purchase', async () => {
       //given
-      const maxFYTokenInBefore = await poolExtensions.maxFYTokenIn(pool.address)
-      const maxFYTokenOutBefore = await poolExtensions.maxFYTokenOut(pool.address)
-      const maxBaseInBefore = await poolExtensions.maxBaseIn(pool.address)
-      const maxBaseOutBefore = await poolExtensions.maxBaseOut(pool.address)
+      const maxFYTokenInBefore = await yieldMathExtensions.maxFYTokenIn(pool.address)
+      const maxFYTokenOutBefore = await yieldMathExtensions.maxFYTokenOut(pool.address)
+      const maxBaseInBefore = await yieldMathExtensions.maxBaseIn(pool.address)
+      const maxBaseOutBefore = await yieldMathExtensions.maxBaseOut(pool.address)
       const baseCachedBefore = (await pool.getCache())[0]
       const fyTokenOut = oneUSDC
 
@@ -231,10 +231,10 @@ describe('PoolExtensions - allowances', async function () {
         .withArgs(maturity, user1, user2, (await pool.getCache())[0].sub(baseCachedBefore).mul(-1), fyTokenOut)
 
       //then
-      const maxFYTokenIn = await poolExtensions.maxFYTokenIn(pool.address)
-      const maxFYTokenOut = await poolExtensions.maxFYTokenOut(pool.address)
-      const maxBaseIn = await poolExtensions.maxBaseIn(pool.address)
-      const maxBaseOut = await poolExtensions.maxBaseOut(pool.address)
+      const maxFYTokenIn = await yieldMathExtensions.maxFYTokenIn(pool.address)
+      const maxFYTokenOut = await yieldMathExtensions.maxFYTokenOut(pool.address)
+      const maxBaseIn = await yieldMathExtensions.maxBaseIn(pool.address)
+      const maxBaseOut = await yieldMathExtensions.maxBaseOut(pool.address)
 
       expect(maxFYTokenInBefore).to.be.lt(maxFYTokenIn)
       expect(maxFYTokenOutBefore).to.be.gt(maxFYTokenOut)

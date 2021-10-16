@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.6;
 
-import "./PoolExtensions.sol";
+import "./YieldMathExtensions.sol";
 
 
-contract PoolExtensionsWrapper {
-    using PoolExtensions for IPool;
+contract PoolView {
+    using YieldMathExtensions for IPool;
 
     /// @dev Calculate the invariant for this pool
     function invariant(IPool pool) external view returns (uint128) {
