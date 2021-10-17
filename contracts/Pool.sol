@@ -169,14 +169,15 @@ contract Pool is IPool, ERC20Permit {
     /// The amount of liquidity tokens to mint is calculated from the amount of unaccounted for fyToken in this contract.
     /// A proportional amount of base tokens need to be present in this contract, also unaccounted for.
     /// @param to Wallet receiving the minted liquidity tokens.
+    /// @param remainder Wallet receiving any surplus base.
     /// @param minRatio Minimum ratio of base to fyToken in the pool.
     /// @param maxRatio Maximum ratio of base to fyToken in the pool.
     /// @return The amount of liquidity tokens minted.
-    function mint(address to, uint256 minRatio, uint256 maxRatio)
+    function mint(address to, address remainder, uint256 minRatio, uint256 maxRatio)
         external override
         returns (uint256, uint256, uint256)
     {
-        return _mintInternal(to, 0, minRatio, maxRatio);
+        return _mintInternal(to, remainder, 0, minRatio, maxRatio);
     }
 
     /// @dev Mint liquidity tokens in exchange for adding only base
@@ -184,15 +185,16 @@ contract Pool is IPool, ERC20Permit {
     /// plus the amount of unaccounted for fyToken in this contract.
     /// The base tokens need to be present in this contract, unaccounted for.
     /// @param to Wallet receiving the minted liquidity tokens.
+    /// @param remainder Wallet receiving any surplus base.
     /// @param fyTokenToBuy Amount of `fyToken` being bought in the Pool, from this we calculate how much base it will be taken in.
     /// @param minRatio Minimum ratio of base to fyToken in the pool.
     /// @param maxRatio Maximum ratio of base to fyToken in the pool.
     /// @return The amount of liquidity tokens minted.
-    function mintWithBase(address to, uint256 fyTokenToBuy, uint256 minRatio, uint256 maxRatio)
+    function mintWithBase(address to, address remainder, uint256 fyTokenToBuy, uint256 minRatio, uint256 maxRatio)
         external override
         returns (uint256, uint256, uint256)
     {
-        return _mintInternal(to, fyTokenToBuy, minRatio, maxRatio);
+        return _mintInternal(to, remainder, fyTokenToBuy, minRatio, maxRatio);
     }
 
     /// @dev Mint liquidity tokens, with an optional internal trade to buy fyToken beforehand.
@@ -200,10 +202,11 @@ contract Pool is IPool, ERC20Permit {
     /// plus the amount of unaccounted for fyToken in this contract.
     /// The base tokens need to be present in this contract, unaccounted for.
     /// @param to Wallet receiving the minted liquidity tokens.
+    /// @param remainder Wallet receiving any surplus base.
     /// @param fyTokenToBuy Amount of `fyToken` being bought in the Pool, from this we calculate how much base it will be taken in.
     /// @param minRatio Minimum ratio of base to fyToken in the pool.
     /// @param maxRatio Minimum ratio of base to fyToken in the pool.
-    function _mintInternal(address to, uint256 fyTokenToBuy, uint256 minRatio, uint256 maxRatio)
+    function _mintInternal(address to, address remainder, uint256 fyTokenToBuy, uint256 minRatio, uint256 maxRatio)
         internal
         returns (uint256 baseIn, uint256 fyTokenIn, uint256 tokensMinted)
     {
@@ -259,7 +262,7 @@ contract Pool is IPool, ERC20Permit {
         _mint(to, tokensMinted);
 
         // Return any unused base
-        if ((baseBalance - _baseCached) - baseIn > 0) base.safeTransfer(to, (baseBalance - _baseCached) - baseIn);
+        if ((baseBalance - _baseCached) - baseIn > 0) base.safeTransfer(remainder, (baseBalance - _baseCached) - baseIn);
 
         emit Liquidity(maturity, msg.sender, to, address(0), -(baseIn.i256()), -(fyTokenIn.i256()), tokensMinted.i256());
     }

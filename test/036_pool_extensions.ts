@@ -72,7 +72,7 @@ describe('YieldMathExtensions - allowances', async function () {
     maturity = BigNumber.from(await fyToken.maturity())
 
     await base.mint(pool.address, bases)
-    await pool.connect(user1Acc).mint(user1, 0, MAX)
+    await pool.connect(user1Acc).mint(user1, user1, 0, MAX)
 
     const yieldMathLibrary = await ((await ethers.getContractFactory('YieldMath')) as YieldMath__factory).deploy()
     await yieldMathLibrary.deployed()

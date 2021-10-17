@@ -139,7 +139,7 @@ export class YieldSpaceEnvironment {
           } else {
             await base.mint(pool.address, initialBase)
           }
-          await pool.mint(ownerAdd, 0, MAX)
+          await pool.mint(ownerAdd, ownerAdd, 0, MAX)
 
           // skew pool to 5% interest rate
           await fyToken.mint(pool.address, initialFYToken)

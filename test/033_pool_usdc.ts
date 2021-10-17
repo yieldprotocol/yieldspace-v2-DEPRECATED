@@ -76,7 +76,7 @@ describe('Pool - usdc', async function () {
     maturity = BigNumber.from(await fyToken.maturity())
 
     await base.mint(pool.address, initialBase)
-    await pool.connect(user1Acc).mint(user1, 0, MAX)
+    await pool.connect(user1Acc).mint(user1, user1, 0, MAX)
   })
 
   it('sells fyToken', async () => {
@@ -143,7 +143,7 @@ describe('Pool - usdc', async function () {
 
       await base.mint(pool.address, expectedBaseIn.add(oneUSDC))
       await fyToken.mint(pool.address, fyTokenIn)
-      await expect(pool.connect(user1Acc).mint(user2, 0, MAX))
+      await expect(pool.connect(user1Acc).mint(user2, user2, 0, MAX))
         .to.emit(pool, 'Liquidity')
         .withArgs(
           maturity,

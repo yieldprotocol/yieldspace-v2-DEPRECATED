@@ -70,7 +70,7 @@ describe('Pool - TWAR', async function () {
     poolFromUser1 = pool.connect(user1Acc)
 
     await base.mint(pool.address, initialBase)
-    await poolFromUser1.mint(user1, 0, MAX)
+    await poolFromUser1.mint(user1, user1, 0, MAX)
   })
 
   it('calculates the TWAR price', async () => {

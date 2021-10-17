@@ -87,7 +87,7 @@ describe('Pool - mint', async function () {
   it('adds initial liquidity', async () => {
     await base.mint(pool.address, initialBase)
 
-    await expect(pool.mint(user2, 0, MAX))
+    await expect(pool.mint(user2, user2, 0, MAX))
       .to.emit(pool, 'Liquidity')
       .withArgs(maturity, user1, user2, ZERO_ADDRESS, initialBase.mul(-1), 0, initialBase)
 
@@ -110,7 +110,7 @@ describe('Pool - mint', async function () {
   describe('with initial liquidity', () => {
     beforeEach(async () => {
       await base.mint(pool.address, initialBase)
-      await pool.mint(user1, 0, MAX)
+      await pool.mint(user1, user2, 0, MAX)
 
       const additionalFYToken = initialBase.div(9)
       // Skew the balances without using trading functions
@@ -123,20 +123,19 @@ describe('Pool - mint', async function () {
 
       const [expectedMinted, expectedBaseIn] = await poolEstimator.mint(fyTokenIn)
 
-      await base.mint(user1, bases)
-      await fyToken.mint(user1, fyTokenIn)
-
+      const baseTokensBefore = await base.balanceOf(user2)
       const poolTokensBefore = await pool.balanceOf(user2)
 
-      await base.connect(user1Acc).transfer(pool.address, expectedBaseIn.add(WAD))
-      await fyToken.connect(user1Acc).transfer(pool.address, fyTokenIn)
-      await expect(pool.mint(user2, 0, MAX))
+      await base.mint(pool.address, expectedBaseIn.add(WAD))
+      await fyToken.mint(pool.address, fyTokenIn)
+      await expect(pool.mint(user2, user2, 0, MAX))
         .to.emit(pool, 'Liquidity')
         .withArgs(maturity, user1, user2, ZERO_ADDRESS, expectedBaseIn.mul(-1), fyTokenIn.mul(-1), expectedMinted)
 
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
 
       almostEqual(minted, expectedMinted, fyTokenIn.div(10000))
+      almostEqual(await base.balanceOf(user2), WAD, fyTokenIn.div(10000))
       expect((await pool.getCache())[0]).to.equal(await pool.getBaseBalance())
       expect((await pool.getCache())[1]).to.equal(await pool.getFYTokenBalance())
     })
@@ -153,7 +152,7 @@ describe('Pool - mint', async function () {
 
       await base.mint(pool.address, expectedBaseIn)
 
-      await expect(pool.mintWithBase(user2, fyTokenToBuy, 0, MAX, OVERRIDES))
+      await expect(pool.mintWithBase(user2, user2, fyTokenToBuy, 0, MAX, OVERRIDES))
         .to.emit(pool, 'Liquidity')
         .withArgs(
           maturity,
@@ -182,7 +181,7 @@ describe('Pool - mint', async function () {
       await base.mint(pool.address, WAD)
       const minRatio = WAD.mul(await base.balanceOf(pool.address)).div(await fyToken.balanceOf(pool.address))
       await fyToken.mint(pool.address, WAD)
-      await expect(pool.mintWithBase(user2, fyTokenToBuy, minRatio, MAX, OVERRIDES)).to.be.revertedWith(
+      await expect(pool.mintWithBase(user2, user2, fyTokenToBuy, minRatio, MAX, OVERRIDES)).to.be.revertedWith(
         'Pool: Reserves ratio changed'
       )
     })
@@ -192,7 +191,7 @@ describe('Pool - mint', async function () {
       await base.mint(pool.address, WAD)
       const maxRatio = WAD.mul(await base.balanceOf(pool.address)).div(await fyToken.balanceOf(pool.address))
       await base.mint(pool.address, WAD)
-      await expect(pool.mintWithBase(user2, fyTokenToBuy, 0, maxRatio, OVERRIDES)).to.be.revertedWith(
+      await expect(pool.mintWithBase(user2, user2, fyTokenToBuy, 0, maxRatio, OVERRIDES)).to.be.revertedWith(
         'Pool: Reserves ratio changed'
       )
     })
