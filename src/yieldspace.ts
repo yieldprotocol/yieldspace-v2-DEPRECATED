@@ -103,7 +103,6 @@ export function mint(
   fyTokenBalance: BigNumber | string,
   totalSupply: BigNumber | string,
   mainTokenIn: BigNumber | string,
-  fromBase: boolean
 ) : [ BigNumber, BigNumber ] {
   const baseBalance_ = new Decimal(baseBalance.toString());
   const fyTokenBalance_ = new Decimal(fyTokenBalance.toString());
@@ -112,13 +111,8 @@ export function mint(
 
   let minted: Decimal
   let secTokenIn: Decimal
-  if (fromBase) {
-    minted = (supply_.mul(mainTokenIn_)).div(baseBalance_);
-    secTokenIn = (fyTokenBalance_.mul(minted)).div(supply_);
-  } else {
-    minted = (supply_.mul(mainTokenIn_)).div(fyTokenBalance_);
-    secTokenIn = (baseBalance_.mul(minted)).div(supply_);
-  }
+  minted = (supply_.mul(mainTokenIn_)).div(fyTokenBalance_);
+  secTokenIn = (baseBalance_.mul(minted)).div(supply_);
   return [toBn(minted), toBn(secTokenIn)];
 }
 
@@ -188,7 +182,6 @@ export function mintWithBase(
     YR2.floor().toFixed(),
     supply,
     fyToken,
-    false
   )
 
   /* console.log(`

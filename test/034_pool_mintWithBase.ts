@@ -117,7 +117,7 @@ describe('Pool - mintWithBase', async function () {
 
               // Initialize to supply
               await base.mint(pool.address, poolSupply)
-              await pool.mint(owner, true, 0, MAX)
+              await pool.mint(owner, 0, MAX)
 
               // Donate to reserves
               const baseDonation = baseReserve.sub(poolSupply)

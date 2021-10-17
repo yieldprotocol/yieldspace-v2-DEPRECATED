@@ -1,7 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 
 import { constants } from '@yield-protocol/utils-v2'
-import { CALCULATE_FROM_BASE } from '../src/constants'
 
 import { PoolEstimator } from './shared/poolEstimator'
 import { Pool, YieldMathExtensions, YieldMath, YieldMath__factory } from '../typechain'
@@ -73,7 +72,7 @@ describe('YieldMathExtensions - allowances', async function () {
     maturity = BigNumber.from(await fyToken.maturity())
 
     await base.mint(pool.address, bases)
-    await pool.connect(user1Acc).mint(user1, CALCULATE_FROM_BASE, 0, MAX)
+    await pool.connect(user1Acc).mint(user1, 0, MAX)
 
     const yieldMathLibrary = await ((await ethers.getContractFactory('YieldMath')) as YieldMath__factory).deploy()
     await yieldMathLibrary.deployed()

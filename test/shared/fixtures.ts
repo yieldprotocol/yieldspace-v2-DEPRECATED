@@ -5,8 +5,6 @@ import { constants, id } from '@yield-protocol/utils-v2'
 const { DAI, ETH, USDC, THREE_MONTHS, MAX256 } = constants
 const MAX = MAX256
 
-import { CALCULATE_FROM_BASE } from '../../src/constants'
-
 import { YieldMath } from '../../typechain/YieldMath'
 import { Pool } from '../../typechain/Pool'
 import { PoolFactory } from '../../typechain/PoolFactory'
@@ -141,7 +139,7 @@ export class YieldSpaceEnvironment {
           } else {
             await base.mint(pool.address, initialBase)
           }
-          await pool.mint(ownerAdd, CALCULATE_FROM_BASE, 0, MAX)
+          await pool.mint(ownerAdd, 0, MAX)
 
           // skew pool to 5% interest rate
           await fyToken.mint(pool.address, initialFYToken)
