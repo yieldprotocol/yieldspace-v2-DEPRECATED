@@ -217,6 +217,7 @@ contract Pool is IPool, ERC20Permit {
         uint256 _realFYTokenCached = _fyTokenCached - supply;    // The fyToken cache includes the virtual fyToken, equal to the supply
         uint256 baseBalance = base.balanceOf(address(this));
         uint256 fyTokenBalance = fyToken.balanceOf(address(this));
+        uint256 baseAvailable = baseBalance - _baseCached;
 
         // Slippage
         require (
@@ -230,7 +231,7 @@ contract Pool is IPool, ERC20Permit {
         // Calculate token amounts
         if (supply == 0) {
             require (fyTokenToBuy == 0, "Pool: Initialize only from base");
-            baseIn = baseBalance - _baseCached;
+            baseIn = baseAvailable;
             tokensMinted = baseIn;   // If supply == 0 we are initializing the pool and tokensMinted == baseIn; fyTokenIn == 0
         } else {
             // There is an optional virtual trade before the mint
@@ -247,7 +248,7 @@ contract Pool is IPool, ERC20Permit {
             fyTokenIn = fyTokenBalance - _realFYTokenCached;
             tokensMinted = (supply * (fyTokenToBuy + fyTokenIn)) / (_realFYTokenCached - fyTokenToBuy);
             baseIn = baseToSell + ((_baseCached + baseToSell) * tokensMinted) / supply;
-            require(baseBalance - _baseCached >= baseIn, "Pool: Not enough base token in");
+            require(baseAvailable >= baseIn, "Pool: Not enough base token in");
         }
 
         // Update TWAR
@@ -262,7 +263,7 @@ contract Pool is IPool, ERC20Permit {
         _mint(to, tokensMinted);
 
         // Return any unused base
-        if ((baseBalance - _baseCached) - baseIn > 0) base.safeTransfer(remainder, (baseBalance - _baseCached) - baseIn);
+        if (baseAvailable - baseIn > 0) base.safeTransfer(remainder, baseAvailable - baseIn);
 
         emit Liquidity(maturity, msg.sender, to, address(0), -(baseIn.i256()), -(fyTokenIn.i256()), tokensMinted.i256());
     }
