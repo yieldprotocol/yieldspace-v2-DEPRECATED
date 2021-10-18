@@ -107,11 +107,14 @@ describe('Pool - mint', async function () {
 
     await base.mint(pool.address, initialBase)
     await expect(pool.mint(user2, user2, 0, MAX))
-    .to.emit(pool, 'Liquidity')
-    .withArgs(maturity, user1, user2, ZERO_ADDRESS, initialBase.mul(-1), 0, initialBase.div(2))
+      .to.emit(pool, 'Liquidity')
+      .withArgs(maturity, user1, user2, ZERO_ADDRESS, initialBase.mul(-1), 0, initialBase.div(2))
 
     // The user got as minted tokens half of the amount he supplied as base, because supply doesn't equal base in the pool anymore
-    expect(await pool.balanceOf(user2)).to.equal(initialBase.div(2), 'User2 should have ' + initialBase.div(2) + ' liquidity tokens')
+    expect(await pool.balanceOf(user2)).to.equal(
+      initialBase.div(2),
+      'User2 should have ' + initialBase.div(2) + ' liquidity tokens'
+    )
 
     expect((await pool.getCache())[0]).to.equal(await pool.getBaseBalance())
     expect((await pool.getCache())[1]).to.equal(await pool.getFYTokenBalance())
