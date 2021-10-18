@@ -229,10 +229,12 @@ contract Pool is IPool, ERC20Permit {
         );
 
         // Calculate token amounts
-        if (supply == 0) {
-            require (fyTokenToBuy == 0, "Pool: Initialize only from base");
+        if (supply == 0) { // Initialize at 1 pool token minted per base token supplied
             baseIn = baseAvailable;
-            tokensMinted = baseIn;   // If supply == 0 we are initializing the pool and tokensMinted == baseIn; fyTokenIn == 0
+            tokensMinted = baseIn;
+        } else if (_realFYTokenCached == 0) { // Edge case, no fyToken in the Pool after initialization
+            baseIn = baseAvailable;
+            tokensMinted = supply * baseIn / _baseCached;
         } else {
             // There is an optional virtual trade before the mint
             uint256 baseToSell;
