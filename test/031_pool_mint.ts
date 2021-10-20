@@ -141,7 +141,7 @@ describe('Pool - mint', async function () {
       await pool.sync()
     })
 
-    it('mints liquidity tokens, leaving base surplus', async () => {
+    it('mints liquidity tokens, returning base surplus', async () => {
       const fyTokenIn = WAD
 
       const [expectedMinted, expectedBaseIn] = await poolEstimator.mint(fyTokenIn)
@@ -204,6 +204,7 @@ describe('Pool - mint', async function () {
       await base.mint(pool.address, WAD)
       const minRatio = WAD.mul(await base.balanceOf(pool.address)).div(await fyToken.balanceOf(pool.address))
       await fyToken.mint(pool.address, WAD)
+      await pool.sync()
       await expect(pool.mintWithBase(user2, user2, fyTokenToBuy, minRatio, MAX, OVERRIDES)).to.be.revertedWith(
         'Pool: Reserves ratio changed'
       )
@@ -214,6 +215,7 @@ describe('Pool - mint', async function () {
       await base.mint(pool.address, WAD)
       const maxRatio = WAD.mul(await base.balanceOf(pool.address)).div(await fyToken.balanceOf(pool.address))
       await base.mint(pool.address, WAD)
+      await pool.sync()
       await expect(pool.mintWithBase(user2, user2, fyTokenToBuy, 0, maxRatio, OVERRIDES)).to.be.revertedWith(
         'Pool: Reserves ratio changed'
       )
@@ -282,6 +284,7 @@ describe('Pool - mint', async function () {
       await pool.transfer(pool.address, lpTokensIn)
       const minRatio = WAD.mul(await base.balanceOf(pool.address)).div(await fyToken.balanceOf(pool.address))
       await fyToken.mint(pool.address, WAD)
+      await pool.sync()
       await expect(pool.burnForBase(user2, minRatio, MAX, OVERRIDES)).to.be.revertedWith('Pool: Reserves ratio changed')
     })
 
@@ -290,6 +293,7 @@ describe('Pool - mint', async function () {
       await pool.transfer(pool.address, lpTokensIn)
       const maxRatio = WAD.mul(await base.balanceOf(pool.address)).div(await fyToken.balanceOf(pool.address))
       await base.mint(pool.address, WAD)
+      await pool.sync()
       await expect(pool.burnForBase(user2, 0, maxRatio, OVERRIDES)).to.be.revertedWith('Pool: Reserves ratio changed')
     })
   })

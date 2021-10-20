@@ -219,11 +219,11 @@ contract Pool is IPool, ERC20Permit {
         uint256 fyTokenBalance = fyToken.balanceOf(address(this));
         uint256 baseAvailable = baseBalance - _baseCached;
 
-        // Slippage
+        // Check the burn wasn't sandwiched
         require (
-            fyTokenBalance == 0 || (
-                baseBalance * 1e18 / fyTokenBalance >= minRatio &&
-                baseBalance * 1e18 / fyTokenBalance <= maxRatio
+            _realFYTokenCached == 0 || (
+                uint256(_baseCached) * 1e18 / _realFYTokenCached >= minRatio &&
+                uint256(_baseCached) * 1e18 / _realFYTokenCached <= maxRatio
             ),
             "Pool: Reserves ratio changed"
         );
@@ -314,25 +314,25 @@ contract Pool is IPool, ERC20Permit {
         returns (uint256 tokensBurned, uint256 tokenOut, uint256 fyTokenOut)
     {
         
+        // Gather data
         tokensBurned = _balanceOf[address(this)];
         uint256 supply = _totalSupply;
-        uint256 fyTokenBalance = fyToken.balanceOf(address(this));          // use the real balance rather than the virtual one
-        uint256 baseBalance = base.balanceOf(address(this));
         (uint112 _baseCached, uint112 _fyTokenCached) =
             (baseCached, fyTokenCached);
+        uint256 _realFYTokenCached = _fyTokenCached - supply;    // The fyToken cache includes the virtual fyToken, equal to the supply
 
-        // Slippage
+        // Check the burn wasn't sandwiched
         require (
-            fyTokenBalance == 0 || (
-                baseBalance * 1e18 / fyTokenBalance >= minRatio &&
-                baseBalance * 1e18 / fyTokenBalance <= maxRatio
+            _realFYTokenCached == 0 || (
+                uint256(_baseCached) * 1e18 / _realFYTokenCached >= minRatio &&
+                uint256(_baseCached) * 1e18 / _realFYTokenCached <= maxRatio
             ),
             "Pool: Reserves ratio changed"
         );
 
         // Calculate trade
-        tokenOut = (tokensBurned * baseBalance) / supply;
-        fyTokenOut = (tokensBurned * fyTokenBalance) / supply;
+        tokenOut = (tokensBurned * _baseCached) / supply;
+        fyTokenOut = (tokensBurned * _realFYTokenCached) / supply;
 
         if (tradeToBase) {
             tokenOut += YieldMath.baseOutForFYTokenIn(                      // This is a virtual sell
@@ -348,8 +348,8 @@ contract Pool is IPool, ERC20Permit {
 
         // Update TWAR
         _update(
-            (baseBalance - tokenOut).u128(),
-            (fyTokenBalance - fyTokenOut + supply - tokensBurned).u128(),
+            (_baseCached - tokenOut).u128(),
+            (_fyTokenCached - fyTokenOut - tokensBurned).u128(),
             _baseCached,
             _fyTokenCached
         );
