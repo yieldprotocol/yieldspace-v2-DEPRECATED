@@ -65,13 +65,12 @@ export class PoolEstimator {
     )
   }
 
-  public async mint(input: BigNumber, fromBase: boolean): Promise<[BigNumber, BigNumber]> {
+  public async mint(input: BigNumber): Promise<[BigNumber, BigNumber]> {
     return mint(
       await this.base.balanceOf(this.pool.address),
       await this.fyToken.balanceOf(this.pool.address),
       await this.pool.totalSupply(),
-      input,
-      fromBase
+      input
     )
   }
 

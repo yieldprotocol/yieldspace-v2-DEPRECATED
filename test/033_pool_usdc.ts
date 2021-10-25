@@ -4,8 +4,6 @@ import { constants } from '@yield-protocol/utils-v2'
 const { MAX128, USDC } = constants
 const MAX = MAX128
 
-import { CALCULATE_FROM_BASE } from '../src/constants'
-
 import { PoolEstimator } from './shared/poolEstimator'
 import { Pool } from '../typechain'
 import { BaseMock as Base } from '../typechain/BaseMock'
@@ -78,7 +76,7 @@ describe('Pool - usdc', async function () {
     maturity = BigNumber.from(await fyToken.maturity())
 
     await base.mint(pool.address, initialBase)
-    await pool.connect(user1Acc).mint(user1, CALCULATE_FROM_BASE, 0, MAX)
+    await pool.connect(user1Acc).mint(user1, user1, 0, MAX)
   })
 
   it('sells fyToken', async () => {
@@ -139,25 +137,29 @@ describe('Pool - usdc', async function () {
     })
 
     it('mints liquidity tokens', async () => {
-      const fyTokenCachedBalanceBefore = (await pool.getCache())[1]
-      const baseIn = oneUSDC
-
-      let [expectedMinted, expectedFYTokenIn] = await poolEstimator.mint(baseIn, CALCULATE_FROM_BASE)
-
-      await base.mint(pool.address, baseIn)
-      await fyToken.mint(pool.address, fyTokens)
-
+      const fyTokenIn = oneUSDC
+      const [expectedMinted, expectedBaseIn] = await poolEstimator.mint(fyTokenIn)
       const poolTokensBefore = await pool.balanceOf(user2)
 
-      await expect(pool.connect(user1Acc).mint(user2, CALCULATE_FROM_BASE, 0, MAX))
+      await base.mint(pool.address, expectedBaseIn.add(oneUSDC))
+      await fyToken.mint(pool.address, fyTokenIn)
+      await expect(pool.connect(user1Acc).mint(user2, user2, 0, MAX))
         .to.emit(pool, 'Liquidity')
-        .withArgs(maturity, user1, user2, ZERO_ADDRESS, oneUSDC.mul(-1), expectedFYTokenIn.mul(-1), expectedMinted)
+        .withArgs(
+          maturity,
+          user1,
+          user2,
+          ZERO_ADDRESS,
+          expectedBaseIn.sub(1).mul(-1),
+          fyTokenIn.mul(-1),
+          expectedMinted
+        )
 
       const minted = (await pool.balanceOf(user2)).sub(poolTokensBefore)
 
-      almostEqual(minted, expectedMinted, BigNumber.from(1))
+      almostEqual(minted, expectedMinted, fyTokenIn.div(10000))
       expect((await pool.getCache())[0]).to.equal(await pool.getBaseBalance())
-      expect((await pool.getCache())[1]).to.equal(fyTokenCachedBalanceBefore.add(expectedFYTokenIn).add(expectedMinted))
+      expect((await pool.getCache())[1]).to.equal(await pool.getFYTokenBalance())
     })
 
     it('burns liquidity tokens', async () => {

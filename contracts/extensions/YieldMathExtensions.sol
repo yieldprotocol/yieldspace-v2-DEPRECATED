@@ -5,7 +5,7 @@ import "@yield-protocol/yieldspace-interfaces/IPool.sol";
 import "../YieldMath.sol";
 
 
-library PoolExtensions {
+library YieldMathExtensions {
 
     /// @dev Calculate the invariant for this pool
     function invariant(IPool pool) external view returns (uint128) {
