@@ -9,7 +9,7 @@ import 'hardhat-gas-reporter'
 import 'hardhat-typechain'
 import 'solidity-coverage'
 import 'hardhat-deploy'
-import { task, types } from 'hardhat/config'
+import { task } from 'hardhat/config'
 import { TASK_TEST } from 'hardhat/builtin-tasks/task-names'
 import { TaskArguments, HardhatRuntimeEnvironment, RunSuperFunction } from 'hardhat/types'
 
@@ -24,7 +24,7 @@ task(TASK_COMPILE_GET_COMPILER_INPUT).setAction(async (_, bre, runSuper) => {
 }) */
 
 task("lint:collisions", "Checks all contracts for function signatures collisions with ROOT (0x00000000) and LOCK (0xffffffff)",
-  async (taskArguments, hre, runSuper) => {
+  async (taskArguments, hre) => {
     let ROOT = "0x00000000"
     let LOCK = "0xffffffff"
     const abiPath = path.join(__dirname, 'abi')
@@ -87,7 +87,7 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1500,
+        runs: 1000,
       }
     }
   },

@@ -331,6 +331,7 @@ library YieldMath {
   using Exp64x64 for uint128;
 
   uint128 public constant ONE = 0x10000000000000000; // In 64.64
+  uint128 public constant TWO = 0x20000000000000000; // In 64.64
   uint256 public constant MAX = type(uint128).max;   // Used for overflow checks
   uint256 public constant VAR = 1e12;                // The logarithm math used is not precise to the wei, but can deviate up to 1e12 from the real value.
 
@@ -540,6 +541,108 @@ library YieldMath {
     }
   }
 
+  /**
+   * Calculate the max amount of fyTokens that can be bought from the pool without making the interest rate negative.
+   * See section 6.3 of the YieldSpace White paper
+   * @param baseReserves Base reserves amount
+   * @param fyTokenReserves fyToken reserves amount
+   * @param timeTillMaturity time till maturity in seconds
+   * @param ts time till maturity coefficient, multiplied by 2^64
+   * @param g fee coefficient, multiplied by 2^64
+   * @return max amount of fyTokens that can be bought from the pool
+   */
+  function maxFYTokenOut(
+    uint128 baseReserves, uint128 fyTokenReserves,
+    uint128 timeTillMaturity, int128 ts, int128 g)
+  public pure returns(uint128) {
+    if (baseReserves == fyTokenReserves) return 0;
+    unchecked {
+      uint128 a = _computeA(timeTillMaturity, ts, g);
+
+      // xa = baseReserves ** a
+      uint128 xa = baseReserves.pow(a, ONE);
+
+      // ya = fyTokenReserves ** a
+      uint128 ya = fyTokenReserves.pow(a, ONE);
+
+      int128 xy2 = (xa + ya).divu(TWO);
+
+      uint inaccessible = uint256(uint128(xy2).pow(ONE, a));
+      require(inaccessible <= MAX, "YieldMath: Rounding induced error");
+
+      inaccessible = inaccessible < MAX - VAR ? inaccessible + VAR : MAX; // Add error guard, ceiling the result at max
+
+      return uint128(inaccessible) > fyTokenReserves ? 0 : fyTokenReserves - uint128(inaccessible);
+    }
+  }
+
+  /**
+   * Calculate the max amount of fyTokens that can be sold to into the pool.
+   * @param baseReserves Base reserves amount
+   * @param fyTokenReserves fyToken reserves amount
+   * @param timeTillMaturity time till maturity in seconds
+   * @param ts time till maturity coefficient, multiplied by 2^64
+   * @param g fee coefficient, multiplied by 2^64
+   * @return max amount of fyTokens that can be sold to into the pool
+   */
+  function maxFYTokenIn(
+    uint128 baseReserves, uint128 fyTokenReserves,
+    uint128 timeTillMaturity, int128 ts, int128 g)
+  public pure returns(uint128) {
+    unchecked {
+      uint128 b = _computeB(timeTillMaturity, ts, g);
+
+      // xa = baseReserves ** a
+      uint128 xa = baseReserves.pow(b, ONE);
+
+      // ya = fyTokenReserves ** a
+      uint128 ya = fyTokenReserves.pow(b, ONE);
+
+      uint result = (xa + ya).pow(ONE, b) - fyTokenReserves;
+      require(result <= MAX, "YieldMath: Rounding induced error");
+
+      result = result > VAR ? result - VAR : 0; // Subtract error guard, flooring the result at zero
+
+      return uint128(result);
+    }
+  }
+
+  /**
+   * Calculate the max amount of base that can be sold to into the pool without making the interest rate negative.
+   * @param baseReserves Base reserves amount
+   * @param fyTokenReserves fyToken reserves amount
+   * @param timeTillMaturity time till maturity in seconds
+   * @param ts time till maturity coefficient, multiplied by 2^64
+   * @param g fee coefficient, multiplied by 2^64
+   * @return max amount of base that can be sold to into the pool
+   */
+  function maxBaseIn(
+    uint128 baseReserves, uint128 fyTokenReserves,
+    uint128 timeTillMaturity, int128 ts, int128 g)
+  public pure returns (uint128) {
+    uint128 _maxFYTokenOut = maxFYTokenOut(baseReserves, fyTokenReserves, timeTillMaturity, ts, g);
+    if (_maxFYTokenOut > 0)
+      return baseInForFYTokenOut(baseReserves, fyTokenReserves, _maxFYTokenOut, timeTillMaturity, ts, g);
+    return 0;
+  }
+
+  /**
+   * Calculate the max amount of base that can be bought from the pool.
+   * @param baseReserves Base reserves amount
+   * @param fyTokenReserves fyToken reserves amount
+   * @param timeTillMaturity time till maturity in seconds
+   * @param ts time till maturity coefficient, multiplied by 2^64
+   * @param g fee coefficient, multiplied by 2^64
+   * @return max amount of base that can be bought from the pool
+   */
+  function maxBaseOut(
+    uint128 baseReserves, uint128 fyTokenReserves,
+    uint128 timeTillMaturity, int128 ts, int128 g)
+  public pure returns (uint128) {
+    uint128 _maxFYTokenIn = maxFYTokenIn(baseReserves, fyTokenReserves, timeTillMaturity, ts, g);
+    return baseOutForFYTokenIn(baseReserves, fyTokenReserves, _maxFYTokenIn, timeTillMaturity, ts, g);
+  }
+
   function _computeA(uint128 timeTillMaturity, int128 ts, int128 g) private pure returns (uint128) {
     unchecked {
       // t = ts * timeTillMaturity
@@ -552,6 +655,21 @@ library YieldMath {
       require(a <= int128(ONE), "YieldMath: g must be positive");
 
       return uint128(a);
+    }
+  }
+
+  function _computeB(uint128 timeTillMaturity, int128 ts, int128 g) private pure returns (uint128) {
+    unchecked {
+      // t = ts * timeTillMaturity
+      int128 t = ts.mul(timeTillMaturity.fromUInt());
+      require(t >= 0, "YieldMath: t must be positive"); // Meaning neither T or ts can be negative
+
+      // b = (1 - t/g)
+      int128 b = int128(ONE).sub(t.div(g));
+      require(b > 0, "YieldMath: Too far from maturity");
+      require(b <= int128(ONE), "YieldMath: g must be positive");
+
+      return uint128(b);
     }
   }
 }

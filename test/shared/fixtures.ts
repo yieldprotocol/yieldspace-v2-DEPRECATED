@@ -2,9 +2,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { BaseProvider } from '@ethersproject/providers'
 
 import { constants, id } from '@yield-protocol/utils-v2'
-const { DAI, ETH, USDC, THREE_MONTHS } = constants
-
-import { CALCULATE_FROM_BASE } from '../../src/constants'
+const { DAI, ETH, USDC, THREE_MONTHS, MAX256 } = constants
+const MAX = MAX256
 
 import { YieldMath } from '../../typechain/YieldMath'
 import { Pool } from '../../typechain/Pool'
@@ -132,18 +131,20 @@ export class YieldSpaceEnvironment {
         fyTokenPoolPairs.set(fyTokenId, pool)
 
         // init pool
-        if (baseId === ETH) {
-          break // TODO: Fix when we can give `initialBase` ether to the deployer
-          await weth9.deposit({ value: initialBase })
-          await weth9.transfer(pool.address, initialBase)
-        } else {
-          await base.mint(pool.address, initialBase)
-        }
-        await pool.mint(ownerAdd, CALCULATE_FROM_BASE, 0)
+        if (initialBase !== BigNumber.from(0)) {
+          if (baseId === ETH) {
+            break // TODO: Fix when we can give `initialBase` ether to the deployer
+            await weth9.deposit({ value: initialBase })
+            await weth9.transfer(pool.address, initialBase)
+          } else {
+            await base.mint(pool.address, initialBase)
+          }
+          await pool.mint(ownerAdd, ownerAdd, 0, MAX)
 
-        // skew pool to 5% interest rate
-        await fyToken.mint(pool.address, initialFYToken)
-        await pool.sync()
+          // skew pool to 5% interest rate
+          await fyToken.mint(pool.address, initialFYToken)
+          await pool.sync()
+        }
       }
     }
 

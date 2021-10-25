@@ -103,7 +103,6 @@ export function mint(
   fyTokenBalance: BigNumber | string,
   totalSupply: BigNumber | string,
   mainTokenIn: BigNumber | string,
-  fromBase: boolean
 ) : [ BigNumber, BigNumber ] {
   const baseBalance_ = new Decimal(baseBalance.toString());
   const fyTokenBalance_ = new Decimal(fyTokenBalance.toString());
@@ -112,13 +111,8 @@ export function mint(
 
   let minted: Decimal
   let secTokenIn: Decimal
-  if (fromBase) {
-    minted = (supply_.mul(mainTokenIn_)).div(baseBalance_);
-    secTokenIn = (fyTokenBalance_.mul(minted)).div(supply_);
-  } else {
-    minted = (supply_.mul(mainTokenIn_)).div(fyTokenBalance_);
-    secTokenIn = (baseBalance_.mul(minted)).div(supply_);
-  }
+  minted = (supply_.mul(mainTokenIn_)).div(fyTokenBalance_);
+  secTokenIn = (baseBalance_.mul(minted)).div(supply_);
   return [toBn(minted), toBn(secTokenIn)];
 }
 
@@ -169,12 +163,34 @@ export function mintWithBase(
   const YR = new Decimal(fyTokenBalanceReal.toString());
   const S = new Decimal(supply.toString());
   const y = new Decimal(fyToken.toString());
+
   // buyFyToken:
+  /* console.log(`
+    base reserves: ${baseBalance}
+    fyToken virtual reserves: ${fyTokenBalanceVirtual}
+    fyTokenOut: ${fyToken}
+    timeTillMaturity: ${timeTillMaturity}
+    scaleFactor: ${scaleFactor}
+  `) */
   const z1 = new Decimal(buyFYToken(baseBalance, fyTokenBalanceVirtual, fyToken, timeTillMaturity, scaleFactor).toString());
+  const Z2 = Z.add(z1)  // Base reserves after the trade
+  const YR2 = YR.sub(y) // FYToken reserves after the trade
+  
   // Mint specifying how much fyToken to take in. Reverse of `mint`.
-  const m = (S.mul(y)).div(YR.sub(y));
-  const z2 = ((Z.add(z1)).mul(m)).div(S);
-  return [toBn(m), toBn(z1.add(z2))];
+  const [m, z2] =  mint(
+    Z2.floor().toFixed(),
+    YR2.floor().toFixed(),
+    supply,
+    fyToken,
+  )
+
+  /* console.log(`
+    Z_1: ${Z2.floor().toFixed()}
+    Y_1: ${YR2.floor().toFixed()}
+    z_1: ${z1}
+    y_1: ${fyToken}
+  `) */
+  return [m, toBn(z1).add(z2)];
 }
 
 /**
@@ -387,49 +403,92 @@ export function getFee(
   return toBn(fee_);
 }
 
-// export function fyDaiForMint(
-//   baseBalance: BigNumber |string,
-//   fyDaiRealBalance: BigNumber|string,
-//   fyDaiVirtualBalance: BigNumber|string,
-//   base: BigNumber|string,
-//   timeTillMaturity: BigNumber|string,
-// ): string {
-//   const baseBalance_ = new Decimal(baseBalance.toString());
-//   const fyDaiRealBalance_ = new Decimal(fyDaiRealBalance.toString());
-//   const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
-//   const x = new Decimal(base.toString());
+export function fyDaiForMint(
+  baseBalance: BigNumber |string,
+  fyDaiRealBalance: BigNumber|string,
+  fyDaiVirtualBalance: BigNumber|string,
+  base: BigNumber|string,
+  timeTillMaturity: BigNumber|string,
+): string {
+  const baseBalance_ = new Decimal(baseBalance.toString());
+  const fyDaiRealBalance_ = new Decimal(fyDaiRealBalance.toString());
+  const timeTillMaturity_ = new Decimal(timeTillMaturity.toString());
+  const x = new Decimal(base.toString());
+  let min = ZERO;
+  let max = x.mul(TWO);
+  let yOut = Decimal.floor((min.add(max)).div(TWO));
+  let zIn: Decimal
 
-//   let min = ZERO;
-//   let max = x;
-//   let yOut = Decimal.floor((min.add(max)).div(TWO));
+  let i = 0;
+  while (true) {
+    if (i++ > 100)  throw 'Not converging'
 
-//   let i = 0;
-//   while (true) {
-//     const zIn = new Decimal(
-//       buyFYDai(
-//         baseBalance,
-//         fyDaiVirtualBalance,
-//         BigNumber.from(yOut.toFixed(0)),
-//         timeTillMaturity_.toString(),
-//       ),
-//     );
-//     const Z_1 = baseBalance_.add(zIn); // New base balance
-//     const Y_1 = fyDaiRealBalance_.sub(yOut); // New fyToken balance
-//     const pz = (x.sub(zIn)).div((x.sub(zIn)).add(yOut)); // base proportion in my assets
-//     const PZ = Z_1.div(Z_1.add(Y_1)); // base proportion in the balances
+    zIn = new Decimal(
+      buyFYToken(
+        baseBalance,
+        fyDaiVirtualBalance,
+        BigNumber.from(yOut.toFixed(0)),
+        timeTillMaturity_.toString(),
+        BigNumber.from('1')
+      ).toString(),
+    );
 
-//     // The base proportion in my assets needs to be higher than but very close to the base proportion in the balances, to make sure all the fyToken is used.
-//     if (PZ.mul(new Decimal(1.000001)) <= pz) min = yOut;
-//     yOut = (yOut.add(max)).div(TWO); // bought too little fyToken, buy some more
+    const Z_1 = baseBalance_.add(zIn); // New base balance
+    const z_1 = x.sub(zIn) // My remaining base
+    const Y_1 = fyDaiRealBalance_.sub(yOut); // New fyToken balance
+    const y_1 = yOut // My fyToken
+    const pz = z_1.div(z_1.add(y_1)); // base proportion in my assets
+    const PZ = Z_1.div(Z_1.add(Y_1)); // base proportion in the balances
 
-//     if (pz <= PZ) max = yOut;
-//     yOut = (yOut.add(min)).div(TWO); // bought too much fyToken, buy a bit less
-//     if (PZ.mul(new Decimal(1.000001)) > pz && pz > PZ) return Decimal.floor(yOut).toFixed(); // Just right
+    // Targeting between 0.001% and 0.002% slippage (surplus)
+    // Lower both if getting "Not enough base in" errors. That means that
+    // the calculation that was done off-chain was stale when the actual mint happened.
+    // It might be reasonable to set `minTarget` to half the slippage, and `maxTarget`
+    // to the slippage. That would also mean that the algorithm would aim to waste at
+    // least half the slippage allowed.
+    // For large trades, it would make sense to append a `retrieveBase` action at the
+    // end of the batch.
+    const minTarget = new Decimal(1.00001)
+    const maxTarget = new Decimal(1.00002)
 
-//     // eslint-disable-next-line no-plusplus
-//     if (i++ > 10000) return Decimal.floor(yOut).toFixed();
-//   }
-// }
+    // The base proportion in my assets needs to be higher than but very close to the
+    // base proportion in the balances, to make sure all the fyToken is used.
+    // eslint-disable-next-line no-plusplus
+    if ((PZ.mul(maxTarget) > pz && PZ.mul(minTarget) < pz)) {
+      break; // Too many iterations, or found the result
+    } else if (PZ.mul(maxTarget) <= pz) {
+      min = yOut;
+      yOut = (yOut.add(max)).div(TWO); // bought too little fyToken, buy some more
+    } else {
+      max = yOut;
+      yOut = (yOut.add(min)).div(TWO); // bought too much fyToken, buy a bit less
+    }
+  }
+
+  /* console.log(`
+    base reserves: ${baseBalance}
+    fyToken virtual reserves: ${fyDaiVirtualBalance}
+    fyTokenOut: ${BigNumber.from(yOut.toFixed(0))}
+    timeTillMaturity: ${timeTillMaturity_}
+    scaleFactor: ${BigNumber.from('1')}
+  `)
+  const Z_1 = baseBalance_.add(zIn); // New base balance
+  const z_1 = x.sub(zIn) // My remaining base
+  const Y_1 = fyDaiRealBalance_.sub(yOut); // New fyToken balance
+  const y_1 = yOut // My fyToken
+  const pz = z_1.div(z_1.add(y_1)); // base proportion in my assets
+  const PZ = Z_1.div(Z_1.add(Y_1)); // base proportion in the balances
+  console.log(`
+    Z_1: ${Z_1.floor().toFixed()}
+    Y_1: ${Y_1.floor().toFixed()}
+    z_1: ${z_1.floor().toFixed()}
+    y_1: ${y_1.floor().toFixed()}
+    PZ: ${PZ}
+    pz: ${pz}
+    i: ${i}
+  `) */
+  return Decimal.floor(yOut).toFixed();
+}
 
 /**
    * Split a certain amount of X liquidity into its two componetnts (eg. base and fyToken)
