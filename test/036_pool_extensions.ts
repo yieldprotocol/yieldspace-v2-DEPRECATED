@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { constants } from '@yield-protocol/utils-v2'
 
 import { PoolEstimator } from './shared/poolEstimator'
-import { Pool, YieldMathExtensions, YieldMath, YieldMath__factory } from '../typechain'
+import { Pool, PoolView, YieldMath__factory, PoolView__factory } from '../typechain'
 import { BaseMock as Base } from '../typechain/BaseMock'
 import { FYTokenMock as FYToken } from '../typechain/FYTokenMock'
 import { YieldSpaceEnvironment } from './shared/fixtures'
@@ -11,8 +11,6 @@ import { YieldSpaceEnvironment } from './shared/fixtures'
 import { BigNumber, utils } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { expect } from 'chai'
-import { PoolView } from '../typechain/PoolView'
-import { PoolView__factory } from '../typechain/factories/PoolView__factory'
 
 const { MAX128, USDC } = constants
 const MAX = MAX128
@@ -88,6 +86,16 @@ describe('YieldMathExtensions - allowances', async function () {
       },
     })) as PoolView__factory).deploy()
     await poolView.deployed()
+  })
+
+  it('computes the invariant', async () => {
+    let invariant = await poolView.invariant(pool.address)
+    await base.mint(pool.address, oneUSDC)
+    await pool.sync()
+
+    // By expecting that the second invariant reading is greater than the first we know it's computed
+    // To make it better, we should include it in the off-chain yieldmath library
+    expect(await poolView.invariant(pool.address)).gt(invariant)
   })
 
   it('computes the retrievable base', async () => {

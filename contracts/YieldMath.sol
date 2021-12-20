@@ -353,7 +353,8 @@ library YieldMath {
       uint256(fyTokenReserves.pow(uint128 (a), ONE)) >> 1;
       require(sum < MAX, "YieldMath: Sum overflow");
 
-      uint256 result = uint256(uint128(sum).pow(ONE, uint128(a))) / totalSupply;
+      // We multiply the dividend by 1e18 to get a fixed point number with 18 decimals
+      uint256 result = uint256(uint128(sum).pow(ONE, uint128(a))) * 1e18 / totalSupply;
       require (result < MAX, "YieldMath: Result overflow");
 
       return uint128(result);
