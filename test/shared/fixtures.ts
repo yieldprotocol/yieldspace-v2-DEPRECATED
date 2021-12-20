@@ -7,29 +7,25 @@ const MAX = MAX256
 
 import { YieldMath } from '../../typechain/YieldMath'
 import { Pool } from '../../typechain/Pool'
-import { PoolFactory } from '../../typechain/PoolFactory'
 import { BaseMock as ERC20 } from '../../typechain/BaseMock'
 import { FYTokenMock as FYToken } from '../../typechain/FYTokenMock'
-import { SafeERC20Namer } from '../../typechain/SafeERC20Namer'
 import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
+import { ts, g1, g2 } from '../../src/constants'
 
 export class YieldSpaceEnvironment {
   owner: SignerWithAddress
-  factory: PoolFactory
   bases: Map<string, ERC20>
   fyTokens: Map<string, FYToken>
   pools: Map<string, Map<string, Pool>>
 
   constructor(
     owner: SignerWithAddress,
-    factory: PoolFactory,
     bases: Map<string, ERC20>,
     fyTokens: Map<string, FYToken>,
     pools: Map<string, Map<string, Pool>>
   ) {
     this.owner = owner
-    this.factory = factory
     this.bases = bases
     this.fyTokens = fyTokens
     this.pools = pools
@@ -45,8 +41,6 @@ export class YieldSpaceEnvironment {
     const ownerAdd = await owner.getAddress()
 
     let yieldMathLibrary: YieldMath
-    let safeERC20NamerLibrary: SafeERC20Namer
-    let factory: PoolFactory
 
     const WETH9Factory = await ethers.getContractFactory('WETH9Mock')
     const weth9 = (((await WETH9Factory.deploy()) as unknown) as unknown) as ERC20
@@ -66,29 +60,17 @@ export class YieldSpaceEnvironment {
     yieldMathLibrary = ((await YieldMathFactory.deploy()) as unknown) as YieldMath
     await yieldMathLibrary.deployed()
 
-    const SafeERC20NamerFactory = await ethers.getContractFactory('SafeERC20Namer')
-    safeERC20NamerLibrary = ((await SafeERC20NamerFactory.deploy()) as unknown) as SafeERC20Namer
-    await safeERC20NamerLibrary.deployed()
-
-    const PoolFactoryFactory = await ethers.getContractFactory('PoolFactory', {
+    const PoolFactory = await ethers.getContractFactory('Pool', {
       libraries: {
         YieldMath: yieldMathLibrary.address,
-        SafeERC20Namer: safeERC20NamerLibrary.address,
       },
     })
-    factory = ((await PoolFactoryFactory.deploy()) as unknown) as PoolFactory
-    await factory.deployed()
-    await factory.grantRoles(
-      [id(factory.interface, 'setParameter(bytes32,int128)'), id(factory.interface, 'createPool(address,address)')],
-      ownerAdd
-    )
 
     const initialFYToken = initialBase.div(9)
     const bases: Map<string, ERC20> = new Map()
     const fyTokens: Map<string, FYToken> = new Map()
     const pools: Map<string, Map<string, Pool>> = new Map()
-    const provider: BaseProvider = await ethers.provider
-    const now = (await provider.getBlock(await provider.getBlockNumber())).timestamp
+    const now = (await ethers.provider.getBlock('latest')).timestamp
     let count: number = 1
 
     // deploy bases
@@ -125,9 +107,7 @@ export class YieldSpaceEnvironment {
         fyTokens.set(fyTokenId, fyToken)
 
         // deploy base/fyToken pool
-        const calculatedAddress = await factory.calculatePoolAddress(base.address, fyToken.address)
-        await factory.createPool(base.address, fyToken.address)
-        const pool = ((await ethers.getContractAt('Pool', calculatedAddress, owner)) as unknown) as Pool
+        const pool = ((await PoolFactory.deploy(base.address, fyToken.address, ts, g1, g2)) as unknown) as Pool
         fyTokenPoolPairs.set(fyTokenId, pool)
 
         // init pool
@@ -148,6 +128,6 @@ export class YieldSpaceEnvironment {
       }
     }
 
-    return new YieldSpaceEnvironment(owner, factory, bases, fyTokens, pools)
+    return new YieldSpaceEnvironment(owner, bases, fyTokens, pools)
   }
 }

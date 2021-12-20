@@ -4,7 +4,6 @@ pragma solidity 0.8.6;
 import "@yield-protocol/utils-v2/contracts/token/IERC20.sol";
 import "@yield-protocol/utils-v2/contracts/token/IERC20Metadata.sol";
 import "@yield-protocol/utils-v2/contracts/token/ERC20Permit.sol";
-import "@yield-protocol/utils-v2/contracts/token/SafeERC20Namer.sol";
 import "@yield-protocol/utils-v2/contracts/token/MinimalTransferHelper.sol";
 import "@yield-protocol/utils-v2/contracts/cast/CastU256U128.sol";
 import "@yield-protocol/utils-v2/contracts/cast/CastU256U112.sol";
@@ -12,7 +11,6 @@ import "@yield-protocol/utils-v2/contracts/cast/CastU256I256.sol";
 import "@yield-protocol/utils-v2/contracts/cast/CastU128U112.sol";
 import "@yield-protocol/utils-v2/contracts/cast/CastU128I128.sol";
 import "@yield-protocol/yieldspace-interfaces/IPool.sol";
-import "@yield-protocol/yieldspace-interfaces/IPoolFactory.sol";
 import "@yield-protocol/vault-interfaces/IFYToken.sol";
 import "./YieldMath.sol";
 
@@ -45,28 +43,27 @@ contract Pool is IPool, ERC20Permit {
 
     uint256 public cumulativeBalancesRatio;  // Fixed point factor with 27 decimals (ray)
 
-    constructor()
+    /// @dev Deploy a Pool.
+    /// Make sure that the fyToken follows ERC20 standards with regards to name, symbol and decimals
+    constructor(IERC20 base_, IFYToken fyToken_, int128 ts_, int128 g1_, int128 g2_)
         ERC20Permit(
-            string(abi.encodePacked("Yield ", SafeERC20Namer.tokenName(IPoolFactory(msg.sender).nextFYToken()), " LP Token")),
-            string(abi.encodePacked(SafeERC20Namer.tokenSymbol(IPoolFactory(msg.sender).nextFYToken()), "LP")),
-            SafeERC20Namer.tokenDecimals(IPoolFactory(msg.sender).nextBase())
+            string(abi.encodePacked(IERC20Metadata(address(fyToken_)).name(), " LP")),
+            string(abi.encodePacked(IERC20Metadata(address(fyToken_)).symbol(), "LP")),
+            IERC20Metadata(address(fyToken_)).decimals()
         )
     {
-        IPoolFactory _factory = IPoolFactory(msg.sender);
-        IFYToken _fyToken = IFYToken(_factory.nextFYToken());
-        IERC20 _base = IERC20(_factory.nextBase());
-        fyToken = _fyToken;
-        base = _base;
+        fyToken = fyToken_;
+        base = base_;
 
-        uint256 _maturity = _fyToken.maturity();
-        require (_maturity <= type(uint32).max, "Pool: Maturity too far in the future");
-        maturity = uint32(_maturity);
+        uint256 maturity_ = fyToken_.maturity();
+        require (maturity_ <= type(uint32).max, "Pool: Maturity too far in the future");
+        maturity = uint32(maturity_);
 
-        ts = _factory.ts();
-        g1 = _factory.g1();
-        g2 = _factory.g2();
+        ts = ts_;
+        g1 = g1_;
+        g2 = g2_;
 
-        scaleFactor = uint96(10 ** (18 - SafeERC20Namer.tokenDecimals(address(_base))));
+        scaleFactor = uint96(10 ** (18 - uint96(decimals)));
     }
 
     /// @dev Trading can only be done before maturity

@@ -5,7 +5,6 @@ const { WAD, MAX256 } = constants
 const MAX = MAX256
 
 import { Pool } from '../typechain/Pool'
-import { PoolFactory } from '../typechain/PoolFactory'
 import { BaseMock as Base } from '../typechain/BaseMock'
 import { FYTokenMock as FYToken } from '../typechain/FYTokenMock'
 import { YieldSpaceEnvironment } from './shared/fixtures'
