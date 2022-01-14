@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 
-import { constants } from '@yield-protocol/utils-v2'
+import { constants, id } from '@yield-protocol/utils-v2'
 const { WAD, MAX256 } = constants
 const MAX = MAX256
 
@@ -56,7 +56,7 @@ describe('Pool - mint', async function () {
   const fyTokenId = baseId + '-' + maturityId
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturityId], BigNumber.from('0'))
+    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturityId])
   }
 
   before(async () => {
@@ -78,6 +78,8 @@ describe('Pool - mint', async function () {
 
     // Deploy a fresh pool so that we can test initialization
     pool = ((yieldSpace.pools.get(baseId) as Map<string, Pool>).get(fyTokenId) as Pool).connect(user1Acc)
+    await pool.connect(ownerAcc).grantRole(id(pool.interface, 'init(address)'), user1)
+
     poolEstimator = await PoolEstimator.setup(pool)
 
     maturity = BigNumber.from(await fyToken.maturity())
@@ -86,7 +88,7 @@ describe('Pool - mint', async function () {
   it('adds initial liquidity', async () => {
     await base.mint(pool.address, initialBase)
 
-    await expect(pool.mint(user2, user2, 0, MAX))
+    await expect(pool.init(user2))
       .to.emit(pool, 'Liquidity')
       .withArgs(maturity, user1, user2, ZERO_ADDRESS, initialBase.mul(-1), 0, initialBase)
 
@@ -98,7 +100,7 @@ describe('Pool - mint', async function () {
 
   it('adds liquidity with zero fyToken', async () => {
     await base.mint(pool.address, initialBase)
-    await pool.mint(ZERO_ADDRESS, ZERO_ADDRESS, 0, MAX)
+    await pool.init(ZERO_ADDRESS)
 
     // After initializing, donate base and sync to simulate having reached zero fyToken through trading
     await base.mint(pool.address, initialBase)
@@ -120,7 +122,10 @@ describe('Pool - mint', async function () {
   })
 
   it('syncs balances after donations', async () => {
-    await base.mint(pool.address, initialBase)
+    await base.mint(pool.address, initialBase.div(2))
+    await pool.init(ZERO_ADDRESS)
+
+    await base.mint(pool.address, initialBase.div(2))
     await fyToken.mint(pool.address, initialBase.div(9))
 
     await expect(pool.sync()).to.emit(pool, 'Sync')
@@ -132,7 +137,7 @@ describe('Pool - mint', async function () {
   describe('with initial liquidity', () => {
     beforeEach(async () => {
       await base.mint(pool.address, initialBase)
-      await pool.mint(user1, user2, 0, MAX)
+      await pool.init(user1)
 
       const additionalFYToken = initialBase.div(9)
       // Skew the balances without using trading functions

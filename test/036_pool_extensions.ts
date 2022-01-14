@@ -50,7 +50,7 @@ describe('YieldMathExtensions - allowances', async function () {
   const fyTokenId = baseId + '-' + maturityId
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [], [maturityId], BigNumber.from('0'))
+    return await YieldSpaceEnvironment.setup(ownerAcc, [], [maturityId])
   }
 
   before(async () => {
@@ -72,7 +72,7 @@ describe('YieldMathExtensions - allowances', async function () {
     maturity = BigNumber.from(await fyToken.maturity())
 
     await base.mint(pool.address, bases)
-    await pool.connect(user1Acc).mint(user1, user1, 0, MAX)
+    await pool.init(user1)
 
     const yieldMathLibrary = await ((await ethers.getContractFactory('YieldMath')) as YieldMath__factory).deploy()
     await yieldMathLibrary.deployed()

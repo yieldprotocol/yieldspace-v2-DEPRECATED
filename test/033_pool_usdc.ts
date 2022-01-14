@@ -54,7 +54,7 @@ describe('Pool - usdc', async function () {
   const fyTokenId = baseId + '-' + maturityId
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [], [maturityId], BigNumber.from('0'))
+    return await YieldSpaceEnvironment.setup(ownerAcc, [], [maturityId])
   }
 
   before(async () => {
@@ -76,7 +76,7 @@ describe('Pool - usdc', async function () {
     maturity = BigNumber.from(await fyToken.maturity())
 
     await base.mint(pool.address, initialBase)
-    await pool.connect(user1Acc).mint(user1, user1, 0, MAX)
+    await pool.connect(ownerAcc).init(user1)
   })
 
   it('sells fyToken', async () => {

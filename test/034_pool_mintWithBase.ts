@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
 
-import { constants } from '@yield-protocol/utils-v2'
+import { constants, id } from '@yield-protocol/utils-v2'
 const { WAD, MAX128 } = constants
 const MAX = MAX128
 
@@ -78,7 +78,7 @@ describe('Pool - mintWithBase', async function () {
   const scaleFactor = BigNumber.from('1')
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturityId], initialBase)
+    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturityId])
   }
 
   before(async () => {
@@ -117,7 +117,7 @@ describe('Pool - mintWithBase', async function () {
 
               // Initialize to supply
               await base.mint(pool.address, poolSupply)
-              await pool.mint(owner, owner, 0, MAX)
+              await pool.connect(ownerAcc).init(owner)
 
               // Donate to reserves
               const baseDonation = baseReserve.sub(poolSupply)

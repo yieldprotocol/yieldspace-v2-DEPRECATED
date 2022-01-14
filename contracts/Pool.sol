@@ -5,6 +5,7 @@ import "@yield-protocol/utils-v2/contracts/token/IERC20.sol";
 import "@yield-protocol/utils-v2/contracts/token/IERC20Metadata.sol";
 import "@yield-protocol/utils-v2/contracts/token/ERC20Permit.sol";
 import "@yield-protocol/utils-v2/contracts/token/MinimalTransferHelper.sol";
+import "@yield-protocol/utils-v2/contracts/access/AccessControl.sol";
 import "@yield-protocol/utils-v2/contracts/cast/CastU256U128.sol";
 import "@yield-protocol/utils-v2/contracts/cast/CastU256U112.sol";
 import "@yield-protocol/utils-v2/contracts/cast/CastU256I256.sol";
@@ -16,7 +17,7 @@ import "./YieldMath.sol";
 
 
 /// @dev The Pool contract exchanges base for fyToken at a price defined by a specific formula.
-contract Pool is IPool, ERC20Permit {
+contract Pool is IPool, ERC20Permit, AccessControl {
     using CastU256U128 for uint256;
     using CastU256U112 for uint256;
     using CastU256I256 for uint256;
@@ -79,6 +80,7 @@ contract Pool is IPool, ERC20Permit {
 
     /// @dev Updates the cache to match the actual balances.
     function sync() external {
+        require (_totalSupply != 0, "Initialize pool first");
         _update(_getBaseBalance(), _getFYTokenBalance(), baseCached, fyTokenCached);
     }
 
@@ -162,6 +164,27 @@ contract Pool is IPool, ERC20Permit {
 
     // ---- Liquidity ----
 
+    function init(address to)
+        external auth
+    {
+        require (_totalSupply == 0, "Already initialized");
+        uint128 baseIn = base.balanceOf(address(this)).u128();
+        require (baseIn != 0, "Supply some base");
+
+        // Update TWAR
+        _update(
+            baseIn,
+            baseIn, // Account for the "virtual" fyToken from the new minted LP tokens
+            0,
+            0
+        );
+
+        // Execute mint
+        _mint(to, baseIn);
+
+        emit Liquidity(maturity, msg.sender, to, address(0), -(baseIn.i128()), 0, baseIn.i128());
+    }
+
     /// @dev Mint liquidity tokens in exchange for adding base and fyToken
     /// The amount of liquidity tokens to mint is calculated from the amount of unaccounted for fyToken in this contract.
     /// A proportional amount of base tokens need to be present in this contract, also unaccounted for.
@@ -209,6 +232,8 @@ contract Pool is IPool, ERC20Permit {
     {
         // Gather data
         uint256 supply = _totalSupply;
+        require (supply != 0, "Initialize pool first");
+
         (uint112 _baseCached, uint112 _fyTokenCached) =
             (baseCached, fyTokenCached);
         uint256 _realFYTokenCached = _fyTokenCached - supply;    // The fyToken cache includes the virtual fyToken, equal to the supply
@@ -226,10 +251,7 @@ contract Pool is IPool, ERC20Permit {
         );
 
         // Calculate token amounts
-        if (supply == 0) { // Initialize at 1 pool token minted per base token supplied
-            baseIn = baseAvailable;
-            tokensMinted = baseIn;
-        } else if (_realFYTokenCached == 0) { // Edge case, no fyToken in the Pool after initialization
+        if (_realFYTokenCached == 0) { // Edge case, no fyToken in the Pool after initialization
             baseIn = baseAvailable;
             tokensMinted = supply * baseIn / _baseCached;
         } else {

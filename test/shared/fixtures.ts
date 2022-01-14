@@ -1,5 +1,5 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address'
-import { BaseProvider } from '@ethersproject/providers'
+import { network } from 'hardhat'
 
 import { constants, id } from '@yield-protocol/utils-v2'
 const { DAI, ETH, USDC, THREE_MONTHS, MAX256 } = constants
@@ -36,7 +36,7 @@ export class YieldSpaceEnvironment {
     owner: SignerWithAddress,
     baseIds: Array<string>,
     maturityIds: Array<string>,
-    initialBase: BigNumber
+    initialBase?: BigNumber
   ) {
     const ownerAdd = await owner.getAddress()
 
@@ -66,7 +66,6 @@ export class YieldSpaceEnvironment {
       },
     })
 
-    const initialFYToken = initialBase.div(9)
     const bases: Map<string, ERC20> = new Map()
     const fyTokens: Map<string, FYToken> = new Map()
     const pools: Map<string, Map<string, Pool>> = new Map()
@@ -81,8 +80,8 @@ export class YieldSpaceEnvironment {
     }
 
     // add WETH to bases
-    bases.set(ETH, weth9)
-    baseIds.unshift(ETH)
+    // bases.set(ETH, weth9)
+    // baseIds.unshift(ETH)
 
     // add Dai to bases
     bases.set(DAI, dai)
@@ -108,18 +107,14 @@ export class YieldSpaceEnvironment {
 
         // deploy base/fyToken pool
         const pool = ((await PoolFactory.deploy(base.address, fyToken.address, ts, g1, g2)) as unknown) as Pool
+        await pool.grantRole(id(pool.interface, 'init(address)'), ownerAdd)
         fyTokenPoolPairs.set(fyTokenId, pool)
 
         // init pool
-        if (initialBase !== BigNumber.from(0)) {
-          if (baseId === ETH) {
-            break // TODO: Fix when we can give `initialBase` ether to the deployer
-            await weth9.deposit({ value: initialBase })
-            await weth9.transfer(pool.address, initialBase)
-          } else {
-            await base.mint(pool.address, initialBase)
-          }
-          await pool.mint(ownerAdd, ownerAdd, 0, MAX)
+        if (initialBase !== undefined) {
+          const initialFYToken = initialBase.div(9)
+          await base.mint(pool.address, initialBase)
+          await pool.init(ownerAdd)
 
           // skew pool to 5% interest rate
           await fyToken.mint(pool.address, initialFYToken)

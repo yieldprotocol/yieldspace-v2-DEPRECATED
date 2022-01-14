@@ -49,7 +49,7 @@ describe('Pool - TWAR', async function () {
   const fyTokenId = baseId + '-' + maturityId
 
   async function fixture() {
-    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturityId], BigNumber.from('0'))
+    return await YieldSpaceEnvironment.setup(ownerAcc, [baseId], [maturityId])
   }
 
   before(async () => {
@@ -70,7 +70,7 @@ describe('Pool - TWAR', async function () {
     poolFromUser1 = pool.connect(user1Acc)
 
     await base.mint(pool.address, initialBase)
-    await poolFromUser1.mint(user1, user1, 0, MAX)
+    await pool.init(user1)
   })
 
   it('calculates the TWAR price', async () => {
