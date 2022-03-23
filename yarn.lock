@@ -2300,14 +2300,14 @@
     ethers "^5.0.7"
 
 "@yield-protocol/vault-interfaces@^2.0.41":
-  version "2.0.41"
-  resolved "https://registry.yarnpkg.com/@yield-protocol/vault-interfaces/-/vault-interfaces-2.0.41.tgz#4831495e1317ea2cd09c21b49501bfb73d2ca68e"
-  integrity sha512-KeARm+VJ5aqYiA/GfDvc/LIm7NQtx1hbsV2EZvzjVoMbNyj+tWDQ4uZmM4cCkNz4cXNvz6Bi+l4GgkcVrdA4Aw==
+  version "2.3.4"
+  resolved "https://registry.yarnpkg.com/@yield-protocol/vault-interfaces/-/vault-interfaces-2.3.4.tgz#b10feb7ce427e7c034c04397e1b86e1815a07132"
+  integrity sha512-4g/GZMuYBieijxCvFQUAJIAo8om65aullBwRFV7Snx8jGYxxcuW68WBe1llLm4QddLVKdgLHxcZ5pcs5CrdMIA==
 
-"@yield-protocol/yieldspace-interfaces@^2.3.0-rc7":
-  version "2.3.0-rc7"
-  resolved "https://registry.yarnpkg.com/@yield-protocol/yieldspace-interfaces/-/yieldspace-interfaces-2.3.0-rc7.tgz#8931c5de3cd80dd1cdb4dcf900bd7c465878d216"
-  integrity sha512-7pExkzMw8pikGNAdIyKskMFZ9lYWCv0hfzqnG+gW2mOp0y6YMsyKGpVR01Qi2vz4kn1Xthg9CV7EyPVFU1iiEA==
+"@yield-protocol/yieldspace-interfaces@^2.3.1":
+  version "2.3.1"
+  resolved "https://registry.yarnpkg.com/@yield-protocol/yieldspace-interfaces/-/yieldspace-interfaces-2.3.1.tgz#144949c8e1fecf7491416dbb654063c0c8528923"
+  integrity sha512-9SUP4FAs/IBa1u4ZI9iVd+t+K851okHIWKWYkyS1PcWXq2cAC/uxKVShSyIULOxZowQjXjEhP10lr1SJFyJJkg==
 
 abab@^2.0.0:
   version "2.0.5"

@@ -41,7 +41,7 @@ contract Pool is IPool, ERC20Permit {
     uint112 private fyTokenCached;           // uses single storage slot, accessible via getCache
     uint32  private blockTimestampLast;      // uses single storage slot, accessible via getCache
 
-    uint256 public cumulativeBalancesRatio;  // Fixed point factor with 27 decimals (ray)
+    uint256 public override cumulativeBalancesRatio;  // Fixed point factor with 27 decimals (ray)
 
     /// @dev Deploy a Pool.
     /// Make sure that the fyToken follows ERC20 standards with regards to name, symbol and decimals
