@@ -11,7 +11,7 @@ import "@yield-protocol/utils-v2/contracts/cast/CastU256I256.sol";
 import "@yield-protocol/utils-v2/contracts/cast/CastU128U112.sol";
 import "@yield-protocol/utils-v2/contracts/cast/CastU128I128.sol";
 import "@yield-protocol/yieldspace-interfaces/IPool.sol";
-import "@yield-protocol/vault-interfaces/IFYToken.sol";
+import "@yield-protocol/vault-interfaces/src/IFYToken.sol";
 import "./YieldMath.sol";
 
 
