@@ -3,7 +3,7 @@
  *  Math 64.64 Smart Contract Library.  Copyright © 2019 by  Consulting.
  * Author: Mikhail Vladimirov <mikhail.vladimirov@gmail.com>
  */
-pragma solidity 0.8.6;
+pragma solidity 0.8.14;
 
 /**
  * Smart contract library of mathematical functions operating with signed
